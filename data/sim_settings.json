@@ -21,14 +21,5 @@
     "fall": 0.25,
     "fall_hold": 0.8,
     "reach_gesture": 1.2
-  },
-  "display_seconds": {
-    "climb": 0.9,
-    "step_down": 0.4,
-    "backward_down": 0.9,
-    "jump_down": 0.4,
-    "fall": 0.25,
-    "fall_hold": 0.8,
-    "reach_gesture": 1.2
   }
 }
