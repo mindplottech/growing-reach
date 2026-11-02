@@ -51,7 +51,7 @@ export function createSimulation({ ledger, months, sex, seed, room, boxes = [] }
       canClimb: canClimb(body, current.height),
       canReach: canReach(body, current.height),
       reachLevel: reachLevel(body, current.height),
-      scaffold: evaluateScaffold(body, current, landmarks, room.nearby_range.value),
+      scaffold: evaluateScaffold(ledger, body, current, landmarks),
     });
   }
 

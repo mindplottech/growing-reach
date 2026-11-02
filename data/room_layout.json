@@ -8,7 +8,6 @@
   "width": 450,
   "depth": 360,
   "start": { "x": 225, "y": 150 },
-  "nearby_range": { "value": 60, "category": "provisional", "note": "足場から何cm以内の物を「近く」として届くか判定するか。台帳になく、設計者が置いた仮値" },
   "cardboard_box": { "label": "段ボール箱", "height": 30, "w": 40, "d": 30, "approach_gap": 20, "category": "provisional", "note": "台帳になく、設計者が置いた仮値" },
   "landmarks": [
     { "id": "sofa", "label": "ソファの座面", "heightOf": ["furniture_heights", "sofa_seat"], "scaffold": true, "x": 30, "y": 20, "w": 180, "d": 80, "approach": { "x": 120, "y": 120 } },

@@ -1,5 +1,5 @@
 import { placeBox } from './boxes.js';
-import { REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
+import { isBetterReach, REACH_NONE, REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
 import { createSimulation } from './simulation.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -47,7 +47,7 @@ function describeBody({ height, reach, tiptoeReach, climb, walkSpeed }) {
 /** Footholds worth reporting: those that improve on what the child reaches from the floor. */
 function newReaches(visit) {
   return (visit.scaffold?.objects ?? []).filter(
-    (object) => object.level !== object.floorLevel,
+    (object) => object.level !== REACH_NONE && isBetterReach(object.level, object.floorLevel),
   );
 }
 
@@ -80,10 +80,11 @@ function assumptionLine(ledger, text, category) {
 
 function renderAssumptions(container, ledger, room) {
   const { unit, notice, category } = room._meta;
-  const { nearby_range: range, cardboard_box: box } = room;
+  const { cardboard_box: box } = room;
+  const horizontal = ledger.items.find((entry) => entry.id === 'reach_horizontal_on_surface');
   container.replaceChildren(
     assumptionLine(ledger, notice, category),
-    assumptionLine(ledger, `足場の「近く」：${range.value}${unit}以内`, range.category),
+    assumptionLine(ledger, `${horizontal.label}：${horizontal.formula}（${horizontal.unit}）`, horizontal.category),
     assumptionLine(ledger, `${box.label}の高さ：${box.height}${unit}`, box.category),
   );
 }

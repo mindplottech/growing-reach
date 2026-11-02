@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { getBodyValues } from '../src/body.js';
 import { placeBox } from '../src/boxes.js';
 import { landmarkHeight } from '../src/room.js';
-import { evaluateScaffold, footprintDistance, reachLevel, REACH_NONE, REACH_STANDING } from '../src/scaffold.js';
+import { evaluateScaffold, reachLevel, REACH_NONE, REACH_STANDING } from '../src/scaffold.js';
 import { createSimulation } from '../src/simulation.js';
 import { ledger, maxMonths, minMonths, roomLayout } from './helpers.js';
 
@@ -11,7 +11,6 @@ const furniture = roomLayout.landmarks.map((landmark) => ({
   ...landmark,
   height: landmarkHeight(ledger, landmark.heightOf),
 }));
-const range = roomLayout.nearby_range.value;
 const spec = roomLayout.cardboard_box;
 const lock = furniture.find((object) => object.id === 'window_lock');
 const FREE_SPOT = { x: 400, y: 120 };
@@ -49,8 +48,7 @@ test('a box near the window lets a child reach the lock they could not reach bef
   assert.equal(reachLevel(body, lock.height), REACH_NONE);
   const box = placeBox(roomLayout, furniture, { x: NEAR_LOCK.x + spec.w / 2, y: NEAR_LOCK.y + spec.d / 2 }, 1);
   assert.ok(box, 'the spot beside the lock must be free');
-  assert.ok(footprintDistance(box, lock) <= range);
-  const result = evaluateScaffold(body, box, [...furniture, box], range);
+  const result = evaluateScaffold(ledger, body, box, [...furniture, box]);
   const lockResult = result.objects.find((object) => object.id === lock.id);
   assert.equal(lockResult.level, REACH_STANDING);
   assert.equal(lockResult.floorLevel, REACH_NONE);
@@ -59,15 +57,14 @@ test('a box near the window lets a child reach the lock they could not reach bef
 test('a box out of range of the lock does not help', () => {
   const body = getBodyValues(ledger, { months: minMonths, sex: 'female' });
   const box = placeBox(roomLayout, furniture, FREE_SPOT, 1);
-  assert.ok(footprintDistance(box, lock) > range);
-  const result = evaluateScaffold(body, box, [...furniture, box], range);
-  assert.ok(!result.objects.some((object) => object.id === lock.id));
+  const result = evaluateScaffold(ledger, body, box, [...furniture, box]);
+  assert.equal(result.objects.find((object) => object.id === lock.id).level, REACH_NONE);
 });
 
 test('a child who cannot climb the box cannot use it', () => {
   const body = getBodyValues(ledger, { months: minMonths, sex: 'female', z: { climb: -10 } });
   const box = placeBox(roomLayout, furniture, FREE_SPOT, 1);
-  assert.equal(evaluateScaffold(body, box, [...furniture, box], range), null);
+  assert.equal(evaluateScaffold(ledger, body, box, [...furniture, box]), null);
 });
 
 const runWith = (boxes, seed = 1) => {
