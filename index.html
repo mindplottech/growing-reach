@@ -43,6 +43,18 @@
       <ol id="visits" aria-label="到着の記録（新しい順）"></ol>
       <div id="layout-assumptions"></div>
     </section>
+
+    <section id="trials">
+      <h2>100回の集計</h2>
+      <p class="hint">今の月齢・性別・置いた箱で、シード1〜100の子が決まった時間過ごした結果です。</p>
+      <div class="trial-inputs">
+        <label>②で比べる月齢 <input id="compare-months" type="number" step="1" inputmode="numeric"></label>
+        <label>①で動かす物 <select id="move-object"></select></label>
+        <label>①で離す距離（cm） <input id="move-cm" type="number" inputmode="numeric" min="0"></label>
+      </div>
+      <button id="run-trials" type="button">集計を実行</button>
+      <div id="trial-results"></div>
+    </section>
     <p id="error" role="alert" hidden></p>
   </main>
   <script type="module" src="src/main.js"></script>

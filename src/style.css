@@ -114,3 +114,15 @@ h3 { margin: 0.9rem 0 0.25rem; font-size: 0.95rem; }
 #events li, #visits li { padding: 0.35rem 0; border-bottom: 1px solid #d9dee3; }
 
 #scaffold-reaches:empty::before { content: "（今のところなし）"; color: #5f6b76; }
+
+.hint { margin: 0.25rem 0; font-size: 0.875rem; }
+
+.trial-inputs { display: grid; gap: 0.5rem; margin: 0.5rem 0; font-size: 0.875rem; }
+
+.trial-inputs input, .trial-inputs select { min-height: 2.5rem; font-size: 1rem; }
+
+#run-trials { min-height: 2.75rem; padding: 0 1rem; font-size: 1rem; }
+
+#trial-results table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; background: #fff; }
+
+#trial-results th, #trial-results td { padding: 0.3rem 0.4rem; border: 1px solid #d9dee3; text-align: left; }

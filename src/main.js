@@ -1,5 +1,6 @@
 import { getBodyValues, getTiptoeReference } from './body.js';
 import { mountRoomView } from './roomView.js';
+import { mountTrialsView } from './trialsView.js';
 
 const MONTHS_PER_YEAR = 12;
 const DISPLAY_DECIMALS = 1;
@@ -142,6 +143,16 @@ async function start() {
     months: Number(monthsInput.value),
     sex: new FormData(controls).get('sex'),
   }));
+  mountTrialsView({
+    ledger,
+    settings,
+    room,
+    getCondition: () => ({
+      months: Number(monthsInput.value),
+      sex: new FormData(controls).get('sex'),
+      boxes: roomView.getBoxes(),
+    }),
+  });
   controls.addEventListener('input', () => {
     render(ledger);
     roomView.restart();

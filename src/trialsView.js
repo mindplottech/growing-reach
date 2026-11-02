@@ -1,0 +1,103 @@
+import { EVENT, EVENT_LABELS } from './events.js';
+import { compareTrials, moveAwayFromLock, runTrials } from './trials.js';
+
+function element(tag, text) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function row(cellTag, cells) {
+  const tr = element('tr');
+  tr.append(...cells.map((cell) => element(cellTag, cell)));
+  return tr;
+}
+
+function table(headers, rows) {
+  const node = element('table');
+  node.append(row('th', headers), ...rows.map((cells) => row('td', cells)));
+  return node;
+}
+
+function totalsTable(result) {
+  return table(
+    ['出来事', '回数'],
+    Object.values(EVENT).map((kind) => [EVENT_LABELS[kind], String(result.counts[kind])]),
+  );
+}
+
+function footholdsTable(result) {
+  const lockCount = new Map(result.lockFootholds.map(({ id, count }) => [id, count]));
+  return table(
+    ['順位', '足場', '足場になった回数', 'うち窓の錠に届いた回数'],
+    result.footholds.map(({ id, label, count }, i) => [
+      String(i + 1), label, String(count), String(lockCount.get(id) ?? 0),
+    ]),
+  );
+}
+
+const signed = (value) => (value > 0 ? `+${value}` : String(value));
+
+function comparisonTable(before, after) {
+  return table(
+    ['出来事', '前', '後', '差', '増えた子', '減った子'],
+    compareTrials(before, after).map(({ kind, before: a, after: b, diff, childrenUp, childrenDown }) => [
+      EVENT_LABELS[kind], String(a), String(b), signed(diff), String(childrenUp), String(childrenDown),
+    ]),
+  );
+}
+
+/** Runs the batch views. `getCondition` returns the current { months, sex, boxes }. */
+export function mountTrialsView({ ledger, settings, room, getCondition }) {
+  const results = document.querySelector('#trial-results');
+  const monthsInput = document.querySelector('#compare-months');
+  const objectSelect = document.querySelector('#move-object');
+  const distanceInput = document.querySelector('#move-cm');
+  const [minMonths, maxMonths] = ledger._meta.age_range_months;
+
+  monthsInput.min = minMonths;
+  monthsInput.max = maxMonths;
+  monthsInput.value = maxMonths;
+  distanceInput.step = settings.countermeasure_step_cm;
+  distanceInput.value = settings.countermeasure_step_cm;
+  objectSelect.replaceChildren(
+    ...room.landmarks.filter(({ scaffold }) => scaffold).map(({ id, label }) => {
+      const option = element('option', label);
+      option.value = id;
+      return option;
+    }),
+  );
+
+  function run() {
+    const { months, sex, boxes } = getCondition();
+    const base = { ledger, settings, room, boxes, months, sex };
+    const before = runTrials(base);
+    const comparedMonths = Number(monthsInput.value);
+    const objectId = objectSelect.value;
+    const distance = Number(distanceInput.value);
+    const moved = moveAwayFromLock({ room, boxes }, objectId, distance);
+    const objectLabel = objectSelect.selectedOptions[0].textContent;
+
+    const moveSection = [element('h3', `① ${objectLabel}を窓の錠から${distance}cm離す前と後（シード同じ）`)];
+    moveSection.push(
+      moved
+        ? comparisonTable(before, runTrials({ ...base, ...moved }))
+        : element('p', 'その距離には動かせません（部屋の外に出るか、他の物と重なります）'),
+    );
+
+    results.replaceChildren(
+      element('h3', `出来事の回数（${months}か月、${settings.trial_count}人）`),
+      totalsTable(before),
+      element('p', `窓の錠に届いた回数のうち、床から：${before.lockFromFloor}回`),
+      element('h3', '足場になった回数の順位'),
+      footholdsTable(before),
+      ...moveSection,
+      element('h3', `② ${months}か月と${comparedMonths}か月の比較（シード同じ）`),
+      comparisonTable(before, runTrials({ ...base, months: comparedMonths })),
+    );
+    return { base, before };
+  }
+
+  document.querySelector('#run-trials').addEventListener('click', run);
+  return { run };
+}

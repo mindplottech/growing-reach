@@ -9,5 +9,8 @@
   "after_fall_seconds": 10,
   "step_length_cm": 30,
   "climb_failure_k": 0.1,
-  "trial_seconds": 600
+  "trial_seconds": 600,
+  "trial_count": 100,
+  "countermeasure_step_cm": 10,
+  "countermeasure_limit_cm": 200
 }

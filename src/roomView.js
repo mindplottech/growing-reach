@@ -206,5 +206,5 @@ export function mountRoomView(ledger, room, settings, getChild) {
   renderAssumptions(document.querySelector('#layout-assumptions'), ledger, room);
   restart();
   requestAnimationFrame(frame);
-  return { restart };
+  return { restart, getBoxes: () => boxes };
 }
