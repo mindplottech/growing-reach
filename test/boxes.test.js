@@ -5,7 +5,7 @@ import { placeBox } from '../src/boxes.js';
 import { landmarkHeight } from '../src/room.js';
 import { evaluateScaffold, reachLevel, REACH_NONE, REACH_STANDING } from '../src/scaffold.js';
 import { createSimulation } from '../src/simulation.js';
-import { ledger, maxMonths, minMonths, roomLayout } from './helpers.js';
+import { ledger, maxMonths, minMonths, roomLayout, settings } from './helpers.js';
 
 const furniture = roomLayout.landmarks.map((landmark) => ({
   ...landmark,
@@ -68,7 +68,7 @@ test('a child who cannot climb the box cannot use it', () => {
 });
 
 const runWith = (boxes, seed = 1) => {
-  const simulation = createSimulation({ ledger, months: maxMonths, sex: 'male', seed, room: roomLayout, boxes });
+  const simulation = createSimulation({ ledger, settings, months: maxMonths, sex: 'male', seed, room: roomLayout, boxes });
   for (let i = 0; i < 12000; i += 1) simulation.step(0.05);
   return simulation;
 };

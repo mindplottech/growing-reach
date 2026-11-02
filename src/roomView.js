@@ -90,7 +90,7 @@ function renderAssumptions(container, ledger, room) {
 }
 
 /** Runs the room view. `getChild` returns the current { months, sex }. */
-export function mountRoomView(ledger, room, getChild) {
+export function mountRoomView(ledger, room, settings, getChild) {
   const svg = document.querySelector('#room');
   const seedInput = document.querySelector('#seed');
   const pauseButton = document.querySelector('#pause');
@@ -111,6 +111,7 @@ export function mountRoomView(ledger, room, getChild) {
   function restart() {
     simulation = createSimulation({
       ledger,
+      settings,
       ...getChild(),
       seed: Number.parseInt(seedInput.value, 10) || 0,
       room,

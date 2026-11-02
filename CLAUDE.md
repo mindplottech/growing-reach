@@ -12,6 +12,7 @@ GitHub Pages（main ブランチのルート）で動く静的サイトで、ス
 - 作品の中でAI・APIは使わない。安全の助言や説明文を生成しない。
 - `data/values_ledger.json` は外部から持ち込んだデータ。出典は JSON の中にある。
 - `data/room_layout.json` は設計者が置いた配置で、根拠となる実測はない（仮値）。高さは台帳を指す。
+- `data/sim_settings.json` は台帳にない「やるか」側などの設定で、設計者が置いた仮値。
 
 ## 実装上の決まり
 

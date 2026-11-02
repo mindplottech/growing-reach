@@ -4,9 +4,13 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { canClimb, canReach } from '../src/ability.js';
 import { landmarkHeight } from '../src/room.js';
 import { createSimulation } from '../src/simulation.js';
-import { byId, close, ledger, roomLayout } from './helpers.js';
+import { byId, close, ledger, roomLayout, settings } from './helpers.js';
 
-const BASE = { ledger, months: 48, sex: 'female', room: roomLayout };
+const STILL = { ...settings, climb_probability: 0 };
+const stillLedger = structuredClone(ledger);
+byId('fall_rates', stillLedger).values = { balancePerSec: 0, tripPerStep: 0 };
+// A child who only walks and looks: the walking and dwell checks need no climbing or falls.
+const BASE = { ledger: stillLedger, settings: STILL, months: 48, sex: 'female', room: roomLayout };
 const STEP = 0.05;
 const RUN_SECONDS = 600;
 
