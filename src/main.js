@@ -179,6 +179,7 @@ async function start() {
       mountView3d({
         container: stage,
         ledger,
+        settings,
         roomView,
         modeButtons: {
           view: document.querySelector('#mode-view'),

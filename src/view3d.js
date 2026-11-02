@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
-  createPoseTracker, footHeight, isFalling, reachMark,
+  createPoseTracker, floorShadow, footHeight, reachMark,
 } from './childPose.js';
 import {
   buildSceneModel, highlightedIds, STATE_CLIMBABLE, STATE_REACHABLE,
@@ -19,8 +19,10 @@ const PLANE_EASE = 0.15;
 const LABEL_HEIGHT_CM = 16;
 const LABEL_GAP_CM = 12;
 const PULSE_MS = 400;
-const CLIMB_SECONDS = 0.6;
-const FALL_SECONDS = 0.18;
+const SHADOW_RADIUS_CM = 22;
+const SHADOW_OPACITY = 0.35;
+const STRETCH_SHARE = 0.06;
+const ARM_RAISE = Math.PI * 0.95;
 const MS_PER_SECOND = 1000;
 const MARK_RADIUS_CM = 16;
 const MARK_TUBE_CM = 1.6;
@@ -57,23 +59,40 @@ function labelSprite(text) {
   return sprite;
 }
 
-/** A simple figure one unit tall, scaled to the child's height. */
+/** A simple figure one unit tall with arms on shoulder joints, scaled to the child's height. */
 function makeChild() {
   const material = new THREE.MeshStandardMaterial({ color: 0x1d4ed8 });
   const skin = new THREE.MeshStandardMaterial({ color: 0xfbbf8a });
-  const figure = new THREE.Group();
-  const part = (geometry, mat, x, y) => {
+  const body = new THREE.Group();
+  const part = (parent, geometry, mat, x, y) => {
     const mesh = new THREE.Mesh(geometry, mat);
     mesh.position.set(x, y, 0);
-    figure.add(mesh);
+    parent.add(mesh);
+    return mesh;
   };
-  part(new THREE.SphereGeometry(0.11, 20, 14), skin, 0, 0.89);
-  part(new THREE.CapsuleGeometry(0.09, 0.26, 6, 14), material, 0, 0.58);
-  for (const side of [-1, 1]) {
-    part(new THREE.CapsuleGeometry(0.035, 0.26, 4, 10), material, side * 0.13, 0.58);
-    part(new THREE.CapsuleGeometry(0.045, 0.3, 4, 10), material, side * 0.05, 0.19);
-  }
-  return figure;
+  part(body, new THREE.SphereGeometry(0.11, 20, 14), skin, 0, 0.89);
+  part(body, new THREE.CapsuleGeometry(0.09, 0.26, 6, 14), material, 0, 0.58);
+  const arms = [-1, 1].map((side) => {
+    part(body, new THREE.CapsuleGeometry(0.045, 0.3, 4, 10), material, side * 0.05, 0.19);
+    const shoulder = new THREE.Group();
+    shoulder.position.set(side * 0.13, 0.72, 0);
+    part(shoulder, new THREE.CapsuleGeometry(0.035, 0.26, 4, 10), material, 0, -0.14);
+    body.add(shoulder);
+    return shoulder;
+  });
+  const root = new THREE.Group();
+  root.add(body);
+  return { root, body, arms };
+}
+
+/** Puts the figure in a pose from the tracker; feet stay at the group's origin. */
+function applyPose(figure, pose) {
+  const { root, body, arms } = figure;
+  root.position.set(pose.x, pose.feet, pose.z);
+  root.rotation.y = pose.yaw + (pose.turned ? Math.PI : 0);
+  body.rotation.x = pose.lean + pose.pitch;
+  body.scale.y = 1 + pose.stretch * STRETCH_SHARE;
+  for (const arm of arms) arm.rotation.x = -ARM_RAISE * pose.arms;
 }
 
 function disposeGroup(group) {
@@ -86,7 +105,7 @@ function disposeGroup(group) {
 }
 
 /** Draws the room in 3D. All changes go through `roomView`, so 2D and 3D stay in step. */
-export function mountView3d({ container, ledger, roomView, modeButtons }) {
+export function mountView3d({ container, ledger, settings, roomView, modeButtons }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.prepend(renderer.domElement);
@@ -108,14 +127,21 @@ export function mountView3d({ container, ledger, roomView, modeButtons }) {
   const planeGroup = new THREE.Group();
   scene.add(roomGroup, planeGroup);
   const child = makeChild();
-  scene.add(child);
+  scene.add(child.root);
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(SHADOW_RADIUS_CM, 24),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthTest: false, depthWrite: false }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.renderOrder = 5;
+  scene.add(shadow);
   const mark = new THREE.Mesh(
     new THREE.TorusGeometry(MARK_RADIUS_CM, MARK_TUBE_CM, 10, 32),
     new THREE.MeshBasicMaterial({ color: MARK_COLOUR }),
   );
   mark.rotation.x = Math.PI / 2;
   scene.add(mark);
-  const updatePose = createPoseTracker({ climbSeconds: CLIMB_SECONDS, fallSeconds: FALL_SECONDS });
+  const updatePose = createPoseTracker(settings.display_seconds);
   let lastFrame = null;
 
   const raycaster = new THREE.Raycaster();
@@ -210,7 +236,7 @@ export function mountView3d({ container, ledger, roomView, modeButtons }) {
       return { id, mesh, height };
     });
 
-    child.scale.setScalar(model.childHeight);
+    child.root.scale.setScalar(model.childHeight);
     if (!placedCamera) {
       placeCamera();
       placedCamera = true;
@@ -240,9 +266,13 @@ export function mountView3d({ container, ledger, roomView, modeButtons }) {
       x: simulation.position.x,
       z: simulation.position.y,
       feet: footHeight(simulation),
-      falling: isFalling(simulation),
+      events: simulation.events,
     }, seconds);
-    child.position.set(pose.x, pose.feet, pose.z);
+    applyPose(child, pose);
+    const onFloor = floorShadow(pose.feet);
+    shadow.position.set(pose.x, 0.5, pose.z);
+    shadow.scale.setScalar(onFloor.scale);
+    shadow.material.opacity = SHADOW_OPACITY * onFloor.opacity;
     const reached = reachMark(simulation, pose.feet);
     mark.position.set(pose.x, reached.height, pose.z);
     mark.material.color.setHex(reached.reachesLock ? MARK_OVER_LOCK_COLOUR : MARK_COLOUR);
