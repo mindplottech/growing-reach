@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { getBodyValues } from '../src/body.js';
 import { landmarkHeight, selectLayout } from '../src/room.js';
 import {
-  buildSceneModel, highlightedIds, objectState, STATE_CLIMBABLE, STATE_OUT, STATE_REACHABLE,
+  buildSceneModel, cameraPlacement, highlightedIds, objectState, reachableNow,
+  STATE_CLIMBABLE, STATE_OUT, STATE_REACHABLE,
 } from '../src/sceneModel.js';
+import { footholdReachLevel, REACH_NONE } from '../src/scaffold.js';
 import { byId, ledger, maxMonths, minMonths, roomFile, roomLayout } from './helpers.js';
 
 const resolved = (room) => room.landmarks.map((l) => ({ ...l, height: landmarkHeight(ledger, l.heightOf) }));
@@ -82,4 +84,40 @@ test('highlighting a part of a group lights the whole group', () => {
   assert.deepEqual(highlightedIds(sofa.landmarks, 'sofa_seat'), new Set(['sofa_seat', 'sofa_back']));
   assert.deepEqual(highlightedIds(roomLayout.landmarks, 'low_shelf'), new Set(['low_shelf']));
   assert.deepEqual(highlightedIds(roomLayout.landmarks, null), new Set());
+});
+
+test('what lights up from a foothold follows the same judgement as the record', () => {
+  const landmarks = resolved(roomLayout);
+  const b = body(minMonths);
+  const shelf = landmarks.find(({ id }) => id === 'low_shelf');
+  const reached = reachableNow({ ledger, body: b, landmarks, position: { x: 0, y: 0 }, foothold: shelf });
+  const expected = landmarks
+    .filter((object) => object !== shelf && object.height > shelf.height)
+    .filter((object) => footholdReachLevel(ledger, b, shelf, object) !== REACH_NONE)
+    .map(({ id }) => id);
+  assert.deepEqual([...reached], expected);
+  assert.ok(reached.has('window_lock'));
+  assert.ok(!reached.has('low_shelf'));
+});
+
+test('on the floor only nearby objects light up', () => {
+  const landmarks = resolved(roomLayout);
+  const b = body(maxMonths);
+  const sofa = landmarks.find(({ id }) => id === 'sofa');
+  const near = reachableNow({ ledger, body: b, landmarks, position: { x: sofa.x + 10, y: sofa.y + sofa.d + 5 }, foothold: null });
+  assert.ok(near.has('sofa'));
+  assert.ok(!near.has('dining_table'));
+});
+
+test('the first camera view keeps the whole room in frame at any aspect', () => {
+  const room = { width: 450, depth: 360, wallHeight: 240 };
+  const distance = (aspect) => {
+    const { position, target } = cameraPlacement(room, aspect, 40);
+    return Math.hypot(position.x - target.x, position.y - target.y, position.z - target.z);
+  };
+  assert.ok(distance(0.5) > distance(1));
+  assert.equal(distance(1), distance(2));
+  const { position, target } = cameraPlacement(room, 1, 40);
+  assert.ok(position.y > target.y, 'from above');
+  assert.ok(position.z < 0, 'from the open side of the room');
 });

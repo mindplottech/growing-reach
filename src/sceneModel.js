@@ -1,4 +1,5 @@
 import { canClimb, canReach } from './ability.js';
+import { footholdReachLevel, REACH_NONE } from './scaffold.js';
 
 export const STATE_CLIMBABLE = 'climbable';
 export const STATE_REACHABLE = 'reachable';
@@ -17,6 +18,43 @@ export function highlightedIds(landmarks, id) {
   if (!object) return new Set();
   const members = object.group ? landmarks.filter(({ group }) => group === object.group) : [object];
   return new Set(members.map((member) => member.id));
+}
+
+/**
+ * The ids of objects the child can reach at this moment, from the foothold or from where
+ * they stand on the floor, by the same judgement as the record. Only objects above their
+ * feet count. Read-only: this decides what to light up, nothing else.
+ */
+export function reachableNow({ ledger, body, landmarks, position, foothold }) {
+  const standing = foothold ?? { x: position.x, y: position.y, w: 0, d: 0, height: 0 };
+  return new Set(
+    landmarks
+      .filter((object) => object !== foothold && object.height > standing.height)
+      .filter((object) => footholdReachLevel(ledger, body, standing, object) !== REACH_NONE)
+      .map(({ id }) => id),
+  );
+}
+
+// The fixed first view: diagonally above the room, looking at its middle.
+const VIEW_DIRECTION = { x: 0.62, y: 0.82, z: -1 };
+const VIEW_TARGET_HEIGHT_SHARE = 0.18;
+
+/** A camera position that shows the whole room at this aspect ratio and field of view. */
+export function cameraPlacement({ width, depth, wallHeight }, aspect, fieldOfViewDegrees) {
+  const target = { x: width / 2, y: wallHeight * VIEW_TARGET_HEIGHT_SHARE, z: depth / 2 };
+  const radius = Math.hypot(width, depth, wallHeight) / 2;
+  const vertical = (fieldOfViewDegrees * Math.PI) / 180 / 2;
+  const horizontal = Math.atan(Math.tan(vertical) * aspect);
+  const distance = radius / Math.sin(Math.min(vertical, horizontal));
+  const length = Math.hypot(VIEW_DIRECTION.x, VIEW_DIRECTION.y, VIEW_DIRECTION.z);
+  return {
+    target,
+    position: {
+      x: target.x + (VIEW_DIRECTION.x / length) * distance,
+      y: target.y + (VIEW_DIRECTION.y / length) * distance,
+      z: target.z + (VIEW_DIRECTION.z / length) * distance,
+    },
+  };
 }
 
 /**

@@ -185,6 +185,7 @@ async function start() {
           view: document.querySelector('#mode-view'),
           place: document.querySelector('#mode-place'),
         },
+        slider: monthsInput,
       });
     })
     .catch((error) => {
