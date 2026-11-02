@@ -4,8 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Growing Reach</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
-  <h1>Growing Reach</h1>
+  <main>
+    <h1>Growing Reach</h1>
+
+    <form id="controls">
+      <label for="months">月齢 <output id="months-label" for="months"></output></label>
+      <input id="months" type="range" step="1">
+      <fieldset>
+        <legend>性別</legend>
+        <label><input type="radio" name="sex" value="female" checked> 女の子</label>
+        <label><input type="radio" name="sex" value="male"> 男の子</label>
+      </fieldset>
+    </form>
+
+    <ul id="values" aria-live="polite"></ul>
+    <ul id="legend" aria-label="区分の凡例"></ul>
+    <p id="error" role="alert" hidden></p>
+  </main>
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
