@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { EVENT } from '../src/events.js';
 import { compareTrials, moveAwayFromLock, runTrials } from '../src/trials.js';
 import { footprintDistance } from '../src/scaffold.js';
-import { ledger, maxMonths, minMonths, roomLayout, settings } from './helpers.js';
+import { ledger, maxMonths, minMonths, roomFile, roomLayout, settings } from './helpers.js';
+import { selectLayout } from '../src/room.js';
 
 const BASE = { ledger, settings, room: roomLayout, months: minMonths, sex: 'female' };
 const SHELF = 'low_shelf';
@@ -81,4 +82,13 @@ test('comparison is paired by child and adds up', () => {
   }
   const shifted = { ...after, perSeed: [...after.perSeed].reverse() };
   assert.throws(() => compareTrials(before, shifted), /not paired/);
+});
+
+test('a sofa moves as one piece, keeping its seat and back together', () => {
+  const room = selectLayout(roomFile, 'sofa_by_window');
+  const part = (r, id) => r.landmarks.find((l) => l.id === id);
+  const moved = moveAwayFromLock({ room }, 'sofa_back', 20).room;
+  assert.equal(part(moved, 'sofa_seat').x - part(room, 'sofa_seat').x, part(moved, 'sofa_back').x - part(room, 'sofa_back').x);
+  assert.equal(part(moved, 'sofa_seat').y - part(room, 'sofa_seat').y, part(moved, 'sofa_back').y - part(room, 'sofa_back').y);
+  assert.notEqual(part(moved, 'sofa_seat').x, part(room, 'sofa_seat').x);
 });

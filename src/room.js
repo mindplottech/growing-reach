@@ -1,3 +1,11 @@
+/** One named layout together with the settings shared by all layouts. */
+export function selectLayout(file, layoutId) {
+  const { layouts, ...shared } = file;
+  const layout = layouts.find(({ id }) => id === layoutId);
+  if (!layout) throw new Error(`layout not found: ${layoutId}`);
+  return { ...shared, ...layout };
+}
+
 /**
  * One representative height from a ledger entry: its median if it has one, else the
  * middle of its listed values, else the middle of its min-max range.

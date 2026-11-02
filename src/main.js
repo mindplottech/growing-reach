@@ -1,4 +1,5 @@
 import { getBodyValues, getTiptoeReference } from './body.js';
+import { selectLayout } from './room.js';
 import { mountRoomView } from './roomView.js';
 import { mountTrialsView } from './trialsView.js';
 
@@ -126,7 +127,7 @@ async function fetchJson(url) {
 }
 
 async function start() {
-  const [ledger, room, settings] = await Promise.all([
+  const [ledger, roomFile, settings] = await Promise.all([
     fetchJson(LEDGER_URL),
     fetchJson(ROOM_URL),
     fetchJson(SETTINGS_URL),
@@ -137,6 +138,16 @@ async function start() {
   monthsInput.max = maxMonths;
   monthsInput.value = minMonths;
 
+  const layoutSelect = document.querySelector('#layout');
+  layoutSelect.replaceChildren(
+    ...roomFile.layouts.map(({ id, name }) => {
+      const option = element('option', '', name);
+      option.value = id;
+      return option;
+    }),
+  );
+  let room = selectLayout(roomFile, layoutSelect.value);
+
   renderLegend(ledger);
   render(ledger);
   const roomView = mountRoomView(ledger, room, settings, () => ({
@@ -146,7 +157,7 @@ async function start() {
   mountTrialsView({
     ledger,
     settings,
-    room,
+    getRoom: () => room,
     getCondition: () => ({
       months: Number(monthsInput.value),
       sex: new FormData(controls).get('sex'),
@@ -154,6 +165,10 @@ async function start() {
     }),
     highlight: roomView.highlight,
     onConditionChange: roomView.onConditionChange,
+  });
+  layoutSelect.addEventListener('change', () => {
+    room = selectLayout(roomFile, layoutSelect.value);
+    roomView.setRoom(room);
   });
   controls.addEventListener('input', () => {
     render(ledger);

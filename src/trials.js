@@ -78,31 +78,40 @@ function overlaps(a, b) {
 const centre = (object) => ({ x: object.x + object.w / 2, y: object.y + object.d / 2 });
 
 /**
- * The room with one object moved `distance` cm straight away from the window lock, or null
- * if it would leave the room or overlap something. Works on furniture and placed boxes.
+ * The room with one object, and any others in its group, moved `distance` cm straight away
+ * from the window lock. Null if it would leave the room or overlap something.
  */
 export function moveAwayFromLock({ room, boxes = [] }, objectId, distance) {
   const everything = [...room.landmarks, ...boxes];
   const object = everything.find(({ id }) => id === objectId);
   const lock = everything.find(({ role }) => role === 'window_lock');
+  const inGroup = (other) => other.id === objectId || (object.group && other.group === object.group);
+  const group = everything.filter(inGroup);
+  const left = Math.min(...group.map(({ x }) => x));
+  const right = Math.max(...group.map(({ x, w }) => x + w));
+  const top = Math.min(...group.map(({ y }) => y));
+  const bottom = Math.max(...group.map(({ y, d }) => y + d));
   const from = centre(lock);
-  const to = centre(object);
-  const length = Math.hypot(to.x - from.x, to.y - from.y);
-  const dx = ((to.x - from.x) / length) * distance;
-  const dy = ((to.y - from.y) / length) * distance;
-  const inRoom = (x, max) => Math.min(Math.max(x, 0), max);
-  const moved = {
-    ...object,
-    x: object.x + dx,
-    y: object.y + dy,
+  const toX = (left + right) / 2 - from.x;
+  const toY = (top + bottom) / 2 - from.y;
+  const length = Math.hypot(toX, toY);
+  const dx = (toX / length) * distance;
+  const dy = (toY / length) * distance;
+  const inRoom = (value, max) => Math.min(Math.max(value, 0), max);
+  const shift = (item) => ({
+    ...item,
+    x: item.x + dx,
+    y: item.y + dy,
     approach: {
-      x: inRoom(object.approach.x + dx, room.width),
-      y: inRoom(object.approach.y + dy, room.depth),
+      x: inRoom(item.approach.x + dx, room.width),
+      y: inRoom(item.approach.y + dy, room.depth),
     },
-  };
-  const outside = moved.x < 0 || moved.y < 0 || moved.x + moved.w > room.width || moved.y + moved.d > room.depth;
-  if (outside || everything.some((other) => other.id !== objectId && overlaps(moved, other))) return null;
-  const swap = (list) => list.map((item) => (item.id === objectId ? moved : item));
+  });
+  const moved = group.map(shift);
+  const others = everything.filter((other) => !inGroup(other));
+  const outside = moved.some(({ x, y, w, d }) => x < 0 || y < 0 || x + w > room.width || y + d > room.depth);
+  if (outside || moved.some((item) => others.some((other) => overlaps(item, other)))) return null;
+  const swap = (list) => list.map((item) => (inGroup(item) ? shift(item) : item));
   return { room: { ...room, landmarks: swap(room.landmarks) }, boxes: swap(boxes) };
 }
 

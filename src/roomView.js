@@ -1,4 +1,5 @@
 import { placeBox } from './boxes.js';
+import { highlightedIds } from './sceneModel.js';
 import { EVENT_LABELS } from './events.js';
 import { isBetterReach, REACH_NONE, REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
 import { createSimulation } from './simulation.js';
@@ -90,17 +91,20 @@ function assumptionLine(ledger, text, category) {
 
 function renderAssumptions(container, ledger, room) {
   const { unit, notice, category } = room._meta;
-  const { cardboard_box: box } = room;
+  const { cardboard_box: box, neighbor_gap: neighbor, window_side_gap: windowSide } = room;
   const horizontal = ledger.items.find((entry) => entry.id === 'reach_horizontal_on_surface');
   container.replaceChildren(
     assumptionLine(ledger, notice, category),
     assumptionLine(ledger, `${horizontal.label}：${horizontal.formula}（${horizontal.unit}）`, horizontal.category),
     assumptionLine(ledger, `${box.label}の高さ：${box.height}${unit}`, box.category),
+    assumptionLine(ledger, `「隣の足場」：隙間${neighbor.value}${unit}以内`, neighbor.category),
+    assumptionLine(ledger, `「窓ぎわ」：隙間${windowSide.value}${unit}以内`, windowSide.category),
   );
 }
 
 /** Runs the room view. `getChild` returns the current { months, sex }. */
-export function mountRoomView(ledger, room, settings, getChild) {
+export function mountRoomView(ledger, startRoom, settings, getChild) {
+  let room = startRoom;
   const svg = document.querySelector('#room');
   const seedInput = document.querySelector('#seed');
   const pauseButton = document.querySelector('#pause');
@@ -212,13 +216,20 @@ export function mountRoomView(ledger, room, settings, getChild) {
   return {
     restart,
     getBoxes: () => boxes,
+    setRoom: (next) => {
+      room = next;
+      boxes = [];
+      boxMessage.textContent = '図をタップすると段ボール箱を置けます';
+      restart();
+    },
     onConditionChange: (listener) => {
       onChange = listener;
     },
     highlight: (id) => {
       highlightedId = id;
+      const lit = highlightedIds(simulation.landmarks, id);
       for (const rect of svg.querySelectorAll('[data-id]')) {
-        rect.classList.toggle('highlight', rect.getAttribute('data-id') === id);
+        rect.classList.toggle('highlight', lit.has(rect.getAttribute('data-id')));
       }
     },
   };

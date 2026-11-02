@@ -66,7 +66,7 @@ function searchLine(search, baselineChildren, limit) {
 }
 
 /** Runs the batch views. `getCondition` returns the current { months, sex, boxes }. */
-export function mountTrialsView({ ledger, settings, room, getCondition, highlight, onConditionChange }) {
+export function mountTrialsView({ ledger, settings, getRoom, getCondition, highlight, onConditionChange }) {
   const results = document.querySelector('#trial-results');
   const monthsInput = document.querySelector('#compare-months');
   const objectSelect = document.querySelector('#move-object');
@@ -78,15 +78,24 @@ export function mountTrialsView({ ledger, settings, room, getCondition, highligh
   monthsInput.value = maxMonths;
   distanceInput.step = settings.countermeasure_step_cm;
   distanceInput.value = settings.countermeasure_step_cm;
-  objectSelect.replaceChildren(
-    ...room.landmarks.filter(({ scaffold }) => scaffold).map(({ id, label }) => {
-      const option = element('option', label);
-      option.value = id;
-      return option;
-    }),
-  );
+
+  let optionsRoom = null;
+  function refreshObjects() {
+    const room = getRoom();
+    if (room === optionsRoom) return;
+    optionsRoom = room;
+    objectSelect.replaceChildren(
+      ...room.landmarks.filter(({ scaffold }) => scaffold).map(({ id, label }) => {
+        const option = element('option', label);
+        option.value = id;
+        return option;
+      }),
+    );
+  }
+  refreshObjects();
 
   function run() {
+    const room = getRoom();
     const { months, sex, boxes } = getCondition();
     const base = { ledger, settings, room, boxes, months, sex };
     const before = runTrials(base);
@@ -119,6 +128,7 @@ export function mountTrialsView({ ledger, settings, room, getCondition, highligh
   const countermeasure = document.querySelector('#countermeasure');
 
   function find() {
+    const room = getRoom();
     const { months, sex, boxes } = getCondition();
     const limit = settings.countermeasure_limit_cm;
     const { mostUsed, target, baselineChildren } = findCountermeasure({ ledger, settings, room, boxes, months, sex });
@@ -128,7 +138,11 @@ export function mountTrialsView({ ledger, settings, room, getCondition, highligh
       return;
     }
     countermeasure.replaceChildren(
-      element('p', searchLine(target, baselineChildren, limit)),
+      element('p', searchLine(
+        { ...target, label: room.landmarks.find(({ id }) => id === target.id)?.groupLabel ?? target.label },
+        baselineChildren,
+        limit,
+      )),
       element('p', `全体の足場の1位：${mostUsed.label}（${mostUsed.count}回）`),
     );
   }
@@ -136,6 +150,7 @@ export function mountTrialsView({ ledger, settings, room, getCondition, highligh
   document.querySelector('#run-trials').addEventListener('click', run);
   document.querySelector('#find-countermeasure').addEventListener('click', find);
   onConditionChange(() => {
+    refreshObjects();
     highlight(null);
     countermeasure.replaceChildren();
   });
