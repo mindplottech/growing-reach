@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
+  createPoseTracker, footHeight, isFalling, reachMark,
+} from './childPose.js';
+import {
   buildSceneModel, highlightedIds, STATE_CLIMBABLE, STATE_REACHABLE,
 } from './sceneModel.js';
 
@@ -16,6 +19,13 @@ const PLANE_EASE = 0.15;
 const LABEL_HEIGHT_CM = 16;
 const LABEL_GAP_CM = 12;
 const PULSE_MS = 400;
+const CLIMB_SECONDS = 0.6;
+const FALL_SECONDS = 0.18;
+const MS_PER_SECOND = 1000;
+const MARK_RADIUS_CM = 16;
+const MARK_TUBE_CM = 1.6;
+const MARK_COLOUR = 0x1d4ed8;
+const MARK_OVER_LOCK_COLOUR = 0xdc2626;
 
 function toneOf(category) {
   const probe = document.createElement('span');
@@ -99,6 +109,14 @@ export function mountView3d({ container, ledger, roomView, modeButtons }) {
   scene.add(roomGroup, planeGroup);
   const child = makeChild();
   scene.add(child);
+  const mark = new THREE.Mesh(
+    new THREE.TorusGeometry(MARK_RADIUS_CM, MARK_TUBE_CM, 10, 32),
+    new THREE.MeshBasicMaterial({ color: MARK_COLOUR }),
+  );
+  mark.rotation.x = Math.PI / 2;
+  scene.add(mark);
+  const updatePose = createPoseTracker({ climbSeconds: CLIMB_SECONDS, fallSeconds: FALL_SECONDS });
+  let lastFrame = null;
 
   const raycaster = new THREE.Raycaster();
   let model = null;
@@ -215,8 +233,19 @@ export function mountView3d({ container, ledger, roomView, modeButtons }) {
   }
 
   function render(now) {
-    const { position, foothold } = roomView.getSimulation();
-    child.position.set(position.x, foothold?.height ?? 0, position.y);
+    const simulation = roomView.getSimulation();
+    const seconds = lastFrame === null ? 0 : (now - lastFrame) / MS_PER_SECOND;
+    lastFrame = now;
+    const pose = updatePose({
+      x: simulation.position.x,
+      z: simulation.position.y,
+      feet: footHeight(simulation),
+      falling: isFalling(simulation),
+    }, seconds);
+    child.position.set(pose.x, pose.feet, pose.z);
+    const reached = reachMark(simulation, pose.feet);
+    mark.position.set(pose.x, reached.height, pose.z);
+    mark.material.color.setHex(reached.reachesLock ? MARK_OVER_LOCK_COLOUR : MARK_COLOUR);
     for (const { mesh, height } of planes) {
       mesh.position.y += (height - mesh.position.y) * PLANE_EASE;
     }
