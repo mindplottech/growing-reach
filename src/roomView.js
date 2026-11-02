@@ -25,13 +25,13 @@ function svgElement(tag, attributes, text) {
   return node;
 }
 
-function drawRoom(svg, simulation, room) {
+function drawRoom(svg, simulation, room, highlightedId) {
   const child = svgElement('circle', { r: CHILD_RADIUS, class: 'child' });
   svg.setAttribute('viewBox', `0 0 ${room.width} ${room.depth}`);
   svg.replaceChildren(
     svgElement('rect', { width: room.width, height: room.depth, class: 'floor' }),
     ...simulation.landmarks.map((landmark) =>
-      svgElement('rect', { x: landmark.x, y: landmark.y, width: landmark.w, height: landmark.d, class: landmark.temporary ? 'temporary' : 'landmark' }),
+      svgElement('rect', { x: landmark.x, y: landmark.y, width: landmark.w, height: landmark.d, 'data-id': landmark.id, class: `${landmark.temporary ? 'temporary' : 'landmark'}${landmark.id === highlightedId ? ' highlight' : ''}` }),
     ),
     ...simulation.landmarks.map((landmark) =>
       svgElement('text', { x: landmark.x + landmark.w / 2, y: landmark.y - 3, class: 'landmark-label' }, landmark.mapLabel ?? landmark.label),
@@ -113,6 +113,8 @@ export function mountRoomView(ledger, room, settings, getChild) {
 
   let simulation;
   let boxes = [];
+  let highlightedId = null;
+  let onChange = () => {};
   let childMark;
   let shownVisits = 0;
   let shownEvents = 0;
@@ -121,6 +123,7 @@ export function mountRoomView(ledger, room, settings, getChild) {
   let lastFrame;
 
   function restart() {
+    onChange();
     simulation = createSimulation({
       ledger,
       settings,
@@ -129,7 +132,7 @@ export function mountRoomView(ledger, room, settings, getChild) {
       room,
       boxes,
     });
-    childMark = drawRoom(svg, simulation, room);
+    childMark = drawRoom(svg, simulation, room, highlightedId);
     childLine.textContent = describeBody(simulation.body);
     shownVisits = 0;
     shownEvents = 0;
@@ -206,5 +209,17 @@ export function mountRoomView(ledger, room, settings, getChild) {
   renderAssumptions(document.querySelector('#layout-assumptions'), ledger, room);
   restart();
   requestAnimationFrame(frame);
-  return { restart, getBoxes: () => boxes };
+  return {
+    restart,
+    getBoxes: () => boxes,
+    onConditionChange: (listener) => {
+      onChange = listener;
+    },
+    highlight: (id) => {
+      highlightedId = id;
+      for (const rect of svg.querySelectorAll('[data-id]')) {
+        rect.classList.toggle('highlight', rect.getAttribute('data-id') === id);
+      }
+    },
+  };
 }

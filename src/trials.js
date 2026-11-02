@@ -98,3 +98,49 @@ export function moveAwayFromLock({ room, boxes = [] }, objectId, distance) {
   const swap = (list) => list.map((item) => (item.id === objectId ? moved : item));
   return { room: { ...room, landmarks: swap(room.landmarks) }, boxes: swap(boxes) };
 }
+
+/**
+ * Moves one object away from the lock step by step, rerunning all trials each time, and
+ * stops at the first distance where the lock count is zero. Every number is from a rerun.
+ */
+export function searchMoves(base, foothold, baselineLock) {
+  const { countermeasure_step_cm: step, countermeasure_limit_cm: limit } = base.settings;
+  const tried = [];
+  for (let distance = step; distance <= limit; distance += step) {
+    const moved = moveAwayFromLock(base, foothold.id, distance);
+    if (moved) {
+      const result = runTrials({ ...base, ...moved });
+      const lock = result.counts[EVENT.REACHED_LOCK];
+      tried.push({ distance, lock, lockFromFloor: result.lockFromFloor });
+      if (lock === 0) break;
+    }
+  }
+  const last = tried[tried.length - 1] ?? null;
+  return {
+    id: foothold.id,
+    label: foothold.label,
+    baselineLock,
+    tried,
+    found: last && last.lock === 0 ? last.distance : null,
+    last,
+  };
+}
+
+/**
+ * Searches for the most used foothold, and also for the one most used to reach the lock
+ * when that is a different object, because only the latter can change the lock count.
+ */
+export function findCountermeasure(base) {
+  const baseline = runTrials(base);
+  const baselineLock = baseline.counts[EVENT.REACHED_LOCK];
+  const [mostUsed] = baseline.footholds;
+  const [mostUsedForLock] = baseline.lockFootholds;
+  return {
+    baseline,
+    baselineLock,
+    mostUsed: mostUsed ? searchMoves(base, mostUsed, baselineLock) : null,
+    forLock: mostUsedForLock && mostUsedForLock.id !== mostUsed?.id
+      ? searchMoves(base, mostUsedForLock, baselineLock)
+      : null,
+  };
+}

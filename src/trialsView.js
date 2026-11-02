@@ -1,5 +1,5 @@
 import { EVENT, EVENT_LABELS } from './events.js';
-import { compareTrials, moveAwayFromLock, runTrials } from './trials.js';
+import { compareTrials, findCountermeasure, moveAwayFromLock, runTrials } from './trials.js';
 
 function element(tag, text) {
   const node = document.createElement(tag);
@@ -47,8 +47,17 @@ function comparisonTable(before, after) {
   );
 }
 
+/** Words for one search. Every number comes from a rerun; nothing here estimates. */
+function searchLine(search, limit) {
+  const { label, baselineLock, found, last } = search;
+  if (baselineLock === 0) return `${label}：窓の錠に届く回数はもともと0回です`;
+  if (found !== null) return `${label}を${found}cm離すと、窓の錠に届く回数 ${baselineLock}回→0回`;
+  if (!last) return `${label}は動かせる場所がありません（部屋の外に出るか、他の物と重なります）`;
+  return `${label}を${last.distance}cmまで離しても（探す上限${limit}cm）、窓の錠に届く回数 ${baselineLock}回→${last.lock}回で、0回になりません（うち床から届いた回数 ${last.lockFromFloor}回）`;
+}
+
 /** Runs the batch views. `getCondition` returns the current { months, sex, boxes }. */
-export function mountTrialsView({ ledger, settings, room, getCondition }) {
+export function mountTrialsView({ ledger, settings, room, getCondition, highlight, onConditionChange }) {
   const results = document.querySelector('#trial-results');
   const monthsInput = document.querySelector('#compare-months');
   const objectSelect = document.querySelector('#move-object');
@@ -98,6 +107,26 @@ export function mountTrialsView({ ledger, settings, room, getCondition }) {
     return { base, before };
   }
 
+  const countermeasure = document.querySelector('#countermeasure');
+
+  function find() {
+    const { months, sex, boxes } = getCondition();
+    const limit = settings.countermeasure_limit_cm;
+    const { mostUsed, forLock } = findCountermeasure({ ledger, settings, room, boxes, months, sex });
+    highlight(mostUsed?.id ?? null);
+    const searches = [mostUsed, forLock].filter(Boolean);
+    countermeasure.replaceChildren(
+      ...(searches.length > 0
+        ? searches.map((search) => element('p', searchLine(search, limit)))
+        : [element('p', '足場になった物はありませんでした')]),
+    );
+  }
+
   document.querySelector('#run-trials').addEventListener('click', run);
+  document.querySelector('#find-countermeasure').addEventListener('click', find);
+  onConditionChange(() => {
+    highlight(null);
+    countermeasure.replaceChildren();
+  });
   return { run };
 }

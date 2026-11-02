@@ -126,3 +126,13 @@ h3 { margin: 0.9rem 0 0.25rem; font-size: 0.95rem; }
 #trial-results table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; background: #fff; }
 
 #trial-results th, #trial-results td { padding: 0.3rem 0.4rem; border: 1px solid #d9dee3; text-align: left; }
+
+#find-countermeasure { min-height: 2.75rem; padding: 0 1rem; font-size: 1rem; }
+
+#countermeasure { font-weight: 600; }
+
+#room .highlight { fill: #fde047; stroke: #b45309; stroke-width: 3; animation: pulse 1.2s ease-in-out infinite; }
+
+@keyframes pulse { 50% { fill: #fff3a3; } }
+
+@media (prefers-reduced-motion: reduce) { #room .highlight { animation: none; } }

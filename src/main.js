@@ -152,6 +152,8 @@ async function start() {
       sex: new FormData(controls).get('sex'),
       boxes: roomView.getBoxes(),
     }),
+    highlight: roomView.highlight,
+    onConditionChange: roomView.onConditionChange,
   });
   controls.addEventListener('input', () => {
     render(ledger);
