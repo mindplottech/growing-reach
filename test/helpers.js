@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 export const ledger = JSON.parse(readFileSync(new URL('../data/values_ledger.json', import.meta.url)));
+export const roomLayout = JSON.parse(readFileSync(new URL('../data/room_layout.json', import.meta.url)));
 export const byId = (id, source = ledger) => source.items.find((entry) => entry.id === id);
 export const [minMonths, maxMonths] = ledger._meta.age_range_months;
 export const SEXES = ['male', 'female'];

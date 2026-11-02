@@ -1,4 +1,3 @@
-import { LIVING_ROOM } from './room.js';
 import { createSimulation } from './simulation.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -46,7 +45,7 @@ function visitItem(visit) {
 }
 
 /** Runs the room view. `getChild` returns the current { months, sex }. */
-export function mountRoomView(ledger, getChild) {
+export function mountRoomView(ledger, room, getChild) {
   const svg = document.querySelector('#room');
   const seedInput = document.querySelector('#seed');
   const pauseButton = document.querySelector('#pause');
@@ -65,9 +64,9 @@ export function mountRoomView(ledger, getChild) {
       ledger,
       ...getChild(),
       seed: Number.parseInt(seedInput.value, 10) || 0,
-      room: LIVING_ROOM,
+      room,
     });
-    childMark = drawRoom(svg, simulation, LIVING_ROOM);
+    childMark = drawRoom(svg, simulation, room);
     childLine.textContent = describeBody(simulation.body);
     shownVisits = 0;
     carry = 0;

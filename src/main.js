@@ -4,6 +4,7 @@ import { mountRoomView } from './roomView.js';
 const MONTHS_PER_YEAR = 12;
 const DISPLAY_DECIMALS = 1;
 const LEDGER_URL = new URL('../data/values_ledger.json', import.meta.url);
+const ROOM_URL = new URL('../data/room_layout.json', import.meta.url);
 
 const monthsInput = document.querySelector('#months');
 const monthsLabel = document.querySelector('#months-label');
@@ -116,10 +117,14 @@ function renderLegend(ledger) {
   );
 }
 
-async function start() {
-  const response = await fetch(LEDGER_URL);
+async function fetchJson(url) {
+  const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const ledger = await response.json();
+  return response.json();
+}
+
+async function start() {
+  const [ledger, room] = await Promise.all([fetchJson(LEDGER_URL), fetchJson(ROOM_URL)]);
 
   const [minMonths, maxMonths] = ledger._meta.age_range_months;
   monthsInput.min = minMonths;
@@ -128,7 +133,7 @@ async function start() {
 
   renderLegend(ledger);
   render(ledger);
-  const roomView = mountRoomView(ledger, () => ({
+  const roomView = mountRoomView(ledger, room, () => ({
     months: Number(monthsInput.value),
     sex: new FormData(controls).get('sex'),
   }));

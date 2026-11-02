@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { canClimb, canReach } from '../src/ability.js';
-import { LIVING_ROOM, landmarkHeight } from '../src/room.js';
+import { landmarkHeight } from '../src/room.js';
 import { createSimulation } from '../src/simulation.js';
-import { byId, close, ledger } from './helpers.js';
+import { byId, close, ledger, roomLayout } from './helpers.js';
 
-const BASE = { ledger, months: 48, sex: 'female', room: LIVING_ROOM };
+const BASE = { ledger, months: 48, sex: 'female', room: roomLayout };
 const STEP = 0.05;
 const RUN_SECONDS = 600;
 
@@ -36,7 +36,7 @@ test('the route does not depend on the step size', () => {
 
 test('the child visits every landmark and never stays for two visits in a row', () => {
   const ids = run(5).visits.map((visit) => visit.id);
-  assert.deepEqual(new Set(ids), new Set(LIVING_ROOM.landmarks.map((landmark) => landmark.id)));
+  assert.deepEqual(new Set(ids), new Set(roomLayout.landmarks.map((landmark) => landmark.id)));
   ids.slice(1).forEach((id, i) => assert.notEqual(id, ids[i]));
 });
 
@@ -63,7 +63,7 @@ test('walking time matches the walk speed and the dwell stays in the ledger rang
   const [minDwell, maxDwell] = byId('interest_dwell').range;
   const simulation = run(7);
   const speed = simulation.body.walkSpeed.value * 100;
-  const byLandmark = new Map(LIVING_ROOM.landmarks.map((l) => [l.id, l.approach]));
+  const byLandmark = new Map(roomLayout.landmarks.map((l) => [l.id, l.approach]));
   simulation.visits.slice(1).forEach((visit, i) => {
     const previous = simulation.visits[i];
     const from = byLandmark.get(previous.id);
@@ -78,8 +78,8 @@ test('step advances time exactly and the child stays inside the room', () => {
   const simulation = createSimulation({ ...BASE, seed: 3 });
   for (let i = 0; i < 2000; i += 1) {
     simulation.step(STEP);
-    assert.ok(simulation.position.x >= 0 && simulation.position.x <= LIVING_ROOM.width);
-    assert.ok(simulation.position.y >= 0 && simulation.position.y <= LIVING_ROOM.depth);
+    assert.ok(simulation.position.x >= 0 && simulation.position.x <= roomLayout.width);
+    assert.ok(simulation.position.y >= 0 && simulation.position.y <= roomLayout.depth);
   }
   close(Number(simulation.time.toFixed(6)), Number((2000 * STEP).toFixed(6)));
 });
@@ -104,10 +104,10 @@ test('landmark heights are read from the ledger by the documented rule', () => {
 });
 
 test('every landmark and approach point is inside the room, and the point is off the furniture', () => {
-  for (const { x, y, w, d, approach, heightOf } of LIVING_ROOM.landmarks) {
-    assert.ok(x >= 0 && y >= 0 && x + w <= LIVING_ROOM.width && y + d <= LIVING_ROOM.depth);
-    assert.ok(approach.x >= 0 && approach.x <= LIVING_ROOM.width);
-    assert.ok(approach.y >= 0 && approach.y <= LIVING_ROOM.depth);
+  for (const { x, y, w, d, approach, heightOf } of roomLayout.landmarks) {
+    assert.ok(x >= 0 && y >= 0 && x + w <= roomLayout.width && y + d <= roomLayout.depth);
+    assert.ok(approach.x >= 0 && approach.x <= roomLayout.width);
+    assert.ok(approach.y >= 0 && approach.y <= roomLayout.depth);
     assert.ok(!(approach.x > x && approach.x < x + w && approach.y > y && approach.y < y + d));
     assert.ok(landmarkHeight(ledger, heightOf) > 0);
   }
