@@ -58,10 +58,22 @@ test('at the youngest age, moving it does not raise the lock count overall', () 
   assert.ok(runTrials({ ...BASE, room: moved.room }).counts[key] <= runTrials(BASE).counts[key]);
 });
 
+test('children counts the seeds where the event happened at least once', () => {
+  const result = runTrials(BASE);
+  for (const kind of Object.values(EVENT)) {
+    const expected = result.perSeed.filter(({ counts }) => counts[kind] > 0).length;
+    assert.equal(result.children[kind], expected);
+    assert.ok(result.children[kind] <= settings.trial_count);
+    assert.ok(result.children[kind] <= result.counts[kind]);
+  }
+});
+
 test('comparison is paired by child and adds up', () => {
   const before = runTrials(BASE);
   const after = runTrials({ ...BASE, months: maxMonths });
   for (const row of compareTrials(before, after)) {
+    assert.equal(row.childrenBefore, before.children[row.kind]);
+    assert.equal(row.childrenAfter, after.children[row.kind]);
     assert.equal(row.before, before.counts[row.kind]);
     assert.equal(row.after, after.counts[row.kind]);
     assert.equal(row.diff, row.after - row.before);

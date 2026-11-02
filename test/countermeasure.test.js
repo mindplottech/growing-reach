@@ -9,23 +9,27 @@ const lockCount = (result) => result.counts[EVENT.REACHED_LOCK];
 const shelf = { id: 'low_shelf', label: '低い棚' };
 
 test('the reported distance and counts are exactly what a rerun gives', () => {
-  const { baselineLock, mostUsed } = findCountermeasure(BASE);
-  assert.equal(baselineLock, lockCount(runTrials(BASE)));
-  assert.notEqual(mostUsed.found, null);
-  const moved = moveAwayFromLock(BASE, mostUsed.id, mostUsed.found);
-  assert.equal(lockCount(runTrials({ ...BASE, ...moved })), 0);
-  for (const { distance, lock } of mostUsed.tried) {
-    const rerun = moveAwayFromLock(BASE, mostUsed.id, distance);
-    assert.equal(lockCount(runTrials({ ...BASE, ...rerun })), lock);
+  for (const months of [minMonths, maxMonths]) {
+    const base = { ...BASE, months };
+    const { baselineLock, baselineChildren, target } = findCountermeasure(base);
+    const baseline = runTrials(base);
+    assert.equal(baselineLock, lockCount(baseline));
+    assert.equal(baselineChildren, baseline.children[EVENT.REACHED_LOCK]);
+    for (const { distance, lock, children } of target.tried) {
+      const rerun = runTrials({ ...base, ...moveAwayFromLock(base, target.id, distance) });
+      assert.equal(lockCount(rerun), lock);
+      assert.equal(rerun.children[EVENT.REACHED_LOCK], children);
+    }
   }
 });
 
-test('the found distance is the smallest one tried that reaches zero', () => {
-  const { mostUsed } = findCountermeasure(BASE);
-  const zeros = mostUsed.tried.filter(({ lock }) => lock === 0);
-  assert.equal(zeros.length, 1);
-  assert.equal(zeros[0].distance, mostUsed.found);
-  assert.ok(mostUsed.tried.slice(0, -1).every(({ lock }) => lock > 0));
+test('a reported distance is the first tried with no lock reaches, and nothing is reported otherwise', () => {
+  for (const months of [minMonths, maxMonths]) {
+    const { target } = findCountermeasure({ ...BASE, months });
+    const firstZero = target.tried.find(({ lock }) => lock === 0);
+    assert.equal(target.found, firstZero ? firstZero.distance : null);
+    assert.ok(target.tried.slice(0, -1).every(({ lock }) => lock > 0));
+  }
 });
 
 test('the search uses the step and limit from the settings', () => {
@@ -42,20 +46,27 @@ test('the search uses the step and limit from the settings', () => {
 });
 
 test('when children reach the lock from the floor, zero is not reported', () => {
-  const base = { ...BASE, months: maxMonths };
-  const { mostUsed, forLock } = findCountermeasure(base);
-  for (const search of [mostUsed, forLock].filter(Boolean)) {
-    assert.equal(search.found, null);
-    assert.ok(search.last.lock > 0);
-    assert.ok(search.last.lockFromFloor > 0);
+  const { baseline, target } = findCountermeasure({ ...BASE, months: maxMonths });
+  if (baseline.lockFromFloor === 0) return;
+  for (const { lockFromFloor, lock } of target.tried) {
+    assert.ok(lock >= lockFromFloor);
+    if (lockFromFloor > 0) assert.ok(lock > 0);
   }
 });
 
-test('the object most used for the lock is searched too when it is not the most used overall', () => {
-  const { baseline, mostUsed, forLock } = findCountermeasure({ ...BASE, months: maxMonths });
-  assert.equal(mostUsed.id, baseline.footholds[0].id);
-  assert.notEqual(baseline.lockFootholds[0].id, mostUsed.id);
-  assert.equal(forLock.id, baseline.lockFootholds[0].id);
+test('the target is the top foothold for the lock, and the overall top is reported separately', () => {
+  for (const months of [minMonths, maxMonths]) {
+    const { baseline, mostUsed, target } = findCountermeasure({ ...BASE, months });
+    assert.equal(target.id, baseline.lockFootholds[0].id);
+    assert.deepEqual(mostUsed, baseline.footholds[0]);
+  }
+});
+
+test('with no lock foothold the target falls back to the most used foothold', () => {
+  const room = { ...roomLayout, landmarks: roomLayout.landmarks.filter(({ id }) => id !== 'low_shelf') };
+  const { baseline, target } = findCountermeasure({ ...BASE, room });
+  assert.equal(baseline.lockFootholds.length, 0);
+  assert.equal(target.id, baseline.footholds[0].id);
 });
 
 test('positions that do not fit are skipped, not reported as results', () => {

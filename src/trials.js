@@ -34,11 +34,16 @@ export function runTrials({ ledger, settings, room, boxes = [], months, sex }) {
     perSeed.push({ seed, counts: tallyEvents(simulation.events) });
     allEvents.push(...simulation.events);
   }
+  const children = emptyCounts();
+  for (const { counts } of perSeed) {
+    for (const kind of EVENT_KINDS) if (counts[kind] > 0) children[kind] += 1;
+  }
   const lockReaches = allEvents.filter(({ kind }) => kind === EVENT.REACHED_LOCK);
   return {
     months,
     sex,
     counts: tallyEvents(allEvents),
+    children,
     footholds: rankFootholds(allEvents.filter(({ kind }) => kind === EVENT.CLIMBED)),
     lockFootholds: rankFootholds(lockReaches.filter(({ footholdId }) => footholdId)),
     lockFromFloor: lockReaches.filter(({ footholdId }) => !footholdId).length,
@@ -55,6 +60,8 @@ export function compareTrials(before, after) {
     });
     return {
       kind,
+      childrenBefore: before.children[kind],
+      childrenAfter: after.children[kind],
       before: before.counts[kind],
       after: after.counts[kind],
       diff: after.counts[kind] - before.counts[kind],
@@ -111,7 +118,12 @@ export function searchMoves(base, foothold, baselineLock) {
     if (moved) {
       const result = runTrials({ ...base, ...moved });
       const lock = result.counts[EVENT.REACHED_LOCK];
-      tried.push({ distance, lock, lockFromFloor: result.lockFromFloor });
+      tried.push({
+        distance,
+        lock,
+        children: result.children[EVENT.REACHED_LOCK],
+        lockFromFloor: result.lockFromFloor,
+      });
       if (lock === 0) break;
     }
   }
@@ -127,20 +139,19 @@ export function searchMoves(base, foothold, baselineLock) {
 }
 
 /**
- * Searches for the most used foothold, and also for the one most used to reach the lock
- * when that is a different object, because only the latter can change the lock count.
+ * Searches for the foothold most used to reach the lock, or the most used foothold overall
+ * if none reached it. Only the former can change the lock count directly.
  */
 export function findCountermeasure(base) {
   const baseline = runTrials(base);
   const baselineLock = baseline.counts[EVENT.REACHED_LOCK];
-  const [mostUsed] = baseline.footholds;
-  const [mostUsedForLock] = baseline.lockFootholds;
+  const [mostUsed = null] = baseline.footholds;
+  const target = baseline.lockFootholds[0] ?? mostUsed;
   return {
     baseline,
     baselineLock,
-    mostUsed: mostUsed ? searchMoves(base, mostUsed, baselineLock) : null,
-    forLock: mostUsedForLock && mostUsedForLock.id !== mostUsed?.id
-      ? searchMoves(base, mostUsedForLock, baselineLock)
-      : null,
+    baselineChildren: baseline.children[EVENT.REACHED_LOCK],
+    mostUsed,
+    target: target && searchMoves(base, target, baselineLock),
   };
 }

@@ -21,8 +21,12 @@ function table(headers, rows) {
 
 function totalsTable(result) {
   return table(
-    ['出来事', '回数'],
-    Object.values(EVENT).map((kind) => [EVENT_LABELS[kind], String(result.counts[kind])]),
+    ['出来事', '1回以上起きた子', '回数（補足）'],
+    Object.values(EVENT).map((kind) => [
+      EVENT_LABELS[kind],
+      `${result.perSeed.length}人中${result.children[kind]}人`,
+      String(result.counts[kind]),
+    ]),
   );
 }
 
@@ -40,20 +44,25 @@ const signed = (value) => (value > 0 ? `+${value}` : String(value));
 
 function comparisonTable(before, after) {
   return table(
-    ['出来事', '前', '後', '差', '増えた子', '減った子'],
-    compareTrials(before, after).map(({ kind, before: a, after: b, diff, childrenUp, childrenDown }) => [
-      EVENT_LABELS[kind], String(a), String(b), signed(diff), String(childrenUp), String(childrenDown),
+    ['出来事', '起きた子（前→後）', '回数（前→後）', '回数の差'],
+    compareTrials(before, after).map(({ kind, childrenBefore, childrenAfter, before: a, after: b, diff }) => [
+      EVENT_LABELS[kind],
+      `${childrenBefore}人→${childrenAfter}人`,
+      `${a}回→${b}回`,
+      signed(diff),
     ]),
   );
 }
 
 /** Words for one search. Every number comes from a rerun; nothing here estimates. */
-function searchLine(search, limit) {
+function searchLine(search, baselineChildren, limit) {
   const { label, baselineLock, found, last } = search;
-  if (baselineLock === 0) return `${label}：窓の錠に届く回数はもともと0回です`;
-  if (found !== null) return `${label}を${found}cm離すと、窓の錠に届く回数 ${baselineLock}回→0回`;
+  if (baselineLock === 0) return `窓の錠に届いた子はもともと0人です`;
+  if (found !== null) {
+    return `${label}を${found}cm離すと、窓の錠に届く子 ${baselineChildren}人→0人（回数 ${baselineLock}回→0回）`;
+  }
   if (!last) return `${label}は動かせる場所がありません（部屋の外に出るか、他の物と重なります）`;
-  return `${label}を${last.distance}cmまで離しても（探す上限${limit}cm）、窓の錠に届く回数 ${baselineLock}回→${last.lock}回で、0回になりません（うち床から届いた回数 ${last.lockFromFloor}回）`;
+  return `${label}を${last.distance}cmまで離しても（探す上限${limit}cm）、窓の錠に届く子 ${baselineChildren}人→${last.children}人で、0人になりません（回数 ${baselineLock}回→${last.lock}回、うち床から${last.lockFromFloor}回）`;
 }
 
 /** Runs the batch views. `getCondition` returns the current { months, sex, boxes }. */
@@ -112,13 +121,15 @@ export function mountTrialsView({ ledger, settings, room, getCondition, highligh
   function find() {
     const { months, sex, boxes } = getCondition();
     const limit = settings.countermeasure_limit_cm;
-    const { mostUsed, forLock } = findCountermeasure({ ledger, settings, room, boxes, months, sex });
-    highlight(mostUsed?.id ?? null);
-    const searches = [mostUsed, forLock].filter(Boolean);
+    const { mostUsed, target, baselineChildren } = findCountermeasure({ ledger, settings, room, boxes, months, sex });
+    highlight(target?.id ?? null);
+    if (!target) {
+      countermeasure.replaceChildren(element('p', '足場になった物はありませんでした'));
+      return;
+    }
     countermeasure.replaceChildren(
-      ...(searches.length > 0
-        ? searches.map((search) => element('p', searchLine(search, limit)))
-        : [element('p', '足場になった物はありませんでした')]),
+      element('p', searchLine(target, baselineChildren, limit)),
+      element('p', `全体の足場の1位：${mostUsed.label}（${mostUsed.count}回）`),
     );
   }
 
