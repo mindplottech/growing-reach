@@ -76,3 +76,27 @@ ul { margin: 0; padding: 0; list-style: none; }
 #legend { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1rem; }
 
 #error { color: #8a2c06; font-weight: 600; }
+
+h2 { margin: 1.5rem 0 0.5rem; font-size: 1.15rem; }
+
+#room-controls { display: flex; align-items: center; gap: 0.5rem; }
+
+#seed { width: 6rem; min-height: 2.75rem; padding: 0 0.5rem; font-size: 1rem; }
+
+#pause { min-height: 2.75rem; padding: 0 1rem; font-size: 1rem; }
+
+#child-values { margin: 0.5rem 0; font-size: 0.875rem; }
+
+#room { display: block; width: 100%; height: auto; border-radius: 0.375rem; }
+
+#room .floor { fill: #fff; stroke: #5f6b76; stroke-width: 3; }
+
+#room .landmark { fill: #d9dee3; stroke: #5f6b76; }
+
+#room .landmark-label { fill: #1f2328; font-size: 12px; text-anchor: middle; }
+
+#room .child { fill: #1d4ed8; stroke: #fff; stroke-width: 2; }
+
+#visits { margin: 0.75rem 0 0; padding: 0; list-style: none; font-size: 0.875rem; }
+
+#visits li { padding: 0.35rem 0; border-bottom: 1px solid #d9dee3; }

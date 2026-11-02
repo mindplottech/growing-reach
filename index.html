@@ -23,6 +23,18 @@
 
     <ul id="values" aria-live="polite"></ul>
     <ul id="legend" aria-label="区分の凡例"></ul>
+
+    <section id="room-section">
+      <h2>リビングの見取り図</h2>
+      <div id="room-controls">
+        <label for="seed">シード</label>
+        <input id="seed" type="number" value="1" step="1" inputmode="numeric">
+        <button id="pause" type="button">一時停止</button>
+      </div>
+      <p id="child-values"></p>
+      <svg id="room" role="img" aria-label="リビングを上から見た図と、動く子ども"></svg>
+      <ol id="visits" aria-label="到着の記録（新しい順）"></ol>
+    </section>
     <p id="error" role="alert" hidden></p>
   </main>
   <script type="module" src="src/main.js"></script>

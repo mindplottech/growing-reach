@@ -1,4 +1,5 @@
 import { getBodyValues, getTiptoeReference } from './body.js';
+import { mountRoomView } from './roomView.js';
 
 const MONTHS_PER_YEAR = 12;
 const DISPLAY_DECIMALS = 1;
@@ -113,8 +114,15 @@ async function start() {
   monthsInput.value = minMonths;
 
   renderLegend(ledger);
-  controls.addEventListener('input', () => render(ledger));
   render(ledger);
+  const roomView = mountRoomView(ledger, () => ({
+    months: Number(monthsInput.value),
+    sex: new FormData(controls).get('sex'),
+  }));
+  controls.addEventListener('input', () => {
+    render(ledger);
+    roomView.restart();
+  });
 }
 
 start().catch((error) => {
