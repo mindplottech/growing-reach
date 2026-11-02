@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { canClimb, canReach } from '../src/ability.js';
 import { landmarkHeight } from '../src/room.js';
 import { createSimulation } from '../src/simulation.js';
+import { moveAwayFromLock } from '../src/trials.js';
 import { byId, close, ledger, roomLayout, settings } from './helpers.js';
 
 const STILL = { ...settings, climb_probability: 0 };
@@ -122,5 +123,29 @@ test('no source file uses unseeded randomness', () => {
   for (const name of readdirSync(dir).filter((file) => file.endsWith('.js'))) {
     const source = readFileSync(new URL(name, dir), 'utf8');
     assert.ok(!source.includes('Math.random'), `${name} uses Math.random`);
+  }
+});
+
+test('moving an object leaves the same child with the same body and the same route', () => {
+  const moved = moveAwayFromLock({ room: roomLayout }, 'low_shelf', 30).room;
+  const before = createSimulation({ ...BASE, seed: 5 });
+  const after = createSimulation({ ...BASE, seed: 5, room: moved });
+  before.step(RUN_SECONDS);
+  after.step(RUN_SECONDS);
+  assert.deepEqual(after.body, before.body);
+  const route = (simulation) => simulation.visits.map(({ id }) => id);
+  const shared = Math.min(route(before).length, route(after).length);
+  assert.ok(shared > 0);
+  assert.deepEqual(route(after).slice(0, shared), route(before).slice(0, shared));
+});
+
+test('with real rates the body is unchanged whatever the room', () => {
+  const moved = moveAwayFromLock({ room: roomLayout }, 'low_shelf', 30).room;
+  for (const seed of [1, 2, 3]) {
+    const common = { ledger, settings, months: 48, sex: 'female', seed };
+    assert.deepEqual(
+      createSimulation({ ...common, room: moved }).body,
+      createSimulation({ ...common, room: roomLayout }).body,
+    );
   }
 });

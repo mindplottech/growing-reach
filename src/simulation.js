@@ -8,8 +8,17 @@ import {
 } from './scaffold.js';
 
 const CM_PER_M = 100;
-// Keeps the movement stream separate from the stream that draws the individual.
-const MOVEMENT_STREAM = 0x9e3779b9;
+// One stream per kind of decision, all separate from the one that draws the body, so that
+// changing the room leaves a child's body the same and their choices as close as possible.
+const STREAMS = {
+  route: 0x9e3779b9,
+  stay: 0x7f4a7c15,
+  climb: 0x2545f491,
+  chain: 0x3c6ef372,
+  failure: 0x1b873593,
+  balance: 0x5bd1e995,
+  trip: 0x6c62272e,
+};
 
 const ledgerItem = (ledger, id) => {
   const item = ledger.items.find((entry) => entry.id === id);
@@ -43,7 +52,9 @@ const ROLE_LOCK = 'window_lock';
  */
 export function createSimulation({ ledger, settings, months, sex, seed, room, boxes = [] }) {
   const body = getBodyValues(ledger, { months, sex, z: drawIndividual(seed) });
-  const rng = createRng(seed ^ MOVEMENT_STREAM);
+  const streams = Object.fromEntries(
+    Object.entries(STREAMS).map(([name, offset]) => [name, createRng(seed ^ offset)]),
+  );
   const dwell = ledgerItem(ledger, 'interest_dwell').range;
   const { balancePerSec, tripPerStep } = ledgerItem(ledger, 'fall_rates').values;
   const { step_down_max: stepDownMax, backward_max: backwardMax } = ledgerItem(ledger, 'descend_height').rules;
@@ -70,9 +81,9 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   let waitLeft = 0;
   let afterWait = null;
 
-  const between = ([min, max]) => min + rng() * (max - min);
-  const pick = (choices) => choices[Math.floor(rng() * choices.length)];
-  const waitingTime = (rate) => (rate > 0 ? -Math.log(1 - rng()) / rate : Infinity);
+  const between = (rng, [min, max]) => min + rng() * (max - min);
+  const pick = (rng, choices) => choices[Math.floor(rng() * choices.length)];
+  const waitingTime = (rng, rate) => (rate > 0 ? -Math.log(1 - rng()) / rate : Infinity);
 
   function record(kind, details = {}) {
     events.push({
@@ -94,8 +105,8 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   }
 
   function chooseTarget() {
-    target = pick(landmarks.filter((landmark) => landmark !== current));
-    tripLeft = waitingTime(tripPerCm);
+    target = pick(streams.route, landmarks.filter((landmark) => landmark !== current));
+    tripLeft = waitingTime(streams.trip, tripPerCm);
   }
 
   function neighbours(of) {
@@ -125,7 +136,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
 
   function attemptClimb(to, stepHeight) {
     const failure = settings.climb_failure_k * (stepHeight / body.climb.value) ** failureExponent;
-    if (rng() < failure) {
+    if (streams.failure() < failure) {
       fall(to, 'climb_failure');
       return;
     }
@@ -156,8 +167,8 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   }
 
   function standOnFoothold() {
-    const stayFor = between(settings.foothold_stay_seconds);
-    const untilFall = waitingTime(balancePerSec);
+    const stayFor = between(streams.stay, settings.foothold_stay_seconds);
+    const untilFall = waitingTime(streams.balance, balancePerSec);
     const here = foothold;
     if (untilFall < stayFor) wait(untilFall, () => fall(here, 'balance'));
     else wait(stayFor, leaveFoothold);
@@ -172,8 +183,9 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   function leaveFoothold() {
     const here = foothold;
     const steppable = neighbours(here).filter((other) => canClimb(body, Math.abs(other.height - here.height)));
-    if (steppable.length > 0 && rng() < settings.chain_probability) {
-      const next = pick(steppable);
+    const wantsToChain = streams.chain() < settings.chain_probability;
+    if (steppable.length > 0 && wantsToChain) {
+      const next = pick(streams.chain, steppable);
       attemptClimb(next, Math.abs(next.height - here.height));
       return;
     }
@@ -193,7 +205,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
       fall(here, 'cannot_descend');
       return;
     }
-    const next = pick(lower);
+    const next = pick(streams.chain, lower);
     const drop = here.height - next.height;
     record(EVENT.DESCENDED, { fromHeight: here.height, mode: descentMode(drop), to: next.id });
     stand(next);
@@ -219,10 +231,11 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     if (current.role === ROLE_LOCK && floorLevel !== REACH_NONE) {
       record(EVENT.REACHED_LOCK, { targetId: current.id, targetLabel: current.label, level: floorLevel });
     }
-    if (current.scaffold && canClimb(body, current.height) && rng() < settings.climb_probability) {
+    const wantsToClimb = streams.climb() < settings.climb_probability;
+    if (current.scaffold && canClimb(body, current.height) && wantsToClimb) {
       attemptClimb(current, current.height);
     } else {
-      wait(between(dwell), chooseTarget);
+      wait(between(streams.stay, dwell), chooseTarget);
     }
   }
 
