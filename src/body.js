@@ -45,11 +45,12 @@ function climb(ledger, months, z) {
   const { extension_beyond_45: extension, individual_sd: individualSd } = entry;
   const median = interpolate([...entry.series_from_formula, ...extension.series], months);
   const sd = individualSd.value;
-  const withinData = months <= entry.valid_age_months[1];
+  // category_rule: an exact point keeps its own category, any other month the weaker one.
+  const beyondData = extension.point_categories[months] ?? extension.category;
   return {
     value: median + z * sd,
     sd,
-    category: withinData ? entry.category : extension.category,
+    category: months <= entry.valid_age_months[1] ? entry.category : beyondData,
   };
 }
 

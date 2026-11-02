@@ -18,8 +18,8 @@ function element(tag, className, text) {
   return node;
 }
 
-function badge(ledger, category, text = ledger._meta.categories[category]) {
-  return element('span', `badge cat-${category}`, text);
+function badge(ledger, category) {
+  return element('span', `badge cat-${category}`, ledger._meta.categories[category]);
 }
 
 function formatAge(months) {
@@ -31,11 +31,11 @@ function ledgerItem(ledger, id) {
   return ledger.items.find((entry) => entry.id === id);
 }
 
-function card(ledger, label, result, unit, badgeText) {
+function card(ledger, label, result, unit) {
   const li = element('li', `card cat-${result.category}`);
   const value = element('p', 'card-value', result.value.toFixed(DISPLAY_DECIMALS));
   value.append(' ', element('small', '', unit));
-  li.append(element('p', 'card-label', label), value, badge(ledger, result.category, badgeText));
+  li.append(element('p', 'card-label', label), value, badge(ledger, result.category));
   return li;
 }
 
@@ -65,14 +65,7 @@ function render(ledger) {
   valuesList.replaceChildren(
     card(ledger, '身長（中央値）', body.height, ledgerItem(ledger, 'height_percentiles').unit),
     reachCard,
-    // The ledger's decision: past the formula's data range, show this as an extrapolation.
-    card(
-      ledger,
-      climbItem.label,
-      body.climb,
-      climbItem.unit,
-      body.climb.category === 'provisional' ? '仮値（外挿）' : undefined,
-    ),
+    card(ledger, climbItem.label, body.climb, climbItem.unit),
   );
 }
 
