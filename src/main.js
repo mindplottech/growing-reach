@@ -73,6 +73,17 @@ function tiptoeCard(ledger, tiptoe, unit, months) {
   return li;
 }
 
+/** Says where the two parts of the climb series come from; the months are the ledger's. */
+function climbOrigin(climbItem) {
+  const lastFormulaMonth = climbItem.valid_age_months[1];
+  const [[hatogoMonth]] = climbItem.extension_beyond_45.series;
+  return element(
+    'p',
+    'reference',
+    `${lastFormulaMonth}か月まで：東京都の実測の式／${hatogoMonth}か月：4〜6歳の実験結果に合わせた値`,
+  );
+}
+
 function render(ledger) {
   const months = Number(monthsInput.value);
   const sex = new FormData(controls).get('sex');
@@ -84,12 +95,14 @@ function render(ledger) {
 
   const reachCard = card(ledger, reachItem.label, body.reach, reachItem.unit);
   reachCard.append(reachSd(ledger, body.reach, reachItem.unit));
+  const climbCard = card(ledger, climbItem.label, body.climb, climbItem.unit);
+  climbCard.append(climbOrigin(climbItem));
 
   valuesList.replaceChildren(
     card(ledger, '身長（中央値）', body.height, ledgerItem(ledger, 'height_percentiles').unit),
     reachCard,
     tiptoeCard(ledger, body.tiptoeReach, reachItem.unit, months),
-    card(ledger, climbItem.label, body.climb, climbItem.unit),
+    climbCard,
   );
 }
 
