@@ -18,7 +18,7 @@
       "measured": "根拠あり（実測）",
       "formula": "根拠あり（推定式）",
       "converted": "要換算（出典の値に式を当てて計算した値）",
-      "provisional": "仮値（根拠となる数値が見つかっていない）"
+      "provisional": "仮値（出典がない、または出典が二次引用・未確認・式の延長のため根拠として扱えない値）"
     },
     "sources": {
       "CFA2024": "こども家庭庁（2024）「令和5年乳幼児身体発育調査 調査結果の概要」 https://www.cfa.go.jp/assets/contents/node/basic_page/field_ref_resources/b32105e4-fa26-42eb-97d0-2e5cbaef703a/25a6391e/20241225_policies_boshihoken_r5-nyuuyoujityousa_10.pdf",
