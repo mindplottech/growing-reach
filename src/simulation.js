@@ -3,7 +3,9 @@ import { drawIndividual, getBodyValues } from './body.js';
 import { EVENT } from './events.js';
 import { createRng } from './random.js';
 import { landmarkHeight } from './room.js';
-import { evaluateScaffold, footprintDistance, reachLevel } from './scaffold.js';
+import {
+  evaluateScaffold, footholdReachLevel, footprintDistance, reachLevel, REACH_NONE, REACH_STANDING,
+} from './scaffold.js';
 
 const CM_PER_M = 100;
 // Keeps the movement stream separate from the stream that draws the individual.
@@ -23,6 +25,17 @@ function climbFailureExponent(ledger) {
   return Number(match[1]);
 }
 
+/** Reads the height limit from the ledger's rule, such as "窓ぎわで60cm以上の物に立つ". */
+function windowLeanHeight(ledger) {
+  const { rule } = ledgerItem(ledger, 'window_lean_foothold');
+  const match = /(\d+)cm以上/.exec(rule);
+  if (!match) throw new Error(`unexpected window lean rule: ${rule}`);
+  return Number(match[1]);
+}
+
+const ROLE_WINDOW = 'window';
+const ROLE_LOCK = 'window_lock';
+
 /**
  * One child moving around a room. Whether to go somewhere, climb or stay is random;
  * whether they can is computed from the body. Random times are drawn ahead of time,
@@ -35,6 +48,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   const { balancePerSec, tripPerStep } = ledgerItem(ledger, 'fall_rates').values;
   const { step_down_max: stepDownMax, backward_max: backwardMax } = ledgerItem(ledger, 'descend_height').rules;
   const failureExponent = climbFailureExponent(ledger);
+  const leanHeight = windowLeanHeight(ledger);
   const speed = body.walkSpeed.value * CM_PER_M;
   const tripPerCm = tripPerStep / settings.step_length_cm;
   const landmarks = [
@@ -61,7 +75,16 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   const waitingTime = (rate) => (rate > 0 ? -Math.log(1 - rng()) / rate : Infinity);
 
   function record(kind, details = {}) {
-    events.push({ time, kind, footholdId: foothold?.id ?? null, footholdLabel: foothold?.label ?? null, ...details });
+    events.push({
+      time,
+      seed,
+      months,
+      sex,
+      kind,
+      footholdId: foothold?.id ?? null,
+      footholdLabel: foothold?.label ?? null,
+      ...details,
+    });
   }
 
   function wait(seconds, then) {
@@ -108,7 +131,28 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     }
     stand(to);
     record(EVENT.CLIMBED, { height: to.height, stepHeight });
+    reactOnFoothold(to);
     standOnFoothold();
+  }
+
+  /** Records what the child on this foothold reaches, and standing at the window. */
+  function reactOnFoothold(on) {
+    const windowFrame = landmarks.find((landmark) => landmark.role === ROLE_WINDOW);
+    if (
+      windowFrame
+      && on.height >= leanHeight
+      && footprintDistance(on, windowFrame) <= room.window_side_gap.value
+    ) {
+      record(EVENT.STOOD_AT_WINDOW, { height: on.height });
+    }
+    for (const object of landmarks) {
+      if (object === on || object.height <= on.height) continue;
+      const level = footholdReachLevel(ledger, body, on, object);
+      if (level === REACH_NONE) continue;
+      const details = { targetId: object.id, targetLabel: object.label, level };
+      if (object.role === ROLE_LOCK) record(EVENT.REACHED_LOCK, details);
+      else if (reachLevel(body, object.height) !== REACH_STANDING) record(EVENT.TOUCHED_HIGH, details);
+    }
   }
 
   function standOnFoothold() {
@@ -171,6 +215,10 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
       reachLevel: reachLevel(body, current.height),
       scaffold: evaluateScaffold(ledger, body, current, landmarks),
     });
+    const floorLevel = reachLevel(body, current.height);
+    if (current.role === ROLE_LOCK && floorLevel !== REACH_NONE) {
+      record(EVENT.REACHED_LOCK, { targetId: current.id, targetLabel: current.label, level: floorLevel });
+    }
     if (current.scaffold && canClimb(body, current.height) && rng() < settings.climb_probability) {
       attemptClimb(current, current.height);
     } else {

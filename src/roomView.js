@@ -1,4 +1,5 @@
 import { placeBox } from './boxes.js';
+import { EVENT_LABELS } from './events.js';
 import { isBetterReach, REACH_NONE, REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
 import { createSimulation } from './simulation.js';
 
@@ -62,6 +63,15 @@ function visitItem(visit) {
   return li;
 }
 
+function eventItem(event) {
+  const li = document.createElement('li');
+  const parts = [`${event.time.toFixed(0)}秒 ${EVENT_LABELS[event.kind]}`];
+  if (event.footholdLabel) parts.push(`足場：${event.footholdLabel}`);
+  if (event.targetLabel) parts.push(`${event.targetLabel}に${reachText(event.level)}`);
+  li.textContent = parts.join('／');
+  return li;
+}
+
 function textItem(text) {
   const li = document.createElement('li');
   li.textContent = text;
@@ -96,6 +106,7 @@ export function mountRoomView(ledger, room, settings, getChild) {
   const pauseButton = document.querySelector('#pause');
   const childLine = document.querySelector('#child-values');
   const visitList = document.querySelector('#visits');
+  const eventList = document.querySelector('#events');
   const scaffoldList = document.querySelector('#scaffold-reaches');
   const boxMessage = document.querySelector('#box-message');
   const clearButton = document.querySelector('#clear-boxes');
@@ -104,6 +115,7 @@ export function mountRoomView(ledger, room, settings, getChild) {
   let boxes = [];
   let childMark;
   let shownVisits = 0;
+  let shownEvents = 0;
   let paused = false;
   let carry = 0;
   let lastFrame;
@@ -120,8 +132,10 @@ export function mountRoomView(ledger, room, settings, getChild) {
     childMark = drawRoom(svg, simulation, room);
     childLine.textContent = describeBody(simulation.body);
     shownVisits = 0;
+    shownEvents = 0;
     carry = 0;
     visitList.replaceChildren();
+    eventList.replaceChildren();
     scaffoldList.replaceChildren();
     paint();
   }
@@ -129,6 +143,10 @@ export function mountRoomView(ledger, room, settings, getChild) {
   function paint() {
     childMark.setAttribute('cx', simulation.position.x);
     childMark.setAttribute('cy', simulation.position.y);
+    if (simulation.events.length !== shownEvents) {
+      shownEvents = simulation.events.length;
+      eventList.replaceChildren(...simulation.events.slice(-VISITS_SHOWN).reverse().map(eventItem));
+    }
     if (simulation.visits.length === shownVisits) return;
     shownVisits = simulation.visits.length;
     visitList.replaceChildren(
