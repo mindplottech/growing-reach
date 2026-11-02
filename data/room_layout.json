@@ -10,6 +10,8 @@
   "start": { "x": 225, "y": 150 },
   "neighbor_gap": { "value": 20, "category": "provisional", "note": "足場どうしの隙間がこのcm以内なら「隣」として乗り継げる。台帳になく、設計者が置いた仮値" },
   "window_side_gap": { "value": 30, "category": "provisional", "note": "窓との隙間がこのcm以内なら「窓ぎわ」とする。台帳になく、設計者が置いた仮値" },
+  "wall_height": { "value": 240, "category": "provisional", "note": "3D表示の壁の高さ。台帳になく、設計者が置いた仮値" },
+  "lock_display_size_cm": 8,
   "cardboard_box": { "label": "段ボール箱", "height": 30, "w": 40, "d": 30, "approach_gap": 20, "category": "provisional", "note": "台帳になく、設計者が置いた仮値" },
   "layouts": [
     {

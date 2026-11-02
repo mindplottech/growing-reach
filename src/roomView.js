@@ -1,4 +1,4 @@
-import { placeBox } from './boxes.js';
+import { moveBox as moveBoxWithin, placeBox } from './boxes.js';
 import { highlightedIds } from './sceneModel.js';
 import { EVENT_LABELS } from './events.js';
 import { isBetterReach, REACH_NONE, REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
@@ -29,6 +29,7 @@ function svgElement(tag, attributes, text) {
 function drawRoom(svg, simulation, room, highlightedId) {
   const child = svgElement('circle', { r: CHILD_RADIUS, class: 'child' });
   svg.setAttribute('viewBox', `0 0 ${room.width} ${room.depth}`);
+  svg.style.aspectRatio = `${room.width} / ${room.depth}`;
   svg.replaceChildren(
     svgElement('rect', { width: room.width, height: room.depth, class: 'floor' }),
     ...simulation.landmarks.map((landmark) =>
@@ -117,8 +118,11 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
 
   let simulation;
   let boxes = [];
+  let nextBoxNumber = 1;
   let highlightedId = null;
-  let onChange = () => {};
+  const changeListeners = [];
+  const highlightListeners = [];
+  let tapEnabled = true;
   let childMark;
   let shownVisits = 0;
   let shownEvents = 0;
@@ -127,7 +131,6 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
   let lastFrame;
 
   function restart() {
-    onChange();
     simulation = createSimulation({
       ledger,
       settings,
@@ -145,6 +148,7 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
     eventList.replaceChildren();
     scaffoldList.replaceChildren();
     paint();
+    changeListeners.forEach((listener) => listener());
   }
 
   function paint() {
@@ -181,24 +185,25 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
   }
 
   seedInput.addEventListener('input', restart);
-  svg.addEventListener('click', (event) => {
-    const area = svg.getBoundingClientRect();
-    const box = placeBox(
-      room,
-      simulation.landmarks,
-      {
-        x: ((event.clientX - area.left) / area.width) * room.width,
-        y: ((event.clientY - area.top) / area.height) * room.depth,
-      },
-      boxes.length + 1,
-    );
+  function addBoxAt(point) {
+    const box = placeBox(room, simulation.landmarks, point, nextBoxNumber);
     if (!box) {
       boxMessage.textContent = '家具や箱と重なる場所には置けません';
       return;
     }
+    nextBoxNumber += 1;
     boxes = [...boxes, box];
     boxMessage.textContent = `${box.label}を置きました（最初からやり直します）`;
     restart();
+  }
+
+  svg.addEventListener('click', (event) => {
+    if (!tapEnabled) return;
+    const area = svg.getBoundingClientRect();
+    addBoxAt({
+      x: ((event.clientX - area.left) / area.width) * room.width,
+      y: ((event.clientY - area.top) / area.height) * room.depth,
+    });
   });
   clearButton.addEventListener('click', () => {
     boxes = [];
@@ -219,18 +224,37 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
     setRoom: (next) => {
       room = next;
       boxes = [];
-      boxMessage.textContent = '図をタップすると段ボール箱を置けます';
+      boxMessage.textContent = '段ボール箱は置き直してください';
       restart();
     },
-    onConditionChange: (listener) => {
-      onChange = listener;
+    getSimulation: () => simulation,
+    getRoom: () => room,
+    getHighlightedId: () => highlightedId,
+    addBoxAt,
+    tryMoveBox: (id, point) => {
+      const box = boxes.find((candidate) => candidate.id === id);
+      return moveBoxWithin(room, simulation.landmarks, box, point);
     },
+    moveBox: (id, point) => {
+      const box = boxes.find((candidate) => candidate.id === id);
+      const moved = moveBoxWithin(room, simulation.landmarks, box, point);
+      if (!moved) return;
+      boxes = boxes.map((candidate) => (candidate.id === id ? moved : candidate));
+      boxMessage.textContent = `${moved.label}を動かしました（最初からやり直します）`;
+      restart();
+    },
+    useMapOnly: () => {
+      tapEnabled = false;
+    },
+    onConditionChange: (listener) => changeListeners.push(listener),
+    onHighlightChange: (listener) => highlightListeners.push(listener),
     highlight: (id) => {
       highlightedId = id;
       const lit = highlightedIds(simulation.landmarks, id);
       for (const rect of svg.querySelectorAll('[data-id]')) {
         rect.classList.toggle('highlight', lit.has(rect.getAttribute('data-id')));
       }
+      highlightListeners.forEach((listener) => listener(id));
     },
   };
 }

@@ -6,6 +6,14 @@
   <title>Growing Reach</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="src/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <main>
@@ -35,7 +43,18 @@
       </div>
       <p id="child-values"></p>
       <p id="box-message" role="status">図をタップすると段ボール箱を置けます</p>
-      <svg id="room" role="img" aria-label="リビングを上から見た図と、動く子ども"></svg>
+      <div id="mode-buttons" hidden>
+        <button id="mode-view" type="button">視点</button>
+        <button id="mode-place" type="button">配置</button>
+      </div>
+      <div id="stage">
+        <svg id="room" role="img" aria-label="リビングを上から見た図と、動く子ども"></svg>
+      </div>
+      <ul id="state-legend" hidden>
+        <li><span class="swatch state-climbable"></span>登れる高さより低い</li>
+        <li><span class="swatch state-reachable"></span>立って届く高さより低い</li>
+        <li><span class="swatch state-out"></span>どちらより高い</li>
+      </ul>
       <h3>足場にすると新しく届く物</h3>
       <ul id="scaffold-reaches"></ul>
       <h3>出来事の記録</h3>

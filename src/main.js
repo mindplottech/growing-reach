@@ -166,6 +166,30 @@ async function start() {
     highlight: roomView.highlight,
     onConditionChange: roomView.onConditionChange,
   });
+  // The 3D view is display only: if it cannot load, the map and all calculations still work.
+  const stage = document.querySelector('#stage');
+  const modeButtons = document.querySelector('#mode-buttons');
+  import('./view3d.js')
+    .then(({ mountView3d }) => {
+      stage.classList.add('with-3d');
+      modeButtons.hidden = false;
+      document.querySelector('#state-legend').hidden = false;
+      document.querySelector('#box-message').textContent = '「配置」で床をタップすると段ボール箱を置け、箱をなぞると動かせます';
+      roomView.useMapOnly();
+      mountView3d({
+        container: stage,
+        ledger,
+        roomView,
+        modeButtons: {
+          view: document.querySelector('#mode-view'),
+          place: document.querySelector('#mode-place'),
+        },
+      });
+    })
+    .catch((error) => {
+      document.querySelector('#box-message').textContent = `3D表示を読み込めませんでした（${error.message}）。図をタップすると段ボール箱を置けます`;
+    });
+
   layoutSelect.addEventListener('change', () => {
     room = selectLayout(roomFile, layoutSelect.value);
     roomView.setRoom(room);

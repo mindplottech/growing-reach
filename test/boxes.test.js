@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getBodyValues } from '../src/body.js';
-import { placeBox } from '../src/boxes.js';
+import { moveBox, placeBox } from '../src/boxes.js';
 import { landmarkHeight } from '../src/room.js';
 import { evaluateScaffold, reachLevel, REACH_NONE, REACH_STANDING } from '../src/scaffold.js';
 import { createSimulation } from '../src/simulation.js';
@@ -89,4 +89,23 @@ test('the same seed and the same boxes give the same record', () => {
 test('a run without boxes is unaffected by the box feature', () => {
   const ids = (simulation) => simulation.landmarks.map(({ id }) => id);
   assert.deepEqual(ids(runWith([])), furniture.map(({ id }) => id));
+});
+
+test('moving a box follows the point, stays in the room and refuses overlaps', () => {
+  const box = placeBox(roomLayout, furniture, FREE_SPOT, 1);
+  const others = [...furniture, box];
+  const moved = moveBox(roomLayout, others, box, { x: FREE_SPOT.x - 20, y: FREE_SPOT.y + 20 });
+  assert.equal(moved.id, box.id);
+  assert.equal(moved.x, box.x - 20);
+  assert.equal(moved.y, box.y + 20);
+  const toCorner = moveBox(roomLayout, [box], box, { x: 9999, y: -9999 });
+  assert.equal(toCorner.x + toCorner.w, roomLayout.width);
+  assert.equal(toCorner.y, 0);
+  const [sofa] = furniture;
+  assert.equal(moveBox(roomLayout, others, box, { x: sofa.x + 10, y: sofa.y + 10 }), null);
+});
+
+test('a moved box does not collide with its old self', () => {
+  const box = placeBox(roomLayout, furniture, FREE_SPOT, 1);
+  assert.ok(moveBox(roomLayout, [...furniture, box], box, { x: FREE_SPOT.x + 1, y: FREE_SPOT.y }));
 });
