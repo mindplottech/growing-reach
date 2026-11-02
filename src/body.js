@@ -1,7 +1,8 @@
 import { interpolate } from './interpolate.js';
 import { createRng, standardNormal } from './random.js';
 
-const MEDIAN_CHILD = { height: 0, climb: 0, walkSpeed: 0 };
+// z-scores of a median child; tiptoe is a position within the ledger's range (0 to 1).
+const MEDIAN_CHILD = { height: 0, climb: 0, walkSpeed: 0, tiptoe: 0.5 };
 
 function item(ledger, id) {
   const found = ledger.items.find((entry) => entry.id === id);
@@ -35,7 +36,21 @@ function reach(ledger, heightResult) {
   return {
     value: heightResult.value * slope + intercept,
     sd: heightResult.sd * slope,
+    sdCategory: item(ledger, 'height_sd').category,
     category: item(ledger, 'reach_height_standing').category,
+  };
+}
+
+/** Standing reach plus the child's tiptoe gain; min and max span the ledger's range. */
+function tiptoeReach(ledger, reachResult, position) {
+  const { range: [minGain, maxGain], category } = item(ledger, 'tiptoe_gain');
+  const gain = minGain + position * (maxGain - minGain);
+  return {
+    value: reachResult.value + gain,
+    gain,
+    min: reachResult.value + minGain,
+    max: reachResult.value + maxGain,
+    category,
   };
 }
 
@@ -67,9 +82,10 @@ function walkSpeed(ledger, months, z) {
 
 /**
  * Body values at an age. `z` holds an individual's position in SD units per
- * quantity; the default is the median child. Each result is { value, sd, category }.
+ * quantity; anything left out is the median child. Each result has value and category.
  */
-export function getBodyValues(ledger, { months, sex, z = MEDIAN_CHILD }) {
+export function getBodyValues(ledger, { months, sex, z: individual }) {
+  const z = { ...MEDIAN_CHILD, ...individual };
   const [minMonths, maxMonths] = ledger._meta.age_range_months;
   if (!(months >= minMonths && months <= maxMonths)) {
     throw new RangeError(`months must be within ${minMonths}-${maxMonths}: ${months}`);
@@ -78,9 +94,11 @@ export function getBodyValues(ledger, { months, sex, z = MEDIAN_CHILD }) {
     throw new RangeError(`unknown sex: ${sex}`);
   }
   const heightResult = height(ledger, months, sex, z.height);
+  const reachResult = reach(ledger, heightResult);
   return {
     height: heightResult,
-    reach: reach(ledger, heightResult),
+    reach: reachResult,
+    tiptoeReach: tiptoeReach(ledger, reachResult, z.tiptoe),
     climb: climb(ledger, months, z.climb),
     walkSpeed: walkSpeed(ledger, months, z.walkSpeed),
   };
@@ -93,6 +111,7 @@ export function drawIndividual(seed) {
     height: standardNormal(rng),
     climb: standardNormal(rng),
     walkSpeed: standardNormal(rng),
+    tiptoe: rng(),
   };
 }
 
@@ -100,10 +119,6 @@ export function drawIndividual(seed) {
 export function getTiptoeReference(ledger, months) {
   const entry = item(ledger, 'reach_height_tiptoe_zukan');
   const ageYears = Math.floor(months / 12);
-  return {
-    ageYears,
-    value: entry.values_by_age_years[ageYears].reach,
-    category: entry.category,
-    label: entry.label,
-  };
+  const { height: measuredHeight, reach: value } = entry.values_by_age_years[ageYears];
+  return { ageYears, height: measuredHeight, value, category: entry.category };
 }

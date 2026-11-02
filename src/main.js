@@ -40,14 +40,36 @@ function card(ledger, label, result, unit) {
 }
 
 function tiptoeReference(ledger, months) {
-  const reference = getTiptoeReference(ledger, months);
+  const { ageYears, height, value, category } = getTiptoeReference(ledger, months);
   const line = element(
     'p',
     'reference',
-    `参考：${reference.label} ${reference.ageYears}歳 ${reference.value} cm（計算には使わない） `,
+    `参考（計算には使わない）：図鑑 ${ageYears}歳：身長${height}cmの子で${value}cm `,
   );
-  line.append(badge(ledger, reference.category));
+  line.append(badge(ledger, category));
   return line;
+}
+
+function reachSd(ledger, reach, unit) {
+  const line = element('p', 'reference', `個人差 SD ${reach.sd.toFixed(DISPLAY_DECIMALS)} ${unit} `);
+  line.append(badge(ledger, reach.sdCategory));
+  return line;
+}
+
+/** The range is shown because the gain differs per child and this view has no single child. */
+function tiptoeCard(ledger, tiptoe, unit, months) {
+  const { range: [minGain, maxGain] } = ledgerItem(ledger, 'tiptoe_gain');
+  const li = element('li', `card cat-${tiptoe.category}`);
+  const range = `${tiptoe.min.toFixed(DISPLAY_DECIMALS)}〜${tiptoe.max.toFixed(DISPLAY_DECIMALS)}`;
+  const value = element('p', 'card-value', range);
+  value.append(' ', element('small', '', unit));
+  li.append(
+    element('p', 'card-label', `背伸びで届く高さ（立って届く高さ＋${minGain}〜${maxGain}${unit}）`),
+    value,
+    badge(ledger, tiptoe.category),
+    tiptoeReference(ledger, months),
+  );
+  return li;
 }
 
 function render(ledger) {
@@ -60,11 +82,12 @@ function render(ledger) {
   monthsLabel.textContent = formatAge(months);
 
   const reachCard = card(ledger, reachItem.label, body.reach, reachItem.unit);
-  reachCard.append(tiptoeReference(ledger, months));
+  reachCard.append(reachSd(ledger, body.reach, reachItem.unit));
 
   valuesList.replaceChildren(
     card(ledger, '身長（中央値）', body.height, ledgerItem(ledger, 'height_percentiles').unit),
     reachCard,
+    tiptoeCard(ledger, body.tiptoeReach, reachItem.unit, months),
     card(ledger, climbItem.label, body.climb, climbItem.unit),
   );
 }
