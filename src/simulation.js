@@ -2,6 +2,7 @@ import { canClimb, canReach } from './ability.js';
 import { drawIndividual, getBodyValues } from './body.js';
 import { createRng } from './random.js';
 import { landmarkHeight } from './room.js';
+import { evaluateScaffold, reachLevel } from './scaffold.js';
 
 const CM_PER_M = 100;
 // Keeps the movement stream separate from the stream that draws the individual.
@@ -46,6 +47,8 @@ export function createSimulation({ ledger, months, sex, seed, room }) {
       height: current.height,
       canClimb: canClimb(body, current.height),
       canReach: canReach(body, current.height),
+      reachLevel: reachLevel(body, current.height),
+      scaffold: evaluateScaffold(body, current, landmarks, room.nearby_range.value),
     });
   }
 

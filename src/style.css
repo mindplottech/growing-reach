@@ -97,6 +97,16 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.15rem; }
 
 #room .child { fill: #1d4ed8; stroke: #fff; stroke-width: 2; }
 
-#visits { margin: 0.75rem 0 0; padding: 0; list-style: none; font-size: 0.875rem; }
+h3 { margin: 0.9rem 0 0.25rem; font-size: 0.95rem; }
+
+#visits, #scaffold-reaches { margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
+
+#scaffold-reaches li { padding: 0.35rem 0; font-weight: 600; }
+
+#layout-assumptions { margin-top: 0.75rem; font-size: 0.8125rem; }
+
+#layout-assumptions p { margin: 0.25rem 0; }
 
 #visits li { padding: 0.35rem 0; border-bottom: 1px solid #d9dee3; }
+
+#scaffold-reaches:empty::before { content: "（今のところなし）"; color: #5f6b76; }

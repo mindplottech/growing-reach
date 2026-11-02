@@ -1,3 +1,4 @@
+import { REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
 import { createSimulation } from './simulation.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -7,6 +8,13 @@ const MAX_FRAME_SECONDS = 0.25;
 const VISITS_SHOWN = 6;
 const DISPLAY_DECIMALS = 1;
 const CHILD_RADIUS = 9;
+
+const REACH_TEXT = {
+  [REACH_STANDING]: '立って届く',
+  [REACH_TIPTOE]: '背伸びなら届く',
+};
+const reachText = (level) => REACH_TEXT[level] ?? '届かない';
+const cm = (value) => `${value.toFixed(DISPLAY_DECIMALS)} cm`;
 
 function svgElement(tag, attributes, text) {
   const node = document.createElementNS(SVG_NS, tag);
@@ -31,17 +39,45 @@ function drawRoom(svg, simulation, room) {
   return child;
 }
 
-function describeBody(body) {
-  const cm = (result) => result.value.toFixed(DISPLAY_DECIMALS);
-  return `この子：身長 ${cm(body.height)} cm／届く ${cm(body.reach)} cm／登れる ${cm(body.climb)} cm／歩く速さ ${body.walkSpeed.value.toFixed(2)} m/s`;
+function describeBody({ height, reach, tiptoeReach, climb, walkSpeed }) {
+  return `この子：身長 ${cm(height.value)}／立って届く ${cm(reach.value)}／背伸びで届く ${cm(tiptoeReach.value)}／登れる ${cm(climb.value)}／歩く速さ ${walkSpeed.value.toFixed(2)} m/s`;
+}
+
+/** Footholds worth reporting: those that improve on what the child reaches from the floor. */
+function newReaches(visit) {
+  return (visit.scaffold?.objects ?? []).filter(
+    (object) => object.level !== object.floorLevel,
+  );
+}
+
+function scaffoldText(visit, object) {
+  return `${visit.scaffold.label}（${cm(visit.scaffold.height)}）を足場に、${object.label}（${cm(object.height)}）に${reachText(object.level)}（床では${reachText(object.floorLevel)}）`;
 }
 
 function visitItem(visit) {
   const li = document.createElement('li');
   const climb = visit.canClimb ? '登れる' : '登れない';
-  const reach = visit.canReach ? '届く' : '届かない';
-  li.textContent = `${visit.time.toFixed(0)}秒 ${visit.label}（${visit.height.toFixed(DISPLAY_DECIMALS)} cm）：${climb}・${reach}`;
+  li.textContent = `${visit.time.toFixed(0)}秒 ${visit.label}（${cm(visit.height)}）：${climb}・${reachText(visit.reachLevel)}`;
   return li;
+}
+
+function textItem(text) {
+  const li = document.createElement('li');
+  li.textContent = text;
+  return li;
+}
+
+function renderAssumptions(container, ledger, room) {
+  const { value, category } = room.nearby_range;
+  const notice = document.createElement('p');
+  notice.textContent = room._meta.notice;
+  const range = document.createElement('p');
+  range.textContent = `足場の「近く」：${value}${room._meta.unit}以内 `;
+  const badge = document.createElement('span');
+  badge.className = `badge cat-${category}`;
+  badge.textContent = ledger._meta.categories[category];
+  range.append(badge);
+  container.replaceChildren(notice, range);
 }
 
 /** Runs the room view. `getChild` returns the current { months, sex }. */
@@ -51,6 +87,7 @@ export function mountRoomView(ledger, room, getChild) {
   const pauseButton = document.querySelector('#pause');
   const childLine = document.querySelector('#child-values');
   const visitList = document.querySelector('#visits');
+  const scaffoldList = document.querySelector('#scaffold-reaches');
 
   let simulation;
   let childMark;
@@ -71,18 +108,22 @@ export function mountRoomView(ledger, room, getChild) {
     shownVisits = 0;
     carry = 0;
     visitList.replaceChildren();
+    scaffoldList.replaceChildren();
     paint();
   }
 
   function paint() {
     childMark.setAttribute('cx', simulation.position.x);
     childMark.setAttribute('cy', simulation.position.y);
-    if (simulation.visits.length !== shownVisits) {
-      shownVisits = simulation.visits.length;
-      visitList.replaceChildren(
-        ...simulation.visits.slice(-VISITS_SHOWN).reverse().map(visitItem),
-      );
-    }
+    if (simulation.visits.length === shownVisits) return;
+    shownVisits = simulation.visits.length;
+    visitList.replaceChildren(
+      ...simulation.visits.slice(-VISITS_SHOWN).reverse().map(visitItem),
+    );
+    const found = simulation.visits.flatMap((visit) =>
+      newReaches(visit).map((object) => scaffoldText(visit, object)),
+    );
+    scaffoldList.replaceChildren(...[...new Set(found)].map(textItem));
   }
 
   // A fixed step keeps the run identical for a seed whatever the frame rate is.
@@ -106,6 +147,7 @@ export function mountRoomView(ledger, room, getChild) {
     pauseButton.textContent = paused ? '再生' : '一時停止';
   });
 
+  renderAssumptions(document.querySelector('#layout-assumptions'), ledger, room);
   restart();
   requestAnimationFrame(frame);
   return { restart };

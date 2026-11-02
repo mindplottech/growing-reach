@@ -10,8 +10,14 @@ export function canClimb(body, objectHeightCm) {
   return objectHeightCm <= body.climb.value;
 }
 
-/** True when the child, standing on the floor, can reach this height. The limit itself is reachable. */
-export function canReach(body, objectHeightCm) {
+/** True when the child, standing flat at `standOnCm` (0 is the floor), can reach this height. */
+export function canReach(body, objectHeightCm, standOnCm = 0) {
   assertHeight(objectHeightCm);
-  return objectHeightCm <= body.reach.value;
+  return objectHeightCm <= standOnCm + body.reach.value;
+}
+
+/** True when the child, on tiptoe at `standOnCm` (0 is the floor), can reach this height. */
+export function canReachOnTiptoe(body, objectHeightCm, standOnCm = 0) {
+  assertHeight(objectHeightCm);
+  return objectHeightCm <= standOnCm + body.tiptoeReach.value;
 }
