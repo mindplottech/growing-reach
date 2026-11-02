@@ -1,14 +1,15 @@
 {
   "_meta": {
     "title": "値の台帳（3歳0か月〜5歳0か月の身体の値と家庭の家具の高さ）",
-    "notice": "このファイルは外部の公開資料から持ち込んだ入力データです。ハッカソン期間中に作ったコードではありません。値はすべて下の出典から転記したもの、または出典の値に明記した式を当てたものです。",
+    "notice": "このファイルは外部の公開資料から持ち込んだ入力データです。ハッカソン期間中に作ったコードではありません。category が measured・formula・converted の値は、下の出典から転記したもの、または出典の値に明記した式を当てたものです。category が provisional（仮値）の値は、出典がないか、出典が二次引用・未確認・式の延長のため根拠として扱えない値で、設計者の判断で置いています。",
     "created": "2026-11-03",
-    "version": "3",
+    "version": "4",
     "decisions": [
       { "date": "2026-11-03", "item": "height_percentiles / height_mean", "decision": "身長の基準は中央値（P50）を使う", "reason": "実態に近いため" },
-      { "date": "2026-11-03", "item": "climb_height_4to5_candidates", "decision": "4〜5歳は東京都の式の延長（60か月で84.2cm）を使う。区分は仮値（外挿）のまま表示", "reason": "実測に基づく式からの延長として許可" },
+      { "date": "2026-11-03", "item": "climb_height_4to5_candidates", "decision": "【変更】4〜5歳の登れる高さは八藤後ほか（2003）の結果に合わせる。48か月の平均を76.8cm（70cmに8割が登れる値）とし、60か月は東京都の式の延長84.2cmのまま。間は直線補間", "reason": "東京都の式の延長では48か月で70cmに登れるのが約62%で、4〜6歳の実験結果（70cmに8割以上）より低い。このツールでは低く見積もると危険を見逃す方向にずれるため", "replaces": "4〜5歳は東京都の式の延長（60か月で84.2cm）を使う（同日の決定）" },
       { "date": "2026-11-03", "item": "walk_speed", "decision": "4〜5歳は3歳群と6歳群の直線補間（48か月1.04、60か月1.08 m/s）を使う", "reason": "4歳と6歳で発達が異なるため" },
       { "date": "2026-11-03", "item": "walk_speed (SD)", "decision": "4〜5歳のSDも3歳群の0.11を使う", "reason": "設計者の判断" },
+      { "date": "2026-11-03", "item": "tiptoe_gain", "decision": "背伸びで届く高さ＝立って届く高さ＋5〜10cm（仮値）", "reason": "図鑑の背伸び値は測った子の身長が違い、そのままでは立って届く高さより低く見えるため。設計者の判断" },
       { "date": "2026-11-03", "item": "reach_height_tiptoe_zukan", "decision": "図鑑の背伸び到達点を参考値として画面に並べて表示する（計算には使わない）", "reason": "式との違いを可視化できるため" }
     ],
     "age_range_months": [36, 60],
@@ -119,8 +120,16 @@
       "series_from_formula": [[36, 60.6], [39, 63.5], [42, 66.5], [45, 69.4]],
       "extension_beyond_45": {
         "category": "provisional",
-        "note": "45か月より先は同じ式を延長しただけの仮値（元データは15〜45か月）。",
-        "series": [[48, 72.4], [51, 75.3], [54, 78.3], [57, 81.2], [60, 84.2]]
+        "point_categories": { "48": "converted", "60": "provisional" },
+        "category_rule": "点ちょうど（48か月）はその点の区分、それ以外の月齢（46〜59・60か月）は弱い方の区分（仮値）で表示する。より確かな区分に格上げしない",
+        "secondary_citation": true,
+        "series": [[48, 76.8], [60, 84.2]],
+        "derivation": {
+          "48": "八藤後ほか（2003）：4〜6歳90人で台60cmは全員、70cmは身長105cm未満の群でも8割以上が登れた。個人差SD 8cm（individual_sd）の正規分布で、70cmに80%が登れる平均＝70＋0.8416×8＝76.73 → 8割以上を満たすよう76.8に切り上げ。検算：この平均で60cmに登れるのは98.2%（「全員」と整合）。4〜6歳の範囲の始まり（4歳0か月＝48か月）に置く",
+          "60": "東京都の式 0.9842×60＋25.132＝84.2（式の延長。この値は八藤後の条件も満たす）"
+        },
+        "replaced_series": [[48, 72.4], [51, 75.3], [54, 78.3], [57, 81.2], [60, 84.2]],
+        "note": "45か月までは東京都の式（根拠あり）。45→48か月で69.4→76.8cmと急に上がる。48か月の値は二次引用（東京都商品等安全対策協議会 2018 p.30 の要約）からの換算で、八藤後の原論文の表は未確認。「8割以上」の下限に合わせたので、実際より低めの可能性は残る。60か月の値は式の延長。"
       },
       "sex_specific": {
         "female": { "formula": "0.8226 * age_months + 29.545", "r": 0.8, "n": 18, "valid_age_months": [15, 45] },
@@ -139,12 +148,12 @@
       "unit": "cm",
       "category": "provisional",
       "candidates": [
-        { "name": "東京都の式の延長", "values": { "54": 78.3, "60": 84.2 }, "source": "TOKYO_SR2024", "note": "climb_height.extension_beyond_45 と同じ" },
+        { "name": "東京都の式の延長", "values": { "54": 78.3, "60": 84.2 }, "source": "TOKYO_SR2024", "note": "旧台帳（v3）で採用していた値。climb_height.extension_beyond_45.replaced_series と同じ" },
         { "name": "図鑑「乗り越えられる高さ」", "values_by_age_years": { "4": { "mean": 69.5, "max": 85.0 }, "5": { "mean": 84.8, "max": 100.0 } }, "source": "ZUKAN2013", "table_page": "TOKYO_KYOGIKAI2018 表2-5 p.32", "secondary_citation": true, "note": "人数・SD・測り方不明。課題が「乗り越え」で台のぼりと同じではない" },
         { "name": "八藤後ほか 台のぼり", "result": "4〜6歳90人：台60cmは全員登れた。70cmは身長105cm未満の群でも8割以上が登れた", "source": "HATOGO2003", "table_page": "原論文の表番号未確認（TOKYO_KYOGIKAI2018 p.30 の要約）", "secondary_citation": true }
       ],
-      "selected": "東京都の式の延長",
-      "note": "【決定 2026-11-03】東京都の式の延長を使う（climb_height.extension_beyond_45）。区分は仮値（外挿）として画面で色分けする。図鑑・八藤後は採用しないが候補として保持。"
+      "selected": "八藤後ほかの結果に合わせる（48か月76.8cm）＋60か月は東京都の式の延長",
+      "note": "【決定 2026-11-03・変更】climb_height.extension_beyond_45 を参照。図鑑の値は採用しないが候補として保持。"
     },
     {
       "id": "walk_speed",
@@ -208,7 +217,7 @@
       "table_page": "3.1(1)ウ p.35・図19（割合と内訳）、p.5 図5・p.34（年齢）",
       "note": "対象は6歳未満の窓からの転落【死亡】事故、1993〜2024年。残り24%は「足掛かりなし」ではなく不明を含む。表記：「窓からの転落死亡事故42件のうち、足掛かりの種類が確認できたのは32件（76%）」。"
     },
-    { "id": "tiptoe_gain", "label": "つま先立ちで伸びる分", "unit": "cm", "category": "provisional", "value": 5, "source": null, "note": "数値の出典が見つからない" },
+    { "id": "tiptoe_gain", "label": "つま先立ちで伸びる分", "unit": "cm", "category": "provisional", "range": [5, 10], "source": null, "note": "【決定 2026-11-03】立って届く高さ（reach_height_standing）に5〜10cmを足して背伸びで届く高さとする。数値の出典はなく、設計者が置いた仮値。子どもごとに範囲内でシード付き乱数で決める（個人差の扱い）。" },
     { "id": "reach_horizontal_on_surface", "label": "台の上の物に届く水平距離", "unit": "cm", "category": "provisional", "formula": "min(15 + (reach - surface_height) * 0.6, 60)", "source": null, "note": "上腕約20cm（NHANES）は原典未確認" },
     { "id": "descend_height", "label": "降りられる高さ", "unit": "cm", "category": "provisional", "value": "climb_height と同じ", "rules": { "step_down_max": 20, "backward_max": 45 }, "source": null, "note": "3〜5歳の数値データが見つからない" },
     { "id": "climb_failure", "label": "登るときの失敗しやすさ", "unit": "-", "category": "provisional", "formula": "k * (step / climb_height)^3", "source": null },
