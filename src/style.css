@@ -79,11 +79,13 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 h2 { margin: 1.5rem 0 0.5rem; font-size: 1.15rem; }
 
-#room-controls { display: flex; align-items: center; gap: 0.5rem; }
+#room-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 
 #seed { width: 6rem; min-height: 2.75rem; padding: 0 0.5rem; font-size: 1rem; }
 
-#pause { min-height: 2.75rem; padding: 0 1rem; font-size: 1rem; }
+#pause, #clear-boxes { min-height: 2.75rem; padding: 0 1rem; font-size: 1rem; }
+
+#box-message { margin: 0.25rem 0; font-size: 0.875rem; }
 
 #child-values { margin: 0.5rem 0; font-size: 0.875rem; }
 
@@ -94,6 +96,8 @@ h2 { margin: 1.5rem 0 0.5rem; font-size: 1.15rem; }
 #room .landmark { fill: #d9dee3; stroke: #5f6b76; }
 
 #room .landmark-label { fill: #1f2328; font-size: 12px; text-anchor: middle; }
+
+#room .temporary { fill: #e7cfa6; stroke: #7a5a2a; }
 
 #room .child { fill: #1d4ed8; stroke: #fff; stroke-width: 2; }
 

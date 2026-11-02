@@ -12,15 +12,18 @@ const MOVEMENT_STREAM = 0x9e3779b9;
  * One child moving around a room. Only where to go and how long to stay are random;
  * whether the child can climb or reach is computed from the body when they arrive.
  */
-export function createSimulation({ ledger, months, sex, seed, room }) {
+export function createSimulation({ ledger, months, sex, seed, room, boxes = [] }) {
   const body = getBodyValues(ledger, { months, sex, z: drawIndividual(seed) });
   const rng = createRng(seed ^ MOVEMENT_STREAM);
   const dwell = ledger.items.find((entry) => entry.id === 'interest_dwell').range;
   const speed = body.walkSpeed.value * CM_PER_M;
-  const landmarks = room.landmarks.map((landmark) => ({
-    ...landmark,
-    height: landmarkHeight(ledger, landmark.heightOf),
-  }));
+  const landmarks = [
+    ...room.landmarks.map((landmark) => ({
+      ...landmark,
+      height: landmarkHeight(ledger, landmark.heightOf),
+    })),
+    ...boxes,
+  ];
 
   const position = { ...room.start };
   const visits = [];

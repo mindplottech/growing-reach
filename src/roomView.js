@@ -1,3 +1,4 @@
+import { placeBox } from './boxes.js';
 import { REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
 import { createSimulation } from './simulation.js';
 
@@ -29,7 +30,7 @@ function drawRoom(svg, simulation, room) {
   svg.replaceChildren(
     svgElement('rect', { width: room.width, height: room.depth, class: 'floor' }),
     ...simulation.landmarks.map((landmark) =>
-      svgElement('rect', { x: landmark.x, y: landmark.y, width: landmark.w, height: landmark.d, class: 'landmark' }),
+      svgElement('rect', { x: landmark.x, y: landmark.y, width: landmark.w, height: landmark.d, class: landmark.temporary ? 'temporary' : 'landmark' }),
     ),
     ...simulation.landmarks.map((landmark) =>
       svgElement('text', { x: landmark.x + landmark.w / 2, y: landmark.y - 3, class: 'landmark-label' }, landmark.mapLabel ?? landmark.label),
@@ -67,17 +68,24 @@ function textItem(text) {
   return li;
 }
 
-function renderAssumptions(container, ledger, room) {
-  const { value, category } = room.nearby_range;
-  const notice = document.createElement('p');
-  notice.textContent = room._meta.notice;
-  const range = document.createElement('p');
-  range.textContent = `足場の「近く」：${value}${room._meta.unit}以内 `;
+function assumptionLine(ledger, text, category) {
+  const line = document.createElement('p');
+  line.textContent = `${text} `;
   const badge = document.createElement('span');
   badge.className = `badge cat-${category}`;
   badge.textContent = ledger._meta.categories[category];
-  range.append(badge);
-  container.replaceChildren(notice, range);
+  line.append(badge);
+  return line;
+}
+
+function renderAssumptions(container, ledger, room) {
+  const { unit, notice, category } = room._meta;
+  const { nearby_range: range, cardboard_box: box } = room;
+  container.replaceChildren(
+    assumptionLine(ledger, notice, category),
+    assumptionLine(ledger, `足場の「近く」：${range.value}${unit}以内`, range.category),
+    assumptionLine(ledger, `${box.label}の高さ：${box.height}${unit}`, box.category),
+  );
 }
 
 /** Runs the room view. `getChild` returns the current { months, sex }. */
@@ -88,8 +96,11 @@ export function mountRoomView(ledger, room, getChild) {
   const childLine = document.querySelector('#child-values');
   const visitList = document.querySelector('#visits');
   const scaffoldList = document.querySelector('#scaffold-reaches');
+  const boxMessage = document.querySelector('#box-message');
+  const clearButton = document.querySelector('#clear-boxes');
 
   let simulation;
+  let boxes = [];
   let childMark;
   let shownVisits = 0;
   let paused = false;
@@ -102,6 +113,7 @@ export function mountRoomView(ledger, room, getChild) {
       ...getChild(),
       seed: Number.parseInt(seedInput.value, 10) || 0,
       room,
+      boxes,
     });
     childMark = drawRoom(svg, simulation, room);
     childLine.textContent = describeBody(simulation.body);
@@ -142,6 +154,30 @@ export function mountRoomView(ledger, room, getChild) {
   }
 
   seedInput.addEventListener('input', restart);
+  svg.addEventListener('click', (event) => {
+    const area = svg.getBoundingClientRect();
+    const box = placeBox(
+      room,
+      simulation.landmarks,
+      {
+        x: ((event.clientX - area.left) / area.width) * room.width,
+        y: ((event.clientY - area.top) / area.height) * room.depth,
+      },
+      boxes.length + 1,
+    );
+    if (!box) {
+      boxMessage.textContent = '家具や箱と重なる場所には置けません';
+      return;
+    }
+    boxes = [...boxes, box];
+    boxMessage.textContent = `${box.label}を置きました（最初からやり直します）`;
+    restart();
+  });
+  clearButton.addEventListener('click', () => {
+    boxes = [];
+    boxMessage.textContent = '図をタップすると段ボール箱を置けます';
+    restart();
+  });
   pauseButton.addEventListener('click', () => {
     paused = !paused;
     pauseButton.textContent = paused ? '再生' : '一時停止';
