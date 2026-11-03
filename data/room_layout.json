@@ -13,6 +13,21 @@
   "wall_height": { "value": 240, "category": "provisional", "note": "3D表示の壁の高さ。台帳になく、設計者が置いた仮値" },
   "lock_display_size_cm": 8,
   "cardboard_box": { "label": "段ボール箱", "height": 30, "w": 40, "d": 30, "approach_gap": 20, "category": "provisional", "note": "台帳になく、設計者が置いた仮値" },
+  "furniture_catalog": {
+    "note": "画面の「家具を置く」で置ける物。幅と奥行きは設計者が置いた仮値で、高さは values_ledger.json の項目を指す（段ボール箱は cardboard_box の仮値）",
+    "category": "provisional",
+    "items": [
+      { "kind": "sofa", "label": "ソファ", "icon": "sofa", "groupLabel": "ソファ", "parts": [
+        { "key": "seat", "label": "ソファの座面", "heightOf": ["furniture_heights", "sofa_seat"], "dx": 0, "dy": 0, "w": 180, "d": 60 },
+        { "key": "back", "label": "ソファの背もたれ", "heightOf": ["furniture_heights", "sofa_back"], "dx": 0, "dy": 60, "w": 180, "d": 20 }
+      ] },
+      { "kind": "bed", "label": "ベッド", "icon": "bed-single", "parts": [{ "label": "ベッド", "heightOf": ["furniture_heights", "adult_bed_mattress"], "w": 100, "d": 200 }] },
+      { "kind": "chair", "label": "椅子", "icon": "armchair", "parts": [{ "label": "椅子", "heightOf": ["furniture_heights", "dining_chair_seat"], "w": 40, "d": 40 }] },
+      { "kind": "table", "label": "テーブル", "icon": "utensils", "parts": [{ "label": "テーブル", "heightOf": ["furniture_heights", "dining_table_top"], "w": 140, "d": 90 }] },
+      { "kind": "shelf", "label": "棚", "icon": "library", "parts": [{ "label": "棚", "heightOf": ["furniture_heights", "low_shelf_top"], "w": 130, "d": 35 }] },
+      { "kind": "box", "label": "段ボール箱", "icon": "package", "parts": [{ "box": true }] }
+    ]
+  },
   "layouts": [
     {
       "id": "default",

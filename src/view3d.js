@@ -536,6 +536,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     }
     const point = tool.type === 'window' ? wallOrFloorPoint(event) : floorPoint(event);
     if (point) editing.useTool(tool, point);
+    else editing.missed(tool);
   });
 
   window.addEventListener('keydown', (event) => {
