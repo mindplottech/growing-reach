@@ -5,7 +5,6 @@ import { makeChild } from './childFigure3d.js';
 import { createPoseTracker, floorShadow, footHeight, reachMark } from './childPose.js';
 import { buildFurniture, buildSkirting } from './furniture3d.js';
 import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
-import { METHOD_WORDS } from '../sim/wording.js';
 
 // Display only: colours, sizes on screen, the camera and the figure. No body value or
 // layout dimension is written here.
@@ -152,7 +151,7 @@ function arrow(from, to) {
  * `editing`; this module never decides whether a change is allowed.
  */
 export function mountView3d({ container, chip, ledger, settings, session, slider, editing, trailToggle }) {
-  // id → { level, method } from the last calculation; id → the tag sprite and its thing.
+  // id → { level, text } from the last calculation; id → the tag sprite and its thing.
   let tagLevels = new Map();
   let tags = new Map();
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -312,13 +311,13 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     return wall;
   }
 
-  /** Redraws one tag in its row's colour, with the way most children reached it. */
+  /** Redraws one tag in its row's colour, with the same words as its row. */
   function paintTag(id) {
     const tag = tags.get(id);
     if (!tag) return;
     const known = tagLevels.get(id);
     const style = TAG_STYLES[known?.level ?? 'plain'];
-    const text = known?.method ? `${tag.text}　${METHOD_WORDS[known.method]}` : tag.text;
+    const text = known ? `${tag.text}　${known.text}` : tag.text;
     const { texture, widthPerHeight } = labelTexture(text, style);
     tag.sprite.material.map?.dispose();
     tag.sprite.material.map = texture;

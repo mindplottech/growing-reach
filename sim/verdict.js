@@ -28,10 +28,16 @@ function howReached({ method, footholdLabel }) {
 const startedFrom = (height) => (height === 0 ? '床' : cm(height));
 
 /** The rows for dangerous things and falls, in fixed sentences with a child list each. */
-function hazardSection(hazards, summaries, total, lockObject) {
+function hazardSection(hazards, summaries, total, lockObject, landmarks) {
   const childText = (seed, text) => ({ seed, text: `${seed}番の子　${text}` });
-  const lock = lockObject && lockRow(lockObject, summaries);
-  const rows = hazardRows(hazards, summaries).map((row) => ({
+  // The foothold by the short name the room shows on it (いす for ダイニングチェア).
+  const shown = (label) => {
+    const landmark = landmarks.find((each) => each.label === label);
+    return landmark?.mapLabel ?? label;
+  };
+  const named = (row) => row && { ...row, foothold: row.foothold && shown(row.foothold) };
+  const lock = lockObject && named(lockRow(lockObject, summaries));
+  const rows = hazardRows(hazards, summaries).map(named).map((row) => ({
     ...row,
     text: `${row.label}：${total}人中${row.children.length}人が届く（うち登って${row.counts.climbed}人）`,
     children: row.children.map((child) => childText(child.seed, howReached(child))),
@@ -159,9 +165,9 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
     ids,
     arrows,
     total,
-    hazards: hazardSection(hazards, summaries, total, lock && { id: lock.id, label: lock.mapLabel ?? lock.label }),
-    // The children to play first: those who reached the window lock, then the others to whom
-    // something worth watching happened; each group by seed.
+    hazards: hazardSection(hazards, summaries, total, lock && { id: lock.id, label: lock.mapLabel ?? lock.label }, landmarks),
+    // The runs to play, and only these: those who reached the window lock first, then the others
+    // who reached a dangerous thing or fell; each group by seed.
     eventful: [
       ...summaries.filter(({ summary }) => summary.lock),
       ...summaries.filter(({ summary }) => !summary.lock && somethingHappened(summary)),

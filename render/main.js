@@ -135,8 +135,24 @@ function mountEditing({ session, history, startRoom, catalog, say, results }) {
       setTool({ type: 'select' });
     }
   });
+  // 「その他」 holds the tools that are used less: placing the child, the window, undo, the trail and the speed.
+  const moreButton = document.querySelector('#more-tools');
+  const moreMenu = document.querySelector('#more-menu');
+  const closeMore = () => {
+    moreMenu.hidden = true;
+    moreButton.setAttribute('aria-expanded', 'false');
+  };
+  moreButton.addEventListener('click', () => {
+    const open = moreMenu.hidden;
+    moreMenu.hidden = !open;
+    moreButton.setAttribute('aria-expanded', String(open));
+    closeMenu();
+  });
   document.addEventListener('pointerdown', (event) => {
-    if (!event.target.closest('.tool-group')) closeMenu();
+    if (!event.target.closest('.tool-group')) {
+      closeMenu();
+      closeMore();
+    }
   });
 
   const showPlaying = () => {
@@ -212,20 +228,6 @@ function mountEditing({ session, history, startRoom, catalog, say, results }) {
   };
 }
 
-/** 「いま再生中」 in the corner of the 3D view, with the previous and next child of the queue. */
-function mountNowPlaying({ session, autoplay, getChild }) {
-  const text = document.querySelector('#now-playing-text');
-  const show = () => {
-    const { months } = getChild();
-    const height = session.getSimulation().body.height.value;
-    text.textContent = `いま再生中：${session.getSeed()}番目の子（${Math.floor(months / 12)}歳${months % 12}か月・身長${height.toFixed(1)}cm）`;
-  };
-  document.querySelector('#previous-child').addEventListener('click', () => autoplay.previous());
-  document.querySelector('#next-child').addEventListener('click', () => autoplay.next());
-  session.on('restart', show);
-  show();
-}
-
 async function start() {
   const [ledger, roomFile] = await Promise.all([fetchJson(LEDGER_URL), fetchJson(ROOM_URL)]);
   const startRoom = selectLayout(roomFile, roomFile.layouts[0].id);
@@ -240,7 +242,7 @@ async function start() {
   });
 
   const session = createSession({ ledger, settings, room: startRoom, getChild, startSpeed: settings.start_speed });
-  const autoplay = createAutoplay({ session, total: settings.trial_count });
+  const autoplay = createAutoplay({ session });
   const history = createHistory(startRoom);
   // The panel is mounted after the toolbar, so the toolbar reaches it through this.
   const results = { judge: (kind) => panel.judge(kind), markChanged: () => panel.markChanged() };
@@ -257,7 +259,6 @@ async function start() {
     flashSeconds: settings.event_flash_seconds,
     onMoment: (event) => view?.pulse(event.hazardId ?? event.targetId, settings.event_flash_seconds),
   });
-  mountNowPlaying({ session, autoplay, getChild });
   // The hundred children are run at once, and the first child starts moving without a click.
   panel.judge();
 

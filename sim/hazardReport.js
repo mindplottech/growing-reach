@@ -61,10 +61,9 @@ export function summarizeChild(events) {
   return { hazards, lock, onFurniture, whileClimbing };
 }
 
-/** Something worth watching happened to this child: the lock, a climb to a dangerous thing, or a fall. */
+/** Worth playing: the child reached the lock or a dangerous thing (in any way), or fell. */
 export function somethingHappened(summary) {
-  return Boolean(summary.lock || summary.onFurniture || summary.whileClimbing)
-    || [...summary.hazards.values()].some(({ method }) => method === METHOD_CLIMBED);
+  return Boolean(summary.lock || summary.onFurniture || summary.whileClimbing) || summary.hazards.size > 0;
 }
 
 /** The lock row: who reached the window lock, how, and its colour by the same rule as the things. */
@@ -75,7 +74,19 @@ export function lockRow(lockObject, children) {
   return hazardRows([{ id: lockObject.id, label: lockObject.label }], withLock)[0];
 }
 
-/** One row per dangerous thing: who reached it, how, and the colour the counts give it. */
+/** The value that comes up most often; on a tie the one seen first (the lower seed). */
+function commonest(values) {
+  const tally = new Map();
+  for (const value of values) tally.set(value, (tally.get(value) ?? 0) + 1);
+  let best = null;
+  for (const [value, count] of tally) if (best === null || count > tally.get(best)) best = value;
+  return best;
+}
+
+/**
+ * One row per dangerous thing: who reached it, how, the colour the counts give it, and the
+ * foothold most of the climbing children reached it from.
+ */
 export function hazardRows(hazards, children) {
   return hazards.map(({ id, label }) => {
     const reached = children
@@ -86,7 +97,7 @@ export function hazardRows(hazards, children) {
     let level = ROW_PLAIN;
     if (counts.climbed > 0) level = ROW_DANGER;
     else if (counts.tiptoe > 0) level = ROW_CAUTION;
-    return { id, label, children: reached, counts, level };
+    return { id, label, children: reached, counts, level, foothold: commonest(reached.filter((child) => child.method === METHOD_CLIMBED).map(({ footholdLabel }) => footholdLabel)) };
   });
 }
 

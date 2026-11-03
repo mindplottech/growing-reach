@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAutoplay } from '../render/autoplay.js';
 import { EVENT } from '../sim/events.js';
-import { METHOD_CLIMBED, somethingHappened, summarizeChild } from '../sim/hazardReport.js';
+import { somethingHappened, summarizeChild } from '../sim/hazardReport.js';
 import { createPlayback } from '../sim/playback.js';
 import { createSimulation } from '../sim/simulation.js';
 import { judgeRoom } from '../sim/verdict.js';
@@ -49,11 +49,10 @@ test('a child from a list plays the very events the count saw: same times, same 
   }
 });
 
-test('the children played first are those to whom something happened, the lock first', () => {
+test('only the runs that reached the lock or a dangerous thing, or fell, are played; the lock first', () => {
   for (let seed = 1; seed <= settings.trial_count; seed += 1) {
     const summary = summarizeChild(counted(seed));
-    const happened = Boolean(summary.lock || summary.onFurniture || summary.whileClimbing)
-      || [...summary.hazards.values()].some(({ method }) => method === METHOD_CLIMBED);
+    const happened = Boolean(summary.lock || summary.onFurniture || summary.whileClimbing) || summary.hazards.size > 0;
     assert.equal(somethingHappened(summary), happened);
     assert.equal(verdict.eventful.includes(seed), happened, `seed ${seed}`);
   }
@@ -83,31 +82,36 @@ function fakeSession() {
   return {
     asked,
     setSeed: (seed) => asked.push(seed),
-    setPlaying: () => {},
+    playing: null,
+    setPlaying(next) { this.playing = next; },
     on: (type, listener) => listeners[type]?.push(listener),
     finish: () => listeners.finished.forEach((listener) => listener()),
   };
 }
 
-test('autoplay goes through the eventful children in order, then round again', () => {
+test('autoplay goes through the runs where something happened, in order, then round again', () => {
   const session = fakeSession();
-  const autoplay = createAutoplay({ session, total: 100 });
+  const autoplay = createAutoplay({ session });
   autoplay.useEventful([3, 8, 20]);
   session.finish();
   session.finish();
   session.finish();
   assert.deepEqual(session.asked, [3, 8, 20, 3]);
-  autoplay.previous();
-  assert.equal(autoplay.current(), 20);
 });
 
-test('with nobody eventful, autoplay plays seed 1, 2, 3 …; a chosen list plays from the chosen child', () => {
+test('with no such run nothing plays; a pressed row plays only its runs, and pressing it again goes back', () => {
   const session = fakeSession();
-  const autoplay = createAutoplay({ session, total: 100 });
+  const autoplay = createAutoplay({ session });
   autoplay.useEventful([]);
   session.finish();
-  assert.deepEqual(session.asked, [1, 2]);
-  autoplay.useList([5, 9, 12], 9);
+  assert.deepEqual(session.asked, []);
+  assert.equal(session.playing, false);
+  autoplay.useEventful([2, 5, 9, 12]);
+  autoplay.useRow('medicine', [9, 12]);
   session.finish();
   assert.deepEqual(session.asked.slice(-2), [9, 12]);
+  assert.equal(autoplay.row(), 'medicine');
+  autoplay.useRow('medicine', [9, 12]);
+  assert.equal(autoplay.row(), null);
+  assert.equal(autoplay.current(), 2);
 });

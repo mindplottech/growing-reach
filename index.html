@@ -30,34 +30,44 @@
 
   <main class="workspace">
     <nav id="toolbar" aria-label="道具">
-      <button type="button" class="tool" data-tool="child" data-tip="床をクリックして子どもを置きます" aria-pressed="false">
-        <span class="icon" style="--icon: url(../assets/icons/baby.svg)"></span><span class="tool-label">子ども</span>
-      </button>
       <div class="tool-group">
         <button type="button" class="tool" data-tool="furniture" data-tip="置く家具を選びます" aria-pressed="false" aria-haspopup="menu" aria-expanded="false" aria-controls="furniture-menu">
           <span class="icon" style="--icon: url(../assets/icons/sofa.svg)"></span><span class="tool-label">家具</span>
         </button>
         <div id="furniture-menu" role="menu" aria-label="置く家具" hidden></div>
       </div>
-      <button type="button" class="tool" data-tool="window" data-tip="壁をクリックして窓を動かします" aria-pressed="false">
-        <span class="icon" style="--icon: url(../assets/icons/app-window.svg)"></span><span class="tool-label">窓</span>
-      </button>
       <button id="play" type="button" class="tool" data-tip="子どもを動かします">
         <span class="icon" style="--icon: url(../assets/icons/play.svg)"></span><span class="tool-label">再生</span>
       </button>
-      <div class="speed-choice" role="group" aria-label="再生の速さ">
-        <button type="button" class="speed" data-speed="1" aria-pressed="false">1×</button>
-        <button type="button" class="speed" data-speed="2" aria-pressed="false">2×</button>
-        <button type="button" class="speed" data-speed="4" aria-pressed="false">4×</button>
-        <button type="button" class="speed" data-speed="8" aria-pressed="false">8×</button>
-      </div>
-      <label class="tool tool-check"><input id="show-trail" type="checkbox" checked><span class="tool-label">歩いた跡</span></label>
+      <button id="retry" type="button" class="tool" data-tip="動かした配置で100人を計算し直します" data-pending="false" disabled>
+        <span class="icon" style="--icon: url(../assets/icons/refresh-cw.svg)"></span><span class="tool-label">試し直す</span>
+      </button>
       <button id="reset" type="button" class="tool" data-tip="最初の部屋に戻します">
         <span class="icon" style="--icon: url(../assets/icons/rotate-ccw.svg)"></span><span class="tool-label">リセット</span>
       </button>
-      <button id="undo" type="button" class="tool" data-tip="ひとつ前の配置に戻します" disabled>
-        <span class="icon" style="--icon: url(../assets/icons/undo-2.svg)"></span><span class="tool-label">元に戻す</span>
-      </button>
+      <div class="tool-group">
+        <button id="more-tools" type="button" class="tool" aria-haspopup="true" aria-expanded="false" aria-controls="more-menu">
+          <span class="icon" style="--icon: url(../assets/icons/ellipsis.svg)"></span><span class="tool-label">その他</span>
+        </button>
+        <div id="more-menu" class="more-menu" aria-label="その他の道具" hidden>
+          <button type="button" class="tool" data-tool="child" data-tip="床をクリックして子どもを置きます" aria-pressed="false">
+            <span class="icon" style="--icon: url(../assets/icons/baby.svg)"></span><span class="tool-label">子ども</span>
+          </button>
+          <button type="button" class="tool" data-tool="window" data-tip="壁をクリックして窓を動かします" aria-pressed="false">
+            <span class="icon" style="--icon: url(../assets/icons/app-window.svg)"></span><span class="tool-label">窓</span>
+          </button>
+          <button id="undo" type="button" class="tool" data-tip="ひとつ前の配置に戻します" disabled>
+            <span class="icon" style="--icon: url(../assets/icons/undo-2.svg)"></span><span class="tool-label">元に戻す</span>
+          </button>
+          <label class="tool tool-check"><input id="show-trail" type="checkbox" checked><span class="tool-label">歩いた跡</span></label>
+          <div class="speed-choice" role="group" aria-label="再生の速さ">
+            <button type="button" class="speed" data-speed="1" aria-pressed="false">1×</button>
+            <button type="button" class="speed" data-speed="2" aria-pressed="false">2×</button>
+            <button type="button" class="speed" data-speed="4" aria-pressed="false">4×</button>
+            <button type="button" class="speed" data-speed="8" aria-pressed="false">8×</button>
+          </div>
+        </div>
+      </div>
       <button id="show-hint" type="button" class="tool tool-help" data-tip="操作のしかたを出します" aria-pressed="false" aria-controls="tool-hint">
         <span class="help-mark" aria-hidden="true">？</span><span class="visually-hidden">操作のしかた</span>
       </button>
@@ -71,11 +81,6 @@
       <p id="tool-hint" class="canvas-hint" hidden>家具はドラッグで動かせます。右ドラッグで向きを変え、ホイールで拡大します。</p>
       <p id="canvas-message" class="canvas-message" role="status" hidden></p>
       <ol id="event-log" class="event-log" aria-label="この子に起きたこと" aria-live="polite" hidden></ol>
-      <div class="now-playing" aria-live="polite">
-        <button id="previous-child" type="button" class="step-button" aria-label="前の子">‹ 前の子</button>
-        <span id="now-playing-text"></span>
-        <button id="next-child" type="button" class="step-button" aria-label="次の子">次の子 ›</button>
-      </div>
       <p id="event-flash" class="event-flash" aria-hidden="true" hidden></p>
     </section>
 
@@ -91,11 +96,6 @@
           <label><input type="radio" name="sex" value="male"> 男の子</label>
         </fieldset>
       </section>
-
-      <div id="retry-box" class="retry-box" hidden>
-        <span>配置が変わりました</span>
-        <button id="retry" type="button" class="primary-button">試し直す</button>
-      </div>
 
       <section id="verdict" class="verdict" data-level="pending" aria-live="polite">
         <p class="verdict-headline">計算しています…</p>
