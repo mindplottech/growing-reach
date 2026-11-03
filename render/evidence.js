@@ -1,4 +1,5 @@
 import { provisionalRows } from '../sim/params.js';
+import { DISPLAY_ONLY_PARTS, displayOnlyHeights } from './sceneModel.js';
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -52,6 +53,13 @@ function itemCard(ledger, item) {
   return card;
 }
 
+/** One line on the parts drawn at ledger heights that the calculation does not use. */
+function displayOnlyNote(ledger) {
+  const heights = displayOnlyHeights(ledger);
+  const parts = DISPLAY_ONLY_PARTS.map(({ key, label, heightOf }) => `${label}（${heights[key].toFixed(1)}cm、${heightOf.join('.')}）`);
+  return `${parts.join('・')}は、台帳の値で形を描くだけで、登る・届くの計算には使っていません。`;
+}
+
 /** The ledger, the layout and the settings exactly as loaded, for the evidence dialog. */
 export function renderEvidence(container, { ledger, roomFile }) {
   const meta = ledger._meta;
@@ -98,6 +106,8 @@ export function renderEvidence(container, { ledger, roomFile }) {
     element('h2', '', '部屋の配置（data/room_layout.json）'),
     element('p', '', roomFile._meta.notice),
     element('pre', '', JSON.stringify(roomFile, null, 2)),
+    element('h2', '', '3D表示だけに描く部分'),
+    element('p', '', displayOnlyNote(ledger)),
   );
 
   const sources = element('section', 'evidence-section');

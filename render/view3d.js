@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { makeChild } from './childFigure3d.js';
 import { createPoseTracker, floorShadow, footHeight, reachMark } from './childPose.js';
+import { buildFurniture, buildSkirting } from './furniture3d.js';
 import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
 
 // Display only: colours, sizes on screen, the camera and the figure. No body value or
 // layout dimension is written here.
-const PASTELS = [0xf2d4cc, 0xcfe5d9, 0xd2ddef, 0xf1e4bf, 0xe0d6ee, 0xf1d6e2, 0xd0e8eb];
-const BOX_COLOUR = 0xe2c79b;
-const WINDOW_COLOUR = 0xf2eee4;
 const WALL_COLOUR = 0xfffcf2;
 const BACKGROUND = 0xf6f5f1;
 const ACCENT = 0x2f5d8a;
@@ -17,7 +16,6 @@ const CAUTION = 0xc9900a;
 const EDGE_OPACITY = 0.95;
 const DANGER_GLOW = 0.32;
 const FOCUS_GLOW = 0.28;
-const CORNER_CM = 5;
 const CORNER_SHARE = 0.3;
 const CORNER_SEGMENTS = 3;
 const SHADOW_MAP_SIZE = 1024;
@@ -46,6 +44,7 @@ const HAZARD_COLOUR = 0xb5534a;
 const HAZARD_THICK_CM = 3;
 const HAZARD_LABEL_SHARE = 0.8;
 const SIT_DROP = 0.14;
+const noRaycast = () => {};
 const TRAIL_OPACITY = 0.35;
 const TRAIL_LIFT_CM = 0.6;
 
@@ -90,36 +89,6 @@ function woodTexture() {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
-}
-
-/** A round figure one unit tall, two to three heads high, with arms on shoulder joints. */
-function makeChild() {
-  const shirt = new THREE.MeshStandardMaterial({ color: 0x7fa6cf, roughness: 0.7 });
-  const trousers = new THREE.MeshStandardMaterial({ color: 0x4f6f94, roughness: 0.7 });
-  const skin = new THREE.MeshStandardMaterial({ color: 0xfcd5ae, roughness: 0.6 });
-  const body = new THREE.Group();
-  const part = (parent, geometry, material, x, y, scale) => {
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(x, y, 0);
-    if (scale) mesh.scale.set(...scale);
-    mesh.castShadow = true;
-    parent.add(mesh);
-    return mesh;
-  };
-  part(body, new THREE.SphereGeometry(0.2, 24, 18), skin, 0, 0.8);
-  part(body, new THREE.SphereGeometry(0.16, 20, 16), shirt, 0, 0.42, [1, 1.2, 0.9]);
-  const arms = [-1, 1].map((side) => {
-    part(body, new THREE.CapsuleGeometry(0.055, 0.1, 4, 10), trousers, side * 0.07, 0.11);
-    const shoulder = new THREE.Group();
-    shoulder.position.set(side * 0.17, 0.53, 0);
-    part(shoulder, new THREE.CapsuleGeometry(0.045, 0.16, 4, 10), shirt, 0, -0.1);
-    part(shoulder, new THREE.SphereGeometry(0.05, 12, 10), skin, 0, -0.22);
-    body.add(shoulder);
-    return shoulder;
-  });
-  const root = new THREE.Group();
-  root.add(body);
-  return { root, body, arms };
 }
 
 function applyPose(figure, pose) {
@@ -255,6 +224,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let danger = { level: null, ids: new Set(), arrows: [] };
   let focus = new Set();
   let selectedId = null;
+  let hoveredId = null;
   let tool = { type: 'select' };
 
   function fitCamera() {
@@ -273,35 +243,39 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     sun.shadow.camera.updateProjectionMatrix();
   }
 
-  function baseColour(object, index) {
-    if (object.kind === 'box') return BOX_COLOUR;
-    if (object.kind === 'window' || object.kind === 'window_lock') return WINDOW_COLOUR;
-    return PASTELS[index % PASTELS.length];
-  }
-
   function addObject(object, index) {
-    const height = object.top - object.bottom;
-    const radius = Math.min(CORNER_CM, Math.min(object.w, object.d, height) * CORNER_SHARE);
-    const material = new THREE.MeshStandardMaterial({ color: baseColour(object, index), roughness: 0.85 });
-    const geometry = new RoundedBoxGeometry(object.w, height, object.d, CORNER_SEGMENTS, radius);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(object.x + object.w / 2, object.bottom + height / 2, object.z + object.d / 2);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.userData.id = object.id;
-    mesh.userData.height = height;
+    // A group standing on the floor at the centre of the footprint; its parts carry the look.
+    const { group, materials } = buildFurniture(object, model, index);
+    const alongZ = object.facing.x === 0;
+    const localW = alongZ ? object.w : object.d;
+    const localD = alongZ ? object.d : object.w;
+    const edgeBottom = object.bottom;
+    const edgeHeight = object.visualTop - edgeBottom;
     const edge = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(object.w + 2, height + 2, object.d + 2)),
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(localW + 2, edgeHeight + 2, localD + 2)),
       new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: EDGE_OPACITY }),
     );
+    edge.position.y = edgeBottom + edgeHeight / 2;
     edge.visible = false;
-    mesh.add(edge);
-    mesh.userData.edge = edge;
+    edge.raycast = noRaycast;
+    group.add(edge);
+    // Furniture names show only under the mouse; the lock keeps its tag all the time.
     const label = labelSprite(object.label);
-    label.position.set(0, height / 2 + LABEL_GAP_CM, 0);
-    mesh.add(label);
-    roomGroup.add(mesh);
-    objectMeshes.set(object.id, mesh);
+    label.position.set(0, object.visualTop + LABEL_GAP_CM, 0);
+    label.raycast = noRaycast;
+    label.visible = object.kind === 'window_lock';
+    group.add(label);
+    Object.assign(group.userData, {
+      id: object.id, top: object.top, w: object.w, edge, label, materials, alwaysLabelled: label.visible,
+    });
+    roomGroup.add(group);
+    objectMeshes.set(object.id, group);
+  }
+
+  function showLabels() {
+    for (const [id, group] of objectMeshes) {
+      group.userData.label.visible = group.userData.alwaysLabelled || id === hoveredId;
+    }
   }
 
   function addWall(width, x, z, rotation) {
@@ -337,9 +311,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       const end = objectMeshes.get(to);
       if (!start || !end) continue;
       const origin = start.position.clone();
-      origin.y += start.userData.height / 2 + ARROW_LIFT_CM;
+      origin.y = start.userData.top + ARROW_LIFT_CM;
       const target = end.position.clone();
-      target.y += end.userData.height / 2;
+      target.y = end.userData.top;
       arrowGroup.add(arrow(origin, target));
     }
   }
@@ -368,7 +342,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     backWall = addWall(model.width, model.width / 2, model.depth, 0);
     addWall(model.depth, 0, model.depth / 2, Math.PI / 2);
 
+    roomGroup.add(buildSkirting(model));
     model.objects.forEach(addObject);
+    showLabels();
     // Dangerous things lie flat on their furniture; they are drawn but not picked or dragged.
     for (const hazard of model.hazards) {
       const mesh = new THREE.Mesh(
@@ -383,16 +359,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       mesh.add(label);
       roomGroup.add(mesh);
     }
-    if (model.pane) {
-      const paneHeight = model.pane.top - model.pane.bottom;
-      const pane = new THREE.Mesh(
-        new THREE.PlaneGeometry(model.pane.w, paneHeight),
-        new THREE.MeshStandardMaterial({ color: 0xcfe9f5, transparent: true, opacity: 0.75, side: THREE.DoubleSide }),
-      );
-      pane.position.set(model.pane.x + model.pane.w / 2, model.pane.bottom + paneHeight / 2, model.depth - 1);
-      roomGroup.add(pane);
-    }
-
     const previous = new Map(planes.map(({ id, mesh }) => [id, mesh.position.y]));
     planes = model.planes.map(({ id, label, height }) => {
       const mesh = new THREE.Mesh(
@@ -433,15 +399,16 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const pulse = 0.75 + 0.25 * Math.sin(now / PULSE_MS);
     const selected = selectedId ? groupOf(selectedId) : new Set();
     const edgeColour = danger.level === 'caution' ? CAUTION : DANGER;
-    for (const [id, mesh] of objectMeshes) {
-      const { material, userData } = mesh;
-      const { edge } = userData;
-      if (danger.ids.has(id)) {
-        material.emissive.setHex(edgeColour).multiplyScalar(DANGER_GLOW * pulse);
-      } else if (focus.has(id)) {
-        material.emissive.setHex(ACCENT).multiplyScalar(FOCUS_GLOW * pulse);
-      } else {
-        material.emissive.setHex(0x000000);
+    for (const [id, group] of objectMeshes) {
+      const { materials, edge } = group.userData;
+      for (const material of materials) {
+        if (danger.ids.has(id)) {
+          material.emissive.setHex(edgeColour).multiplyScalar(DANGER_GLOW * pulse);
+        } else if (focus.has(id)) {
+          material.emissive.setHex(ACCENT).multiplyScalar(FOCUS_GLOW * pulse);
+        } else {
+          material.emissive.setHex(0x000000);
+        }
       }
       edge.visible = selected.has(id) || danger.ids.has(id) || focus.has(id);
       edge.material.color.setHex(selected.has(id) || !danger.ids.has(id) ? ACCENT : edgeColour);
@@ -455,8 +422,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       return;
     }
     const top = mesh.position.clone();
-    top.y += mesh.userData.height / 2 + CHIP_LIFT_CM;
-    top.x += mesh.geometry.parameters.width / 2;
+    top.y = mesh.userData.top + CHIP_LIFT_CM;
+    top.x += mesh.userData.w / 2;
     top.project(camera);
     chip.hidden = top.z > 1;
     chip.style.left = `${((top.x + 1) / 2) * container.clientWidth}px`;
@@ -475,7 +442,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
 
   function render(now) {
     const simulation = session.getSimulation();
-    const seconds = lastFrame === null ? 0 : (now - lastFrame) / MS_PER_SECOND;
+    // The figure moves at the playback speed, like the simulation clock.
+    const seconds = lastFrame === null ? 0 : ((now - lastFrame) / MS_PER_SECOND) * session.getSpeed();
     lastFrame = now;
     const pose = updatePose({
       x: simulation.position.x,
@@ -490,6 +458,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     blob.scale.setScalar(onFloor.scale);
     blob.material.opacity = SHADOW_OPACITY * onFloor.opacity;
     const reached = reachMark(simulation, pose.feet);
+    mark.visible = session.isPlaying();
     mark.position.set(pose.x, reached.height, pose.z);
     mark.material.color.setHex(reached.reachesLock ? DANGER : ACCENT);
     drawTrail(simulation, pose);
@@ -534,8 +503,10 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
 
   function pickObject(event) {
     ray(event);
-    const [hit] = raycaster.intersectObjects([...objectMeshes.values()], false);
-    return hit ? hit.object.userData.id : null;
+    const [hit] = raycaster.intersectObjects([...objectMeshes.values()], true);
+    let node = hit?.object;
+    while (node && node.userData.id === undefined) node = node.parent;
+    return node ? node.userData.id : null;
   }
 
   function select(id) {
@@ -559,7 +530,15 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     renderer.domElement.setPointerCapture(event.pointerId);
   });
 
+  function hover(id) {
+    if (id === hoveredId) return;
+    hoveredId = id;
+    showLabels();
+  }
+  renderer.domElement.addEventListener('pointerleave', () => hover(null));
+
   renderer.domElement.addEventListener('pointermove', (event) => {
+    if (!press) hover(pickObject(event));
     if (!press?.id || !editing.canMove(press.id)) return;
     if (!press.moved && Math.hypot(event.clientX - press.x, event.clientY - press.y) < TAP_PIXELS) return;
     press.moved = true;

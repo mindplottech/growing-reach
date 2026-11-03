@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { getBodyValues } from '../sim/body.js';
 import { landmarkHeight, selectLayout } from '../sim/room.js';
 import {
-  buildSceneModel, cameraPlacement, highlightedIds, objectState, reachableNow,
+  buildSceneModel, cameraPlacement, displayOnlyHeights, facingToward, framePoints, highlightedIds, objectState, projectPoint, reachableNow,
   STATE_CLIMBABLE, STATE_OUT, STATE_REACHABLE,
 } from '../render/sceneModel.js';
 import { footholdReachLevel, REACH_NONE } from '../sim/scaffold.js';
@@ -109,15 +109,61 @@ test('on the floor only nearby objects light up', () => {
   assert.ok(!near.has('dining_table'));
 });
 
-test('the first camera view keeps the whole room in frame at any aspect', () => {
-  const room = { width: 450, depth: 360, wallHeight: 240 };
-  const distance = (aspect) => {
-    const { position, target } = cameraPlacement(room, aspect, 40);
-    return Math.hypot(position.x - target.x, position.y - target.y, position.z - target.z);
-  };
-  assert.ok(distance(0.5) > distance(1));
-  assert.equal(distance(1), distance(2));
-  const { position, target } = cameraPlacement(room, 1, 40);
-  assert.ok(position.y > target.y, 'from above');
-  assert.ok(position.z < 0, 'from the open side of the room');
+// The canvas at 1280x800: the window minus the toolbar and the results panel.
+const CANVAS_ASPECT = 872 / 740;
+
+test('the first camera fills about 80% of the width, with everything drawn in frame', (t) => {
+  const m = model(48);
+  for (const aspect of [CANVAS_ASPECT, 1.6, 0.9]) {
+    const camera = cameraPlacement(m, aspect, 40);
+    assert.ok(camera.position.y > camera.target.y, 'from above');
+    assert.ok(camera.position.z < 0, 'from the open side of the room');
+    const points = framePoints(m);
+    for (const o of m.objects) {
+      assert.ok(points.some(({ x, y, z }) => x === o.x + o.w && z === o.z + o.d && y === o.visualTop), `${o.id} is framed`);
+    }
+    const corners = points.map((point) => projectPoint(point, camera, aspect, 40));
+    const xs = corners.map(({ x }) => x);
+    const ys = corners.map(({ y }) => y);
+    const share = (Math.max(...xs) - Math.min(...xs)) / 2;
+    t.diagnostic(`aspect ${aspect.toFixed(2)}: width share ${share.toFixed(3)}, y ${Math.min(...ys).toFixed(2)}..${Math.max(...ys).toFixed(2)}`);
+    assert.ok(share <= 0.8 + 1e-6 && Math.max(...ys) <= 0.7 + 1e-6 && Math.min(...ys) >= -0.9 - 1e-6, 'inside the frame');
+    if (aspect === CANVAS_ASPECT) assert.ok(share > 0.75, 'close enough to fill the width');
+    assert.ok(Math.abs((Math.max(...xs) + Math.min(...xs)) / 2) < 0.02, 'centred left to right');
+  }
+});
+
+test('each piece is drawn by the shape of the ledger height it points to', () => {
+  const shapes = Object.fromEntries(model(48).objects.map(({ id, shape }) => [id, shape]));
+  assert.deepEqual(shapes, {
+    sofa: 'sofa', low_table: 'low_table', low_shelf: 'shelf', dining_chair: 'chair',
+    dining_table: 'table', window: 'window', window_lock: 'window_lock',
+  });
+});
+
+test('display-only parts take ledger heights and never change the heights the simulation uses', () => {
+  const m = model(48);
+  const heights = displayOnlyHeights(ledger);
+  const { dining_chair_back: back, sofa_armrest: arm, sofa_back: sofaBack } = byId('furniture_heights').values;
+  assert.equal(heights.chairBack, (back.values[0] + back.values[1]) / 2);
+  assert.equal(heights.sofaArm, (arm.min + arm.max) / 2);
+  assert.equal(heights.sofaBack, sofaBack.median);
+  const find = (id) => m.objects.find((o) => o.id === id);
+  assert.equal(find('dining_chair').look.back, heights.chairBack);
+  assert.equal(find('dining_chair').top, landmarkHeight(ledger, ['furniture_heights', 'dining_chair_seat']));
+  assert.deepEqual(find('sofa').look, { arm: heights.sofaArm, back: heights.sofaBack });
+  assert.equal(find('sofa').top, landmarkHeight(ledger, ['furniture_heights', 'sofa_seat']));
+  // Where the layout has its own sofa back, the seat draws no second one.
+  const byWindow = selectLayout(roomFile, 'sofa_by_window');
+  const seat = model(48, byWindow).objects.find((o) => o.id === 'sofa_seat');
+  assert.deepEqual(seat.look, { arm: heights.sofaArm });
+});
+
+test('a chair turns its back on the table; a shelf opens toward where the child comes from', () => {
+  const m = model(48);
+  const chair = m.objects.find((o) => o.id === 'dining_chair');
+  const table = m.objects.find((o) => o.id === 'dining_table');
+  assert.equal(Math.sign(table.x - chair.x), chair.facing.x);
+  const shelf = roomLayout.landmarks.find(({ id }) => id === 'low_shelf');
+  assert.deepEqual(facingToward(shelf, shelf.approach), m.objects.find((o) => o.id === 'low_shelf').facing);
 });

@@ -112,12 +112,15 @@ function motionShape(kind, elapsed, seconds) {
  * really is and the events so far, and returns how to draw them. It only reads: nothing here
  * can change the simulation or its record. `seconds` is display_seconds from sim/params.js.
  */
+const START_YAW = Math.PI;
+
 export function createPoseTracker(seconds) {
   let drawn = null;
   let motion = null;
   let gesture = null;
   let seen = 0;
-  let yaw = 0;
+  // Before the first step the child faces the camera (-z), so the face is in sight.
+  let yaw = START_YAW;
 
   return function update({ x, z, feet, events, climbing = false }, frameSeconds) {
     if (!drawn || events.length < seen) {
