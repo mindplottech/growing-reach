@@ -26,7 +26,7 @@ const SETTINGS = {
   path_grid_cm: provisional('経路の格子の細かさ', 10, '20cmだと椅子とテーブルの隙間（15cm）を通れず、5cmだと100回の計算が重い', 'cm'),
   path_clearance_cm: provisional('経路で家具からあける間隔', 10, '子どもの体の半分ほど。格子1マスに合わせた', 'cm'),
   start_months: provisional('最初に表示する月齢', 48, '3〜5歳の範囲の真ん中（4歳0か月）。KO が決めた', 'か月'),
-  trial_seconds: provisional('1回の試行の長さ', 600, 'リビングで過ごす時間として10分にした', '秒'),
+  trial_seconds: provisional('試行時間（2分）', 120, '設計者の判断。1人分を最初から最後まで画面で見られる長さとして、KO が10分から2分に変えた', '秒'),
   trial_count: provisional('試行の回数', 100, 'シード1〜100の子どもで比べる'),
   countermeasure_step_cm: provisional('対策で物を動かす刻み', 10, '家具を動かす現実的な単位', 'cm'),
   countermeasure_limit_cm: provisional('対策で物を動かす上限', 200, '部屋の幅の半分ほど', 'cm'),

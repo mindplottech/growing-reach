@@ -120,7 +120,11 @@ test('undo steps back through every change, including a reset', () => {
 
 test('an edited room runs in the simulation, and new furniture can be a foothold', () => {
   const room = addFurniture(roomLayout, item('table'), { x: 380, y: 120 });
-  const simulation = createSimulation({ ledger, settings: { ...settings, climb_probability: 1 }, months: 60, sex: 'male', seed: 1, room });
-  simulation.step(settings.trial_seconds);
-  assert.ok(simulation.events.some(({ kind, footholdId }) => kind === 'climbed' && footholdId?.startsWith('table-')));
+  // Some child among the first twenty climbs the new table within one trial.
+  const climbsIt = (seed) => {
+    const simulation = createSimulation({ ledger, settings: { ...settings, climb_probability: 1 }, months: 60, sex: 'male', seed, room });
+    simulation.step(settings.trial_seconds);
+    return simulation.events.some(({ kind, footholdId }) => kind === 'climbed' && footholdId?.startsWith('table-'));
+  };
+  assert.ok(Array.from({ length: 20 }, (_, i) => i + 1).some(climbsIt));
 });
