@@ -14,8 +14,8 @@
     "y": 150
   },
   "hazards": [
-    { "id": "medicine", "kind": "medicine", "label": "薬", "on": "dining_table", "dx": 60, "dy": 30, "w": 8, "d": 8 },
-    { "id": "scissors", "kind": "scissors", "label": "はさみ", "on": "low_shelf", "dx": 70, "dy": 15, "w": 15, "d": 8 },
+    { "id": "medicine", "kind": "medicine", "label": "薬", "on": "dining_table", "dx": 10, "dy": 60, "w": 8, "d": 8 },
+    { "id": "scissors", "kind": "scissors", "label": "はさみ", "on": "dining_table", "dx": 66, "dy": 42, "w": 15, "d": 8 },
     { "id": "cord", "kind": "cord", "label": "コード", "on": "low_table", "dx": 40, "dy": 25, "w": 30, "d": 4 }
   ],
   "layouts": [
