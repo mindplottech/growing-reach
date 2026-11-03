@@ -121,6 +121,8 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
   }
   if (lockFromFloor.size > 0) {
     reasons.push({ children: lockFromFloor.size, text: `床に立ったまま窓の錠（${cm(lock.height)}）に手が届きます${of(lockFromFloor.size)}` });
+    // From the floor where a child stands to reach the lock: the place in the layout.
+    arrows.push({ from: null, floor: lock.approach, to: lock.id });
   }
   for (const [id, seeds] of [...stoodOn].sort(byChildren)) {
     const foothold = find(id);

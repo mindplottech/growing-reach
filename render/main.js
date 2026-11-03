@@ -79,7 +79,7 @@ function mountEditing({ session, history, startRoom, catalog, say, results }) {
     history.push(next);
     undoButton.disabled = !history.canUndo();
     session.setRoom(next);
-    if (judgeNow) results.judge();
+    if (judgeNow) results.judge(judgeNow);
     else results.markChanged();
     return true;
   }
@@ -159,14 +159,14 @@ function mountEditing({ session, history, startRoom, catalog, say, results }) {
   showPlaying();
 
   document.querySelector('#reset').addEventListener('click', () => {
-    apply(startRoom, null, { judgeNow: true });
+    apply(startRoom, null, { judgeNow: 'reset' });
     view?.select(null);
     say('最初の部屋に戻しました');
   });
   undoButton.addEventListener('click', () => {
     session.setRoom(history.undo());
     undoButton.disabled = !history.canUndo();
-    results.judge();
+    results.judge('undo');
     view?.select(null);
   });
 
@@ -243,13 +243,19 @@ async function start() {
   const autoplay = createAutoplay({ session, total: settings.trial_count });
   const history = createHistory(startRoom);
   // The panel is mounted after the toolbar, so the toolbar reaches it through this.
-  const results = { judge: () => panel.judge(), markChanged: () => panel.markChanged() };
+  const results = { judge: (kind) => panel.judge(kind), markChanged: () => panel.markChanged() };
   const toolbar = mountEditing({
     session, history, startRoom, catalog: furnitureCatalog, say: messenger(), results,
   });
   const panel = mountPanel({ ledger, settings, session, getChild, autoplay });
+  // The 3D view loads later; until then a moment only shows its sentence.
+  let view = null;
   mountEventLog({
-    list: document.querySelector('#event-log'), flash: document.querySelector('#event-flash'), session, flashSeconds: settings.event_flash_seconds,
+    list: document.querySelector('#event-log'),
+    flash: document.querySelector('#event-flash'),
+    session,
+    flashSeconds: settings.event_flash_seconds,
+    onMoment: (event) => view?.pulse(event.hazardId ?? event.targetId, settings.event_flash_seconds),
   });
   mountNowPlaying({ session, autoplay, getChild });
   // The hundred children are run at once, and the first child starts moving without a click.
@@ -263,7 +269,7 @@ async function start() {
   // The 3D view is display only: if it cannot load, the results still work.
   try {
     const { mountView3d } = await import('./view3d.js');
-    const view = mountView3d({
+    view = mountView3d({
       container: document.querySelector('#stage'),
       chip: document.querySelector('#delete-selected'),
       ledger,

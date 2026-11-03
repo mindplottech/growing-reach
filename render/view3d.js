@@ -5,6 +5,7 @@ import { makeChild } from './childFigure3d.js';
 import { createPoseTracker, floorShadow, footHeight, reachMark } from './childPose.js';
 import { buildFurniture, buildSkirting } from './furniture3d.js';
 import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
+import { METHOD_WORDS } from '../sim/wording.js';
 
 // Display only: colours, sizes on screen, the camera and the figure. No body value or
 // layout dimension is written here.
@@ -45,10 +46,22 @@ const HAZARD_THICK_CM = 3;
 const HAZARD_LABEL_SHARE = 0.8;
 const SIT_DROP = 0.14;
 const noRaycast = () => {};
+// The tags of the lock and the dangerous things take the colour of their row in the results.
+const TAG_STYLES = {
+  danger: { fill: 'rgba(211,47,47,0.95)', ink: '#ffffff', mesh: 0xd32f2f },
+  caution: { fill: 'rgba(240,173,0,0.95)', ink: '#1f2933', mesh: 0xe0a000 },
+  plain: { fill: 'rgba(120,128,136,0.92)', ink: '#ffffff', mesh: 0x8a9299 },
+};
+// A tag whose colour changed grows for about a second (KO's choice); one the child just reached
+// grows more and blinks while its sentence is shown large.
+const TAG_POP_MS = 1000;
+const TAG_POP_GROWTH = 0.6;
+const TAG_PULSE_GROWTH = 0.8;
+const TAG_PULSE_BLINK_MS = 160;
 const TRAIL_OPACITY = 0.35;
 const TRAIL_LIFT_CM = 0.6;
 
-function labelSprite(text, { fill = 'rgba(255,255,255,0.95)', ink = '#1f2933', share = 1 } = {}) {
+function labelTexture(text, { fill = 'rgba(255,255,255,0.95)', ink = '#1f2933' } = {}) {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   const font = '600 48px system-ui, -apple-system, "Hiragino Sans", sans-serif';
@@ -66,9 +79,14 @@ function labelSprite(text, { fill = 'rgba(255,255,255,0.95)', ink = '#1f2933', s
   context.fillText(text, padding, canvas.height / 2 + 2);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  return { texture, widthPerHeight: canvas.width / canvas.height };
+}
+
+function labelSprite(text, { fill, ink, share = 1 } = {}) {
+  const { texture, widthPerHeight } = labelTexture(text, { fill, ink });
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true, sizeAttenuation: false });
   const sprite = new THREE.Sprite(material);
-  sprite.userData.widthPerHeight = canvas.width / canvas.height;
+  sprite.userData.widthPerHeight = widthPerHeight;
   sprite.userData.share = share;
   sprite.renderOrder = 10;
   return sprite;
@@ -134,6 +152,9 @@ function arrow(from, to) {
  * `editing`; this module never decides whether a change is allowed.
  */
 export function mountView3d({ container, chip, ledger, settings, session, slider, editing, trailToggle }) {
+  // id → { level, method } from the last calculation; id → the tag sprite and its thing.
+  let tagLevels = new Map();
+  let tags = new Map();
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -265,6 +286,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     label.raycast = noRaycast;
     label.visible = object.kind === 'window_lock';
     group.add(label);
+    if (object.kind === 'window_lock') tags.set(object.id, { sprite: label, text: object.label, meshes: [] });
     Object.assign(group.userData, {
       id: object.id, top: object.top, w: object.w, edge, label, materials, alwaysLabelled: label.visible,
     });
@@ -290,6 +312,36 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     return wall;
   }
 
+  /** Redraws one tag in its row's colour, with the way most children reached it. */
+  function paintTag(id) {
+    const tag = tags.get(id);
+    if (!tag) return;
+    const known = tagLevels.get(id);
+    const style = TAG_STYLES[known?.level ?? 'plain'];
+    const text = known?.method ? `${tag.text}　${METHOD_WORDS[known.method]}` : tag.text;
+    const { texture, widthPerHeight } = labelTexture(text, style);
+    tag.sprite.material.map?.dispose();
+    tag.sprite.material.map = texture;
+    tag.sprite.material.needsUpdate = true;
+    tag.sprite.userData.widthPerHeight = widthPerHeight;
+    for (const mesh of tag.meshes) mesh.material.color.setHex(style.mesh);
+  }
+
+  /** Grows each tag while it pops or pulses, on top of the size fitLabels gives it. */
+  function animateTags(now) {
+    for (const { sprite } of tags.values()) {
+      const base = sprite.userData.base;
+      if (!base) continue;
+      let growth = 0;
+      const pop = (sprite.userData.popUntil ?? 0) - now;
+      if (pop > 0) growth = Math.max(growth, TAG_POP_GROWTH * Math.sin((Math.PI * pop) / TAG_POP_MS));
+      const pulse = (sprite.userData.pulseUntil ?? 0) - now;
+      if (pulse > 0) growth = Math.max(growth, TAG_PULSE_GROWTH);
+      sprite.scale.set(base[0] * (1 + growth), base[1] * (1 + growth), 1);
+      sprite.material.opacity = pulse > 0 && Math.floor(pulse / TAG_PULSE_BLINK_MS) % 2 === 1 ? 0.55 : 1;
+    }
+  }
+
   function fitLabels() {
     const { clientHeight: height } = container;
     if (height === 0) return;
@@ -299,6 +351,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
         if (node.isSprite) {
           const height = size * (node.userData.share ?? 1);
           node.scale.set(height * node.userData.widthPerHeight, height, 1);
+          node.userData.base = [height * node.userData.widthPerHeight, height];
         }
       });
     }
@@ -306,12 +359,13 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
 
   function drawArrows() {
     disposeGroup(arrowGroup);
-    for (const { from, to } of danger.arrows) {
-      const start = objectMeshes.get(from);
+    for (const { from, floor: onFloor, to } of danger.arrows) {
+      const start = from === null ? null : objectMeshes.get(from);
       const end = objectMeshes.get(to);
-      if (!start || !end) continue;
-      const origin = start.position.clone();
-      origin.y = start.userData.top + ARROW_LIFT_CM;
+      if ((!start && !onFloor) || !end) continue;
+      // An arrow from the floor means children reached it standing there, flat or on tiptoe.
+      const origin = start ? start.position.clone() : new THREE.Vector3(onFloor.x, ARROW_LIFT_CM, onFloor.y);
+      if (start) origin.y = start.userData.top + ARROW_LIFT_CM;
       const target = end.position.clone();
       target.y = end.userData.top;
       arrowGroup.add(arrow(origin, target));
@@ -330,6 +384,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     disposeGroup(roomGroup);
     disposeGroup(planeGroup);
     objectMeshes = new Map();
+    tags = new Map();
 
     floor = new THREE.Mesh(
       new THREE.PlaneGeometry(model.width, model.depth),
@@ -346,19 +401,25 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     model.objects.forEach(addObject);
     showLabels();
     // Dangerous things lie flat on their furniture; they are drawn but not picked or dragged.
+    const onSame = new Map();
     for (const hazard of model.hazards) {
+      // Tags of things on the same furniture take turns hanging below and standing above.
+      const turn = onSame.get(hazard.on) ?? 0;
+      onSame.set(hazard.on, turn + 1);
       const mesh = new THREE.Mesh(
         new RoundedBoxGeometry(hazard.w, HAZARD_THICK_CM, hazard.d, CORNER_SEGMENTS, Math.min(hazard.w, hazard.d, HAZARD_THICK_CM) * CORNER_SHARE),
         new THREE.MeshStandardMaterial({ color: HAZARD_COLOUR, roughness: 0.6 }),
       );
       mesh.position.set(hazard.x + hazard.w / 2, hazard.bottom + HAZARD_THICK_CM / 2, hazard.z + hazard.d / 2);
       mesh.castShadow = true;
-      // A red tag hanging below the thing, so it does not cover the furniture's own label above.
-      const label = labelSprite(hazard.label, { fill: 'rgba(181,83,74,0.95)', ink: '#ffffff', share: HAZARD_LABEL_SHARE });
-      label.center.set(0.5, 1.15);
+      // A tag hanging below the thing, so it does not cover the furniture's own label above.
+      const label = labelSprite(hazard.label, { share: HAZARD_LABEL_SHARE });
+      label.center.set(0.5, turn % 2 === 0 ? 1.15 : -0.3);
       mesh.add(label);
       roomGroup.add(mesh);
+      tags.set(hazard.id, { sprite: label, text: hazard.label, meshes: [mesh] });
     }
+    for (const id of tags.keys()) paintTag(id);
     const previous = new Map(planes.map(({ id, mesh }) => [id, mesh.position.y]));
     planes = model.planes.map(({ id, label, height }) => {
       const mesh = new THREE.Mesh(
@@ -471,6 +532,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       mesh.position.y += (height - mesh.position.y) * PLANE_EASE;
     }
     paintObjects(now);
+    animateTags(now);
     controls.update();
     renderer.render(scene, camera);
     placeChip();
@@ -616,6 +678,22 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     setDanger(next) {
       danger = next;
       drawArrows();
+    },
+    /** The colours from a new calculation; a tag whose colour changed pops for a moment. */
+    setTags(next) {
+      const now = performance.now();
+      const before = tagLevels;
+      tagLevels = new Map(next);
+      for (const id of tags.keys()) {
+        paintTag(id);
+        if (before.size > 0 && before.get(id)?.level !== tagLevels.get(id)?.level) tags.get(id).sprite.userData.popUntil = now + TAG_POP_MS;
+      }
+      fitLabels();
+    },
+    /** The child just reached this thing: its tag grows and blinks for `seconds`. */
+    pulse(id, seconds) {
+      const tag = tags.get(id);
+      if (tag) tag.sprite.userData.pulseUntil = performance.now() + seconds * MS_PER_SECOND;
     },
     setFocus(id) {
       focus = id ? groupOf(id) : new Set();

@@ -51,11 +51,14 @@ test('climbing near the window without reaching the lock is amber', () => {
   assert.match(verdict.reasons[0], /^踏み台（5cm）に登りますが、窓の錠には届きません/);
 });
 
-test('reaching from the floor is told as such, without an arrow', () => {
-  const verdict = judgeRoom({ ...BASE, months: maxMonths, room: without('low_shelf') });
+test('reaching from the floor is told as such, with one arrow from the floor and none from furniture', () => {
+  const room = without('low_shelf');
+  const verdict = judgeRoom({ ...BASE, months: maxMonths, room });
   assert.equal(verdict.level, LEVEL_DANGER);
   assert.ok(verdict.reasons.some((text) => text.startsWith('床に立ったまま窓の錠（140cm）に手が届きます')));
-  assert.equal(verdict.arrows.length, 0);
+  const lock = room.landmarks.find(({ role }) => role === 'window_lock');
+  assert.deepEqual(verdict.arrows.filter(({ from }) => from !== null), []);
+  assert.deepEqual(verdict.arrows.filter(({ from }) => from === null), [{ from: null, floor: lock.approach, to: lock.id }]);
 });
 
 test('the same room and child give the same verdict', () => {

@@ -99,8 +99,8 @@
 
       <section id="verdict" class="verdict" data-level="pending" aria-live="polite">
         <p class="verdict-headline">計算しています…</p>
-        <ul class="verdict-reasons"></ul>
       </section>
+      <p id="compare-line" class="compare-line" hidden></p>
 
       <section class="hazards" aria-labelledby="hazards-title">
         <h2 id="hazards-title">危険な物</h2>
@@ -109,6 +109,10 @@
 
       <details id="more" class="more">
         <summary>くわしく見る</summary>
+        <h3>人数（100人中）</h3>
+        <dl id="count-rows" class="value-list count-list"></dl>
+        <h3>窓の錠に届いた足場</h3>
+        <ul id="verdict-reasons" class="verdict-reasons"></ul>
         <h3>この子の値</h3>
         <dl id="child-values" class="value-list"></dl>
         <label class="seed-label">子どもの番号（シード） <input id="seed" type="number" value="1" step="1" inputmode="numeric"></label>

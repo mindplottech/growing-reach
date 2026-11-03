@@ -235,7 +235,7 @@ export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Se
     wallHeight: room.wall_height.value,
     contentHeight: Math.max(pane?.top ?? 0, ...objects.map(({ visualTop }) => visualTop)),
     objects,
-    hazards: hazards.map(({ id, label, kind, x, y, w, d, height }) => ({ id, label, kind, x, z: y, w, d, bottom: height })),
+    hazards: hazards.map(({ id, label, kind, on, x, y, w, d, height }) => ({ id, label, kind, on, x, z: y, w, d, bottom: height })),
     pane,
     curtain,
     planes: [
