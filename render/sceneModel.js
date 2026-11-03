@@ -35,8 +35,9 @@ export function reachableNow({ ledger, body, landmarks, position, foothold }) {
   );
 }
 
-// The fixed first view: diagonally above the room, looking at its middle.
-const VIEW_DIRECTION = { x: 0.62, y: 0.82, z: -1 };
+// The fixed first view: from above the front left, so every piece of furniture, the things on
+// them, the window and its lock are in sight at once.
+const VIEW_DIRECTION = { x: -0.35, y: 1.3, z: -1 };
 const VIEW_TARGET_HEIGHT_SHARE = 0.18;
 
 /** A camera position that shows the whole room at this aspect ratio and field of view. */
