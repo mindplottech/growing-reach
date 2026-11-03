@@ -1,9 +1,11 @@
-/** One named layout together with the settings shared by all layouts. */
+import { roomParams } from './params.js';
+
+/** One named layout with what all layouts share, and the provisional room values from params. */
 export function selectLayout(file, layoutId) {
   const { layouts, ...shared } = file;
   const layout = layouts.find(({ id }) => id === layoutId);
   if (!layout) throw new Error(`layout not found: ${layoutId}`);
-  return { ...shared, ...layout };
+  return { ...roomParams, ...shared, ...layout };
 }
 
 /**

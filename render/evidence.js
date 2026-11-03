@@ -1,3 +1,5 @@
+import { provisionalRows } from '../sim/params.js';
+
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -51,7 +53,7 @@ function itemCard(ledger, item) {
 }
 
 /** The ledger, the layout and the settings exactly as loaded, for the evidence dialog. */
-export function renderEvidence(container, { ledger, roomFile, settings }) {
+export function renderEvidence(container, { ledger, roomFile }) {
   const meta = ledger._meta;
   const intro = element('section', 'evidence-section');
   intro.append(
@@ -75,12 +77,27 @@ export function renderEvidence(container, { ledger, roomFile, settings }) {
   items.append(element('h2', '', '台帳の項目'), ...ledger.items.map((item) => itemCard(ledger, item)));
 
   const assumptions = element('section', 'evidence-section');
+  const rows = element('div');
+  for (const { key, label, value, unit, reason, category } of provisionalRows()) {
+    const card = element('article', 'evidence-item');
+    const title = element('h3', '', label);
+    title.append(element('span', 'evidence-unit', ` （${key}）`));
+    const facts = element('dl');
+    facts.append(
+      row('値', typeof value === 'object' ? JSON.stringify(value) : `${value}${unit ? ` ${unit}` : ''}`),
+      row('区分', ledger._meta.categories[category]),
+      row('出典', 'なし（設計者が置いた値）'),
+      row('決め方', reason),
+    );
+    card.append(title, facts);
+    rows.append(card);
+  }
   assumptions.append(
-    element('h2', '', '設計者が置いた仮値'),
+    element('h2', '', '設計者が置いた仮値（sim/params.js）'),
+    rows,
+    element('h2', '', '部屋の配置（data/room_layout.json）'),
     element('p', '', roomFile._meta.notice),
     element('pre', '', JSON.stringify(roomFile, null, 2)),
-    element('p', '', settings._meta.notice),
-    element('pre', '', JSON.stringify(settings, null, 2)),
   );
 
   const sources = element('section', 'evidence-section');

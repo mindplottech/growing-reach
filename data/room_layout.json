@@ -3,43 +3,27 @@
     "notice": "設計者が置いた配置。根拠となる実測はない（仮値）",
     "category": "provisional",
     "unit": "cm",
-    "heights": "家具の高さはここに書かず、heightOf で values_ledger.json の項目を指す"
+    "heights": "家具の高さはここに書かず、heightOf で values_ledger.json の項目を指す",
+    "moved": "隙間・箱・壁・家具の大きさなどの仮値は sim/params.js にある"
   },
   "width": 450,
   "depth": 360,
-  "start": { "x": 225, "y": 150 },
-  "neighbor_gap": { "value": 20, "category": "provisional", "note": "足場どうしの隙間がこのcm以内なら「隣」として乗り継げる。台帳になく、設計者が置いた仮値" },
-  "window_side_gap": { "value": 30, "category": "provisional", "note": "窓との隙間がこのcm以内なら「窓ぎわ」とする。台帳になく、設計者が置いた仮値" },
-  "wall_height": { "value": 240, "category": "provisional", "note": "3D表示の壁の高さ。台帳になく、設計者が置いた仮値" },
-  "lock_display_size_cm": 8,
-  "cardboard_box": { "label": "段ボール箱", "height": 30, "w": 40, "d": 30, "approach_gap": 20, "category": "provisional", "note": "台帳になく、設計者が置いた仮値" },
-  "furniture_catalog": {
-    "note": "画面の「家具を置く」で置ける物。幅と奥行きは設計者が置いた仮値で、高さは values_ledger.json の項目を指す（段ボール箱は cardboard_box の仮値）",
-    "category": "provisional",
-    "items": [
-      { "kind": "sofa", "label": "ソファ", "icon": "sofa", "groupLabel": "ソファ", "parts": [
-        { "key": "seat", "label": "ソファの座面", "heightOf": ["furniture_heights", "sofa_seat"], "dx": 0, "dy": 0, "w": 180, "d": 60 },
-        { "key": "back", "label": "ソファの背もたれ", "heightOf": ["furniture_heights", "sofa_back"], "dx": 0, "dy": 60, "w": 180, "d": 20 }
-      ] },
-      { "kind": "bed", "label": "ベッド", "icon": "bed-single", "parts": [{ "label": "ベッド", "heightOf": ["furniture_heights", "adult_bed_mattress"], "w": 100, "d": 200 }] },
-      { "kind": "chair", "label": "椅子", "icon": "armchair", "parts": [{ "label": "椅子", "heightOf": ["furniture_heights", "dining_chair_seat"], "w": 40, "d": 40 }] },
-      { "kind": "table", "label": "テーブル", "icon": "utensils", "parts": [{ "label": "テーブル", "heightOf": ["furniture_heights", "dining_table_top"], "w": 140, "d": 90 }] },
-      { "kind": "shelf", "label": "棚", "icon": "library", "parts": [{ "label": "棚", "heightOf": ["furniture_heights", "low_shelf_top"], "w": 130, "d": 35 }] },
-      { "kind": "box", "label": "段ボール箱", "icon": "package", "parts": [{ "box": true }] }
-    ]
+  "start": {
+    "x": 225,
+    "y": 150
   },
   "layouts": [
     {
       "id": "default",
       "name": "今の配置",
       "landmarks": [
-        { "id": "sofa", "label": "ソファの座面", "heightOf": ["furniture_heights", "sofa_seat"], "scaffold": true, "x": 30, "y": 20, "w": 180, "d": 80, "approach": { "x": 120, "y": 120 } },
-        { "id": "low_table", "label": "ローテーブル", "heightOf": ["furniture_heights", "low_table_top"], "scaffold": true, "x": 70, "y": 150, "w": 100, "d": 60, "approach": { "x": 190, "y": 180 } },
-        { "id": "low_shelf", "label": "低い棚", "heightOf": ["furniture_heights", "low_shelf_top"], "scaffold": true, "x": 200, "y": 310, "w": 130, "d": 35, "approach": { "x": 265, "y": 295 } },
-        { "id": "dining_chair", "label": "ダイニングチェア", "mapLabel": "いす", "heightOf": ["furniture_heights", "dining_chair_seat"], "scaffold": true, "x": 225, "y": 225, "w": 40, "d": 40, "approach": { "x": 245, "y": 205 } },
-        { "id": "dining_table", "label": "ダイニングテーブル", "heightOf": ["furniture_heights", "dining_table_top"], "scaffold": true, "x": 280, "y": 200, "w": 140, "d": 90, "approach": { "x": 350, "y": 180 } },
-        { "id": "window", "role": "window", "label": "窓枠", "heightOf": ["furniture_heights", "window_frame"], "scaffold": false, "x": 40, "y": 350, "w": 130, "d": 10, "approach": { "x": 105, "y": 330 } },
-        { "id": "window_lock", "role": "window_lock", "label": "窓の錠（報告書の仮定）", "mapLabel": "窓の錠", "heightOf": ["window_sill_height", "lock_height_assumed"], "scaffold": false, "x": 170, "y": 350, "w": 16, "d": 10, "approach": { "x": 178, "y": 330 } }
+        { "id": "sofa", "label": "ソファの座面", "heightOf": ["furniture_heights", "sofa_seat"], "scaffold": true, "x": 30, "y": 20, "w": 180, "d": 80, "approach": {"x": 120, "y": 120} },
+        { "id": "low_table", "label": "ローテーブル", "heightOf": ["furniture_heights", "low_table_top"], "scaffold": true, "x": 70, "y": 150, "w": 100, "d": 60, "approach": {"x": 190, "y": 180} },
+        { "id": "low_shelf", "label": "低い棚", "heightOf": ["furniture_heights", "low_shelf_top"], "scaffold": true, "x": 200, "y": 310, "w": 130, "d": 35, "approach": {"x": 265, "y": 295} },
+        { "id": "dining_chair", "label": "ダイニングチェア", "mapLabel": "いす", "heightOf": ["furniture_heights", "dining_chair_seat"], "scaffold": true, "x": 225, "y": 225, "w": 40, "d": 40, "approach": {"x": 245, "y": 205} },
+        { "id": "dining_table", "label": "ダイニングテーブル", "heightOf": ["furniture_heights", "dining_table_top"], "scaffold": true, "x": 280, "y": 200, "w": 140, "d": 90, "approach": {"x": 350, "y": 180} },
+        { "id": "window", "role": "window", "label": "窓枠", "heightOf": ["furniture_heights", "window_frame"], "scaffold": false, "x": 40, "y": 350, "w": 130, "d": 10, "approach": {"x": 105, "y": 330} },
+        { "id": "window_lock", "role": "window_lock", "label": "窓の錠（報告書の仮定）", "mapLabel": "窓の錠", "heightOf": ["window_sill_height", "lock_height_assumed"], "scaffold": false, "x": 170, "y": 350, "w": 16, "d": 10, "approach": {"x": 178, "y": 330} }
       ]
     },
     {
@@ -47,14 +31,14 @@
       "name": "ソファが窓ぎわ",
       "note": "窓の転落の足掛かりの約半分がベッド・ソファという内訳（values_ledger.json の window_fall_foothold）に合わせた配置",
       "landmarks": [
-        { "id": "sofa_seat", "group": "sofa", "groupLabel": "ソファ全体", "label": "ソファの座面", "heightOf": ["furniture_heights", "sofa_seat"], "scaffold": true, "x": 30, "y": 265, "w": 180, "d": 60, "approach": { "x": 120, "y": 250 } },
-        { "id": "sofa_back", "group": "sofa", "groupLabel": "ソファ全体", "label": "ソファの背もたれ", "heightOf": ["furniture_heights", "sofa_back"], "scaffold": true, "x": 30, "y": 325, "w": 180, "d": 20, "approach": { "x": 225, "y": 335 } },
-        { "id": "low_table", "label": "ローテーブル", "heightOf": ["furniture_heights", "low_table_top"], "scaffold": true, "x": 70, "y": 150, "w": 100, "d": 60, "approach": { "x": 190, "y": 180 } },
-        { "id": "low_shelf", "label": "低い棚", "heightOf": ["furniture_heights", "low_shelf_top"], "scaffold": true, "x": 300, "y": 25, "w": 130, "d": 35, "approach": { "x": 365, "y": 80 } },
-        { "id": "dining_chair", "label": "ダイニングチェア", "mapLabel": "いす", "heightOf": ["furniture_heights", "dining_chair_seat"], "scaffold": true, "x": 225, "y": 225, "w": 40, "d": 40, "approach": { "x": 245, "y": 205 } },
-        { "id": "dining_table", "label": "ダイニングテーブル", "heightOf": ["furniture_heights", "dining_table_top"], "scaffold": true, "x": 280, "y": 200, "w": 140, "d": 90, "approach": { "x": 350, "y": 180 } },
-        { "id": "window", "role": "window", "label": "窓枠", "heightOf": ["furniture_heights", "window_frame"], "scaffold": false, "x": 40, "y": 350, "w": 130, "d": 10, "approach": { "x": 105, "y": 330 } },
-        { "id": "window_lock", "role": "window_lock", "label": "窓の錠（報告書の仮定）", "mapLabel": "窓の錠", "heightOf": ["window_sill_height", "lock_height_assumed"], "scaffold": false, "x": 170, "y": 350, "w": 16, "d": 10, "approach": { "x": 178, "y": 330 } }
+        { "id": "sofa_seat", "group": "sofa", "groupLabel": "ソファ全体", "label": "ソファの座面", "heightOf": ["furniture_heights", "sofa_seat"], "scaffold": true, "x": 30, "y": 265, "w": 180, "d": 60, "approach": {"x": 120, "y": 250} },
+        { "id": "sofa_back", "group": "sofa", "groupLabel": "ソファ全体", "label": "ソファの背もたれ", "heightOf": ["furniture_heights", "sofa_back"], "scaffold": true, "x": 30, "y": 325, "w": 180, "d": 20, "approach": {"x": 225, "y": 335} },
+        { "id": "low_table", "label": "ローテーブル", "heightOf": ["furniture_heights", "low_table_top"], "scaffold": true, "x": 70, "y": 150, "w": 100, "d": 60, "approach": {"x": 190, "y": 180} },
+        { "id": "low_shelf", "label": "低い棚", "heightOf": ["furniture_heights", "low_shelf_top"], "scaffold": true, "x": 300, "y": 25, "w": 130, "d": 35, "approach": {"x": 365, "y": 80} },
+        { "id": "dining_chair", "label": "ダイニングチェア", "mapLabel": "いす", "heightOf": ["furniture_heights", "dining_chair_seat"], "scaffold": true, "x": 225, "y": 225, "w": 40, "d": 40, "approach": {"x": 245, "y": 205} },
+        { "id": "dining_table", "label": "ダイニングテーブル", "heightOf": ["furniture_heights", "dining_table_top"], "scaffold": true, "x": 280, "y": 200, "w": 140, "d": 90, "approach": {"x": 350, "y": 180} },
+        { "id": "window", "role": "window", "label": "窓枠", "heightOf": ["furniture_heights", "window_frame"], "scaffold": false, "x": 40, "y": 350, "w": 130, "d": 10, "approach": {"x": 105, "y": 330} },
+        { "id": "window_lock", "role": "window_lock", "label": "窓の錠（報告書の仮定）", "mapLabel": "窓の錠", "heightOf": ["window_sill_height", "lock_height_assumed"], "scaffold": false, "x": 170, "y": 350, "w": 16, "d": 10, "approach": {"x": 178, "y": 330} }
       ]
     }
   ]

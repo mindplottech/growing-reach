@@ -4,4 +4,4 @@
 - 値の区分の定義は `_meta.categories`、採用の決定は `_meta.decisions` にある。
 - 次の8項目は `source` が `null`（数値の出典が見つかっていない仮値）: `tiptoe_gain`, `reach_horizontal_on_surface`, `descend_height`, `climb_failure`, `fall_rates`, `head_bump_furniture_range`, `window_lean_foothold`, `interest_dwell`
 - `room_layout.json` は上の外部データとは別で、設計者が置いた配置（仮値）。根拠となる実測はない。
-- `sim_settings.json` も外部データとは別で、設計者が置いた設定（仮値）。根拠となる実測はない。
+- 台帳にない仮値（シミュレーションの設定、隙間や家具の大きさなど）は、データではなく `sim/params.js` に置いている。

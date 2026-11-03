@@ -4,6 +4,7 @@ import { EVENT } from '../sim/events.js';
 import { landmarkHeight, selectLayout } from '../sim/room.js';
 import { footprintDistance } from '../sim/scaffold.js';
 import { createSimulation } from '../sim/simulation.js';
+import { roomParams } from '../sim/params.js';
 import { byId, ledger, maxMonths, roomFile, settings } from './helpers.js';
 
 const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.d && b.y < a.y + a.d;
@@ -13,7 +14,7 @@ test('layouts are named and selected by id, with shared settings', () => {
     const room = selectLayout(roomFile, id);
     assert.equal(room.name, name);
     assert.equal(room.width, roomFile.width);
-    assert.equal(room.neighbor_gap, roomFile.neighbor_gap);
+    assert.equal(room.neighbor_gap, roomParams.neighbor_gap);
   }
   assert.throws(() => selectLayout(roomFile, 'missing'), /layout not found/);
 });

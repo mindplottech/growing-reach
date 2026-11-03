@@ -105,7 +105,7 @@ function motionShape(kind, elapsed, seconds) {
 /**
  * Turns the simulation's instant changes into short motions. Each frame takes where the child
  * really is and the events so far, and returns how to draw them. It only reads: nothing here
- * can change the simulation or its record. `seconds` is sim_settings.display_seconds.
+ * can change the simulation or its record. `seconds` is display_seconds from sim/params.js.
  */
 export function createPoseTracker(seconds) {
   let drawn = null;

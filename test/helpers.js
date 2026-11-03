@@ -5,7 +5,7 @@ import { selectLayout } from '../sim/room.js';
 export const ledger = JSON.parse(readFileSync(new URL('../data/values_ledger.json', import.meta.url)));
 export const roomFile = JSON.parse(readFileSync(new URL('../data/room_layout.json', import.meta.url)));
 export const roomLayout = selectLayout(roomFile, roomFile.layouts[0].id);
-export const settings = JSON.parse(readFileSync(new URL('../data/sim_settings.json', import.meta.url)));
+export { settings } from '../sim/params.js';
 export const byId = (id, source = ledger) => source.items.find((entry) => entry.id === id);
 export const [minMonths, maxMonths] = ledger._meta.age_range_months;
 export const SEXES = ['male', 'female'];

@@ -5,9 +5,10 @@ import {
 } from '../sim/editor.js';
 import { landmarkHeight } from '../sim/room.js';
 import { createSimulation } from '../sim/simulation.js';
-import { ledger, roomFile, roomLayout, settings } from './helpers.js';
+import { furnitureCatalog } from '../sim/params.js';
+import { ledger, roomLayout, settings } from './helpers.js';
 
-const catalog = roomFile.furniture_catalog.items;
+const catalog = furnitureCatalog;
 const item = (kind) => catalog.find((entry) => entry.kind === kind);
 // An empty part of the default room, wide enough for any catalogue item tested here.
 const FREE = { x: 360, y: 130 };

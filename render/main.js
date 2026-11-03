@@ -4,12 +4,12 @@ import {
 import { renderEvidence } from './evidence.js';
 import { mountGuide } from './guide.js';
 import { mountPanel } from './panel.js';
+import { furnitureCatalog, settings } from '../sim/params.js';
 import { selectLayout } from '../sim/room.js';
 import { createSession } from './session.js';
 
 const LEDGER_URL = new URL('../data/values_ledger.json', import.meta.url);
 const ROOM_URL = new URL('../data/room_layout.json', import.meta.url);
-const SETTINGS_URL = new URL('../data/sim_settings.json', import.meta.url);
 const iconUrl = (name) => new URL(`../assets/icons/${name}.svg`, import.meta.url).href;
 const MESSAGE_MS = 2500;
 
@@ -185,11 +185,7 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
 }
 
 async function start() {
-  const [ledger, roomFile, settings] = await Promise.all([
-    fetchJson(LEDGER_URL),
-    fetchJson(ROOM_URL),
-    fetchJson(SETTINGS_URL),
-  ]);
+  const [ledger, roomFile] = await Promise.all([fetchJson(LEDGER_URL), fetchJson(ROOM_URL)]);
   const startRoom = selectLayout(roomFile, roomFile.layouts[0].id);
   const slider = document.querySelector('#months');
   const [minMonths, maxMonths] = ledger._meta.age_range_months;
@@ -204,11 +200,11 @@ async function start() {
   const session = createSession({ ledger, settings, room: startRoom, getChild });
   const history = createHistory(startRoom);
   const toolbar = mountEditing({
-    session, history, startRoom, catalog: roomFile.furniture_catalog.items, say: messenger(),
+    session, history, startRoom, catalog: furnitureCatalog, say: messenger(),
   });
   const panel = mountPanel({ ledger, settings, session, getChild });
 
-  renderEvidence(document.querySelector('#evidence-body'), { ledger, roomFile, settings });
+  renderEvidence(document.querySelector('#evidence-body'), { ledger, roomFile });
   const evidence = document.querySelector('#evidence-dialog');
   document.querySelector('#open-evidence').addEventListener('click', () => evidence.showModal());
   mountGuide({ dialog: document.querySelector('#guide-dialog'), openButton: document.querySelector('#open-guide') });
