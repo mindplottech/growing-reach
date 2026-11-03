@@ -27,7 +27,7 @@ const SETTINGS = {
   path_clearance_cm: provisional('経路で家具からあける間隔', 10, '子どもの体の半分ほど。格子1マスに合わせた', 'cm'),
   start_months: provisional('最初に表示する月齢', 48, '3〜5歳の範囲の真ん中（4歳0か月）。KO が決めた', 'か月'),
   start_speed: provisional('最初の再生の速さ（表示のみ）', 4, '表示のみ・計算に使わない。2分の1人分が30秒で見られる速さとして KO が決めた', '倍'),
-  event_flash_seconds: provisional('出来事の文を大きく出す長さ（表示のみ）', 2, '表示のみ・計算に使わない。再生の速さによらず読める長さとして KO が決めた（実時間）', '秒'),
+  event_flash_seconds: provisional('届いた物の札を目立たせる長さ（表示のみ）', 2, '表示のみ・計算に使わない。再生の速さによらず目で追える長さとして KO が決めた（実時間）。出来事の文を大きく出すのはやめ、札だけに使う', '秒'),
   trial_seconds: provisional('試行時間（2分）', 120, '設計者の判断。1人分を最初から最後まで画面で見られる長さとして、KO が10分から2分に変えた', '秒'),
   trial_count: provisional('試行の回数', 100, 'シード1〜100の子どもで比べる'),
   countermeasure_step_cm: provisional('対策で物を動かす刻み', 10, '家具を動かす現実的な単位', 'cm'),

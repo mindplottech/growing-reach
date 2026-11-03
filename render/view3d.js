@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { makeChild } from './childFigure3d.js';
-import { createPoseTracker, floorShadow, footHeight, reachMark } from './childPose.js';
+import { createPoseTracker, floorShadow, footHeight } from './childPose.js';
 import { buildFurniture, buildSkirting } from './furniture3d.js';
 import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
 
@@ -11,11 +11,7 @@ import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.j
 const WALL_COLOUR = 0xfffcf2;
 const BACKGROUND = 0xf6f5f1;
 const ACCENT = 0x2f5d8a;
-const DANGER = 0xd32f2f;
-const CAUTION = 0xc9900a;
 const EDGE_OPACITY = 0.95;
-const DANGER_GLOW = 0.32;
-const FOCUS_GLOW = 0.28;
 const CORNER_SHARE = 0.3;
 const CORNER_SEGMENTS = 3;
 const SHADOW_MAP_SIZE = 1024;
@@ -26,19 +22,13 @@ const PLANE_LINGER_MS = 1500;
 const PLANE_FADE_MS = 300;
 const LABEL_HEIGHT_PIXELS = 28;
 const LABEL_GAP_CM = 18;
-const PULSE_MS = 450;
 const SHADOW_RADIUS_CM = 22;
 const SHADOW_OPACITY = 0.3;
 const STRETCH_SHARE = 0.06;
 const ARM_RAISE = Math.PI * 0.95;
 const MS_PER_SECOND = 1000;
-const MARK_RADIUS_CM = 16;
-const MARK_TUBE_CM = 1.6;
 const FIELD_OF_VIEW = 40;
 const PLANK_COUNT = 9;
-const ARROW_RADIUS_CM = 1.8;
-const ARROW_HEAD_CM = 14;
-const ARROW_LIFT_CM = 6;
 const CHIP_LIFT_CM = 10;
 const HAZARD_COLOUR = 0xb5534a;
 const HAZARD_THICK_CM = 3;
@@ -52,7 +42,7 @@ const TAG_STYLES = {
   plain: { fill: 'rgba(120,128,136,0.92)', ink: '#ffffff', mesh: 0x8a9299 },
 };
 // A tag whose colour changed grows for about a second (KO's choice); one the child just reached
-// grows more and blinks while its sentence is shown large.
+// grows more and blinks for a moment.
 const TAG_POP_MS = 1000;
 const TAG_POP_GROWTH = 0.6;
 const TAG_PULSE_GROWTH = 0.8;
@@ -127,25 +117,6 @@ function disposeGroup(group) {
   group.clear();
 }
 
-/** A red tube with a cone, from one point to another. */
-function arrow(from, to) {
-  const group = new THREE.Group();
-  const material = new THREE.MeshBasicMaterial({ color: DANGER, depthTest: false, transparent: true });
-  const direction = new THREE.Vector3().subVectors(to, from);
-  const length = direction.length();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(ARROW_RADIUS_CM, ARROW_RADIUS_CM, length - ARROW_HEAD_CM, 10), material);
-  shaft.position.y = (length - ARROW_HEAD_CM) / 2;
-  const head = new THREE.Mesh(new THREE.ConeGeometry(ARROW_RADIUS_CM * 3.5, ARROW_HEAD_CM, 14), material);
-  head.position.y = length - ARROW_HEAD_CM / 2;
-  group.add(shaft, head);
-  group.position.copy(from);
-  group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-  group.renderOrder = 9;
-  shaft.renderOrder = 9;
-  head.renderOrder = 9;
-  return group;
-}
-
 /**
  * Draws the room and handles pointing at it. Every change to the room goes out through
  * `editing`; this module never decides whether a change is allowed.
@@ -183,8 +154,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
 
   const roomGroup = new THREE.Group();
   const planeGroup = new THREE.Group();
-  const arrowGroup = new THREE.Group();
-  scene.add(roomGroup, planeGroup, arrowGroup);
+  scene.add(roomGroup, planeGroup);
   const child = makeChild();
   scene.add(child.root);
   const blob = new THREE.Mesh(
@@ -194,12 +164,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   blob.rotation.x = -Math.PI / 2;
   blob.renderOrder = 5;
   scene.add(blob);
-  const mark = new THREE.Mesh(
-    new THREE.TorusGeometry(MARK_RADIUS_CM, MARK_TUBE_CM, 10, 32),
-    new THREE.MeshBasicMaterial({ color: ACCENT }),
-  );
-  mark.rotation.x = Math.PI / 2;
-  scene.add(mark);
   // The walked trail: one line per leg, redrawn when the simulation adds points.
   const trailGroup = new THREE.Group();
   scene.add(trailGroup);
@@ -241,8 +205,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let planes = [];
   let sliderHeld = false;
   let planesUntil = 0;
-  let danger = { level: null, ids: new Set(), arrows: [] };
-  let focus = new Set();
   let selectedId = null;
   let hoveredId = null;
   let tool = { type: 'select' };
@@ -356,21 +318,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     }
   }
 
-  function drawArrows() {
-    disposeGroup(arrowGroup);
-    for (const { from, floor: onFloor, to } of danger.arrows) {
-      const start = from === null ? null : objectMeshes.get(from);
-      const end = objectMeshes.get(to);
-      if ((!start && !onFloor) || !end) continue;
-      // An arrow from the floor means children reached it standing there, flat or on tiptoe.
-      const origin = start ? start.position.clone() : new THREE.Vector3(onFloor.x, ARROW_LIFT_CM, onFloor.y);
-      if (start) origin.y = start.userData.top + ARROW_LIFT_CM;
-      const target = end.position.clone();
-      target.y = end.userData.top;
-      arrowGroup.add(arrow(origin, target));
-    }
-  }
-
   function rebuild() {
     const simulation = session.getSimulation();
     const room = session.getRoom();
@@ -441,7 +388,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     aimSun();
     fitLabels();
     if (firstBuild) fitCamera();
-    drawArrows();
   }
 
   function planeStrength(now) {
@@ -455,24 +401,10 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     return highlightedIds(session.getRoom().landmarks, id);
   }
 
-  function paintObjects(now) {
-    const pulse = 0.75 + 0.25 * Math.sin(now / PULSE_MS);
+  /** Only the furniture being edited gets a frame; nothing else on the furniture is marked. */
+  function paintObjects() {
     const selected = selectedId ? groupOf(selectedId) : new Set();
-    const edgeColour = danger.level === 'caution' ? CAUTION : DANGER;
-    for (const [id, group] of objectMeshes) {
-      const { materials, edge } = group.userData;
-      for (const material of materials) {
-        if (danger.ids.has(id)) {
-          material.emissive.setHex(edgeColour).multiplyScalar(DANGER_GLOW * pulse);
-        } else if (focus.has(id)) {
-          material.emissive.setHex(ACCENT).multiplyScalar(FOCUS_GLOW * pulse);
-        } else {
-          material.emissive.setHex(0x000000);
-        }
-      }
-      edge.visible = selected.has(id) || danger.ids.has(id) || focus.has(id);
-      edge.material.color.setHex(selected.has(id) || !danger.ids.has(id) ? ACCENT : edgeColour);
-    }
+    for (const [id, group] of objectMeshes) group.userData.edge.visible = selected.has(id);
   }
 
   function placeChip() {
@@ -517,10 +449,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     blob.position.set(pose.x, 0.5, pose.z);
     blob.scale.setScalar(onFloor.scale);
     blob.material.opacity = SHADOW_OPACITY * onFloor.opacity;
-    const reached = reachMark(simulation, pose.feet);
-    mark.visible = session.isPlaying();
-    mark.position.set(pose.x, reached.height, pose.z);
-    mark.material.color.setHex(reached.reachesLock ? DANGER : ACCENT);
     drawTrail(simulation, pose);
 
     const strength = planeStrength(now);
@@ -530,7 +458,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       tag.material.opacity = strength;
       mesh.position.y += (height - mesh.position.y) * PLANE_EASE;
     }
-    paintObjects(now);
+    paintObjects();
     animateTags(now);
     controls.update();
     renderer.render(scene, camera);
@@ -615,7 +543,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       mesh.position.x = landmark.x + landmark.w / 2;
       mesh.position.z = landmark.y + landmark.d / 2;
     }
-    drawArrows();
   });
 
   renderer.domElement.addEventListener('pointerup', (event) => {
@@ -674,10 +601,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       tool = next;
       renderer.domElement.style.cursor = next.type === 'select' ? 'default' : 'crosshair';
     },
-    setDanger(next) {
-      danger = next;
-      drawArrows();
-    },
     /** The colours from a new calculation; a tag whose colour changed pops for a moment. */
     setTags(next) {
       const now = performance.now();
@@ -693,9 +616,6 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     pulse(id, seconds) {
       const tag = tags.get(id);
       if (tag) tag.sprite.userData.pulseUntil = performance.now() + seconds * MS_PER_SECOND;
-    },
-    setFocus(id) {
-      focus = id ? groupOf(id) : new Set();
     },
     select,
   };

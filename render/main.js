@@ -250,13 +250,11 @@ async function start() {
     session, history, startRoom, catalog: furnitureCatalog, say: messenger(), results,
   });
   const panel = mountPanel({ ledger, settings, session, getChild, autoplay });
-  // The 3D view loads later; until then a moment only shows its sentence.
+  // The 3D view loads later; until then a moment is only written in the record.
   let view = null;
   mountEventLog({
     list: document.querySelector('#event-log'),
-    flash: document.querySelector('#event-flash'),
     session,
-    flashSeconds: settings.event_flash_seconds,
     onMoment: (event) => view?.pulse(event.hazardId ?? event.targetId, settings.event_flash_seconds),
   });
   // The hundred children are run at once, and the first child starts moving without a click.

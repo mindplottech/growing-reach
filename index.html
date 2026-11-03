@@ -80,8 +80,6 @@
       </button>
       <p id="tool-hint" class="canvas-hint" hidden>家具はドラッグで動かせます。右ドラッグで向きを変え、ホイールで拡大します。</p>
       <p id="canvas-message" class="canvas-message" role="status" hidden></p>
-      <ol id="event-log" class="event-log" aria-label="この子に起きたこと" aria-live="polite" hidden></ol>
-      <p id="event-flash" class="event-flash" aria-hidden="true" hidden></p>
     </section>
 
     <aside id="results" aria-label="結果">
@@ -116,6 +114,8 @@
         <h3>この子の値</h3>
         <dl id="child-values" class="value-list"></dl>
         <label class="seed-label">子どもの番号（シード） <input id="seed" type="number" value="1" step="1" inputmode="numeric"></label>
+        <h3>この子に起きたこと</h3>
+        <ol id="event-log" class="event-log"></ol>
         <h3>転落（100人中）</h3>
         <div id="fall-rows" class="hazard-rows"></div>
         <h3>100人の内訳</h3>

@@ -62,7 +62,6 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   const fallBox = document.querySelector('#fall-rows');
   const retry = document.querySelector('#retry');
   let view = null;
-  let lastVerdict = null;
   let lastTags = null;
   let lastChild = null;
   let lastWords = new Map();
@@ -121,7 +120,6 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const compare = Boolean(labels);
     const { lock, rows, falls } = verdict.hazards;
     const places = [...(lock ? [lock] : []), ...rows];
-    lastVerdict = verdict;
 
     verdictBox.dataset.level = lock ? reachWords(lock).level : 'plain';
     verdictBox.replaceChildren(...(lock ? [placeRow(lock, compare)] : []));
@@ -156,8 +154,6 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     retry.disabled = true;
     retry.dataset.pending = 'false';
     document.querySelector('#results').classList.remove('stale');
-    view?.setFocus(null);
-    view?.setDanger({ level: verdict.level, ids: verdict.ids, arrows: verdict.arrows });
     view?.setTags(lastTags);
     autoplay.useEventful(verdict.eventful);
     showPressed();
@@ -182,7 +178,6 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const landmark = room.landmarks.find(({ id }) => id === target.id);
     const label = landmark?.groupLabel ?? target.label;
     countermeasure.textContent = countermeasureLine(target, baselineChildren, settings.countermeasure_limit_cm, label);
-    view?.setFocus(target.id);
   });
 
   // The child on screen grows while the slider moves; all hundred are run again on release.
@@ -206,7 +201,6 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     markChanged,
     attachView(next) {
       view = next;
-      if (lastVerdict) view.setDanger({ level: lastVerdict.level, ids: lastVerdict.ids, arrows: lastVerdict.arrows });
       if (lastTags) view.setTags(lastTags);
     },
   };
