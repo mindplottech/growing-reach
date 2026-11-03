@@ -44,6 +44,7 @@ export function mountPanel({ ledger, settings, session, getChild }) {
   const reasons = verdictBox.querySelector('.verdict-reasons');
   const countermeasure = document.querySelector('#countermeasure');
   const hazardBox = document.querySelector('#hazard-rows');
+  const fallBox = document.querySelector('#fall-rows');
   let view = null;
   let timer = null;
   let lastVerdict = null;
@@ -68,8 +69,8 @@ export function mountPanel({ ledger, settings, session, getChild }) {
   }
 
   /** One row per dangerous thing and per kind of fall; each opens the list of its children. */
-  function showHazards({ rows, falls }) {
-    hazardBox.replaceChildren(...[...rows, ...falls].map((row) => {
+  function rowElements(rows) {
+    return rows.map((row) => {
       const details = element('details', 'hazard-row');
       details.dataset.level = row.level ?? 'plain';
       details.append(element('summary', '', row.text));
@@ -88,7 +89,13 @@ export function mountPanel({ ledger, settings, session, getChild }) {
         details.append(list);
       }
       return details;
-    }));
+    });
+  }
+
+  // Falls sit under "くわしく見る" so that the panel fits the screen without scrolling.
+  function showHazards({ rows, falls }) {
+    hazardBox.replaceChildren(...rowElements(rows));
+    fallBox.replaceChildren(...rowElements(falls));
   }
 
   function judge() {

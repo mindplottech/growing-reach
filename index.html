@@ -64,16 +64,6 @@
     </section>
 
     <aside id="results" aria-label="結果">
-      <section id="verdict" class="verdict" data-level="pending" aria-live="polite">
-        <p class="verdict-headline">計算しています…</p>
-        <ul class="verdict-reasons"></ul>
-      </section>
-
-      <section class="hazards" aria-labelledby="hazards-title">
-        <h2 id="hazards-title">危険な物</h2>
-        <div id="hazard-rows" class="hazard-rows"></div>
-      </section>
-
       <section class="child-settings" aria-labelledby="child-title">
         <h2 id="child-title">子ども</h2>
         <label class="months-label" for="months">月齢 <output id="months-label" for="months"></output></label>
@@ -86,11 +76,23 @@
         </fieldset>
       </section>
 
+      <section id="verdict" class="verdict" data-level="pending" aria-live="polite">
+        <p class="verdict-headline">計算しています…</p>
+        <ul class="verdict-reasons"></ul>
+      </section>
+
+      <section class="hazards" aria-labelledby="hazards-title">
+        <h2 id="hazards-title">危険な物</h2>
+        <div id="hazard-rows" class="hazard-rows"></div>
+      </section>
+
       <details id="more" class="more">
         <summary>くわしく見る</summary>
         <h3>この子の値</h3>
         <dl id="child-values" class="value-list"></dl>
         <label class="seed-label">子どもの番号（シード） <input id="seed" type="number" value="1" step="1" inputmode="numeric"></label>
+        <h3>転落（100人中）</h3>
+        <div id="fall-rows" class="hazard-rows"></div>
         <h3>100人の内訳</h3>
         <dl id="trial-counts" class="value-list"></dl>
         <h3>対策を計算する</h3>

@@ -259,14 +259,14 @@ button, input, select { font: inherit; color: inherit; }
 #results {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
   min-width: 0;
-  padding: 24px;
+  padding: 16px 20px;
   overflow-y: auto;
   border-left: 1px solid var(--line);
 }
 
-.verdict { padding: 20px; border-radius: 12px; background: var(--accent-soft); }
+.verdict { padding: 16px; border-radius: 12px; background: var(--accent-soft); }
 
 .verdict[data-level="danger"] { background: var(--danger-soft); }
 
@@ -274,7 +274,7 @@ button, input, select { font: inherit; color: inherit; }
 
 .verdict[data-level="clear"] { background: var(--safe-soft); }
 
-.verdict-headline { font-size: 22px; font-weight: 700; line-height: 1.45; }
+.verdict-headline { font-size: 20px; font-weight: 700; line-height: 1.45; }
 
 .verdict[data-level="danger"] .verdict-headline { color: var(--danger); }
 
@@ -286,9 +286,9 @@ button, input, select { font: inherit; color: inherit; }
 
 /* ---- Dangerous things and falls: one row each, coloured only when a foothold was involved ---- */
 
-.hazards h2 { margin-bottom: 8px; font-size: 18px; }
+.hazards h2 { margin-bottom: 6px; font-size: 16px; }
 
-.hazard-rows { display: grid; gap: 6px; }
+.hazard-rows { display: grid; gap: 4px; }
 
 .hazard-row { border-left: 4px solid var(--line); border-radius: 6px; background: var(--surface); }
 
@@ -296,7 +296,7 @@ button, input, select { font: inherit; color: inherit; }
 
 .hazard-row[data-level="caution"] { border-left-color: var(--caution); background: var(--caution-soft); }
 
-.hazard-row summary { padding: 6px 10px; cursor: pointer; line-height: 1.45; }
+.hazard-row summary { padding: 3px 8px; font-size: 14px; line-height: 1.4; cursor: pointer; }
 
 .hazard-row[data-level="danger"] summary { color: var(--danger); font-weight: 600; }
 
@@ -332,7 +332,7 @@ button, input, select { font: inherit; color: inherit; }
 
 .months-range { color: var(--muted); }
 
-.sex-choice { display: flex; gap: 24px; margin: 12px 0 0; padding: 0; border: 0; }
+.sex-choice { display: flex; gap: 24px; margin: 4px 0 0; padding: 0; border: 0; }
 
 .sex-choice label { display: flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
 
