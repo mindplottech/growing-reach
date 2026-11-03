@@ -42,6 +42,8 @@ const ARROW_RADIUS_CM = 1.8;
 const ARROW_HEAD_CM = 14;
 const ARROW_LIFT_CM = 6;
 const CHIP_LIFT_CM = 10;
+const TRAIL_OPACITY = 0.35;
+const TRAIL_LIFT_CM = 0.6;
 
 function labelSprite(text) {
   const canvas = document.createElement('canvas');
@@ -156,7 +158,7 @@ function arrow(from, to) {
  * Draws the room and handles pointing at it. Every change to the room goes out through
  * `editing`; this module never decides whether a change is allowed.
  */
-export function mountView3d({ container, chip, ledger, settings, session, slider, editing }) {
+export function mountView3d({ container, chip, ledger, settings, session, slider, editing, trailToggle }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -203,6 +205,36 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   );
   mark.rotation.x = Math.PI / 2;
   scene.add(mark);
+  // The walked trail: one line per leg, redrawn when the simulation adds points.
+  const trailGroup = new THREE.Group();
+  scene.add(trailGroup);
+  const trailMaterial = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: TRAIL_OPACITY });
+  let trailPoints = -1;
+
+  function drawTrail(simulation, pose) {
+    trailGroup.visible = trailToggle.checked;
+    if (!trailGroup.visible) return;
+    const legs = simulation.trail;
+    const count = legs.reduce((sum, leg) => sum + leg.length, 0);
+    const last = legs[legs.length - 1];
+    if (count !== trailPoints) {
+      trailPoints = count;
+      trailGroup.children.forEach((line) => line.geometry.dispose());
+      trailGroup.clear();
+      for (const leg of legs) {
+        const geometry = new THREE.BufferGeometry().setFromPoints(
+          [...leg, ...(leg === last ? [{ x: pose.x, y: pose.z }] : [])].map(({ x, y }) => new THREE.Vector3(x, TRAIL_LIFT_CM, y)),
+        );
+        trailGroup.add(new THREE.Line(geometry, trailMaterial));
+      }
+    } else if (last && trailGroup.children.length > 0) {
+      // Only the end of the current leg moves between points: follow the child.
+      const line = trailGroup.children[trailGroup.children.length - 1];
+      const positions = Array.from(line.geometry.attributes.position.array);
+      positions.splice(-3, 3, pose.x, TRAIL_LIFT_CM, pose.z);
+      line.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    }
+  }
   let updatePose = createPoseTracker(settings.display_seconds);
 
   const raycaster = new THREE.Raycaster();
@@ -310,6 +342,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const firstBuild = model === null;
     model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds });
     updatePose = createPoseTracker(settings.display_seconds);
+    trailPoints = -1;
 
     disposeGroup(roomGroup);
     disposeGroup(planeGroup);
@@ -435,6 +468,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const reached = reachMark(simulation, pose.feet);
     mark.position.set(pose.x, reached.height, pose.z);
     mark.material.color.setHex(reached.reachesLock ? DANGER : ACCENT);
+    drawTrail(simulation, pose);
 
     const strength = planeStrength(now);
     for (const { mesh, tag, height } of planes) {

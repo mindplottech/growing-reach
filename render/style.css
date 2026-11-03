@@ -204,6 +204,21 @@ button, input, select { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
+.trail-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 90%);
+  cursor: pointer;
+}
+
+.trail-toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+
 .canvas-message {
   position: absolute;
   top: 16px;

@@ -6,6 +6,7 @@ import { landmarkHeight } from './room.js';
 import {
   evaluateScaffold, footholdReachLevel, footprintDistance, reachLevel, REACH_NONE, REACH_STANDING,
 } from './scaffold.js';
+import { createGrid, findPath } from './path.js';
 
 const CM_PER_M = 100;
 // One stream per kind of decision, all separate from the one that draws the body, so that
@@ -18,7 +19,22 @@ const STREAMS = {
   failure: 0x1b873593,
   balance: 0x5bd1e995,
   trip: 0x6c62272e,
+  play: 0x27d4eb2f,
 };
+
+// Routes depend only on the room and the grid settings, so runs in the same room share them.
+const routeCaches = new WeakMap();
+
+function routeCache(room, landmarks, settings) {
+  const key = `${settings.path_grid_cm}/${settings.path_clearance_cm}`;
+  if (!routeCaches.has(room)) routeCaches.set(room, new Map());
+  const byGrid = routeCaches.get(room);
+  if (!byGrid.has(key)) {
+    const grid = createGrid(room, landmarks, { cell: settings.path_grid_cm, clearance: settings.path_clearance_cm });
+    byGrid.set(key, { grid, routes: new Map() });
+  }
+  return byGrid.get(key);
+}
 
 const ledgerItem = (ledger, id) => {
   const item = ledger.items.find((entry) => entry.id === id);
@@ -69,10 +85,22 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     })),
     ...boxes,
   ];
+  // Placed boxes are not part of the room object, so their routes cannot be shared.
+  const cache = boxes.length === 0
+    ? routeCache(room, landmarks, settings)
+    : { grid: createGrid(room, landmarks, { cell: settings.path_grid_cm, clearance: settings.path_clearance_cm }), routes: new Map() };
+  const routeBetween = (from, to) => {
+    const key = `${from.x},${from.y}>${to.x},${to.y}`;
+    if (!cache.routes.has(key)) cache.routes.set(key, findPath(cache.grid, from, to));
+    return cache.routes.get(key).map((point) => ({ ...point }));
+  };
 
   const position = { ...room.start };
   const visits = [];
   const events = [];
+  // Walked legs, each a list of floor points, for drawing the trail.
+  const trail = [];
+  let route = [];
   let time = 0;
   let current = null;
   let target = null;
@@ -83,6 +111,16 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
 
   const between = (rng, [min, max]) => min + rng() * (max - min);
   const pick = (rng, choices) => choices[Math.floor(rng() * choices.length)];
+  // With equal weights this picks the same item as pick() for the same draw.
+  const pickWeighted = (rng, choices, weight) => {
+    let left = rng() * choices.reduce((sum, choice) => sum + weight(choice), 0);
+    for (const choice of choices) {
+      left -= weight(choice);
+      if (left < 0) return choice;
+    }
+    return choices[choices.length - 1];
+  };
+  const interestOf = (landmark) => landmark.interest ?? settings.interest_default;
   const waitingTime = (rng, rate) => (rate > 0 ? -Math.log(1 - rng()) / rate : Infinity);
 
   function record(kind, details = {}) {
@@ -105,7 +143,9 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   }
 
   function chooseTarget() {
-    target = pick(streams.route, landmarks.filter((landmark) => landmark !== current));
+    target = pickWeighted(streams.route, landmarks.filter((landmark) => landmark !== current), interestOf);
+    route = routeBetween(position, target.approach);
+    trail.push([{ ...position }]);
     tripLeft = waitingTime(streams.trip, tripPerCm);
   }
 
@@ -235,7 +275,11 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     if (current.scaffold && canClimb(body, current.height) && wantsToClimb) {
       attemptClimb(current, current.height);
     } else {
-      wait(between(streams.stay, dwell), chooseTarget);
+      // Look at it for the ledger's dwell time; if it is within reach, sometimes play with it too.
+      const look = between(streams.stay, dwell);
+      const plays = canReach(body, current.height) && streams.play() < settings.play_probability;
+      visits[visits.length - 1].played = plays;
+      wait(look + (plays ? between(streams.play, settings.play_seconds) : 0), chooseTarget);
     }
   }
 
@@ -244,10 +288,13 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     wait(settings.after_fall_seconds, chooseTarget);
   }
 
-  /** Walks for up to `seconds`; returns the time left over if something happened. */
+  const markTrail = () => trail[trail.length - 1].push({ ...position });
+
+  /** Walks the route for up to `seconds`; returns the time left over if something happened. */
   function walk(seconds) {
-    const dx = target.approach.x - position.x;
-    const dy = target.approach.y - position.y;
+    const next = route[0];
+    const dx = next.x - position.x;
+    const dy = next.y - position.y;
     const distance = Math.hypot(dx, dy);
     const travel = Math.min(distance, tripLeft);
     const needed = travel / speed;
@@ -261,8 +308,13 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
       return 0;
     }
     time += needed;
-    if (travel === distance) arrive();
-    else trip();
+    markTrail();
+    if (travel !== distance) {
+      trip();
+    } else {
+      route.shift();
+      if (route.length === 0) arrive();
+    }
     return seconds - needed;
   }
 
@@ -287,6 +339,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     position,
     visits,
     events,
+    trail,
     step,
     get time() {
       return time;

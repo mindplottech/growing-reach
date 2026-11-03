@@ -220,6 +220,7 @@ async function start() {
       session,
       slider,
       editing: toolbar.editing,
+      trailToggle: document.querySelector('#show-trail'),
     });
     toolbar.attachView(view);
     panel.attachView(view);

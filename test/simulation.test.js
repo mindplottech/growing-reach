@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { canClimb, canReach } from '../sim/ability.js';
+import { createGrid, findPath, routeLength } from '../sim/path.js';
 import { landmarkHeight } from '../sim/room.js';
 import { createSimulation } from '../sim/simulation.js';
 import { moveAwayFromLock } from '../sim/trials.js';
@@ -64,19 +65,52 @@ test('the judgement for a landmark never changes during a run', () => {
   }
 });
 
-test('walking time matches the walk speed and the dwell stays in the ledger range', () => {
+test('walking time matches the route length and walk speed, and the dwell stays in the ledger range', () => {
   const [minDwell, maxDwell] = byId('interest_dwell').range;
-  const simulation = run(7);
+  // No playing, so every stay is just looking, for the ledger's dwell time.
+  const simulation = run(7, STEP, RUN_SECONDS, { ...BASE, settings: { ...STILL, play_probability: 0 } });
   const speed = simulation.body.walkSpeed.value * 100;
+  const landmarks = roomLayout.landmarks.map((l) => ({ ...l, height: landmarkHeight(ledger, l.heightOf) }));
+  const grid = createGrid(roomLayout, landmarks, { cell: settings.path_grid_cm, clearance: settings.path_clearance_cm });
   const byLandmark = new Map(roomLayout.landmarks.map((l) => [l.id, l.approach]));
   simulation.visits.slice(1).forEach((visit, i) => {
     const previous = simulation.visits[i];
     const from = byLandmark.get(previous.id);
-    const to = byLandmark.get(visit.id);
-    const walking = Math.hypot(to.x - from.x, to.y - from.y) / speed;
+    const walking = routeLength(from, findPath(grid, from, byLandmark.get(visit.id))) / speed;
     const dwell = visit.time - previous.time - walking;
     assert.ok(dwell >= minDwell - 1e-9 && dwell <= maxDwell + 1e-9, `dwell ${dwell}`);
   });
+});
+
+test('playing happens only with things within reach, and adds the play time', () => {
+  const simulation = run(7, STEP, RUN_SECONDS, { ...BASE, settings: { ...STILL, play_probability: 1 } });
+  const played = simulation.visits.filter(({ played }) => played);
+  assert.ok(played.length > 0);
+  for (const visit of simulation.visits) {
+    if (visit.played) assert.equal(visit.canReach, true);
+    if (!visit.canReach) assert.notEqual(visit.played, true);
+  }
+});
+
+test('the trail follows the walked route and starts from where the child was', () => {
+  const simulation = run(3);
+  assert.ok(simulation.trail.length > 1);
+  assert.deepEqual(simulation.trail[0][0], roomLayout.start);
+  for (const leg of simulation.trail) assert.ok(leg.length >= 1);
+  const insideFurniture = ({ x, y }) => roomLayout.landmarks.some((l) => x > l.x + 1 && x < l.x + l.w - 1 && y > l.y + 1 && y < l.y + l.d - 1);
+  for (const leg of simulation.trail) for (const point of leg) assert.ok(!insideFurniture(point), JSON.stringify(point));
+});
+
+test('a stronger interest makes a thing chosen more often', () => {
+  const visitsTo = (interest) => {
+    const room = { ...roomLayout, landmarks: roomLayout.landmarks.map((l) => (l.id === 'sofa' ? { ...l, interest } : l)) };
+    let count = 0;
+    for (let seed = 1; seed <= 30; seed += 1) {
+      count += run(seed, 1, RUN_SECONDS, { ...BASE, room }).visits.filter(({ id }) => id === 'sofa').length;
+    }
+    return count;
+  };
+  assert.ok(visitsTo(5) > visitsTo(1));
 });
 
 test('step advances time exactly and the child stays inside the room', () => {
