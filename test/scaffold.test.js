@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getBodyValues } from '../src/body.js';
-import { landmarkHeight } from '../src/room.js';
+import { getBodyValues } from '../sim/body.js';
+import { landmarkHeight } from '../sim/room.js';
 import {
   evaluateScaffold, footholdReachLevel, footprintDistance, horizontalReach, isBetterReach,
   reachLevel, REACH_NONE, REACH_STANDING, REACH_TIPTOE,
-} from '../src/scaffold.js';
+} from '../sim/scaffold.js';
 import { byId, close, ledger, maxMonths, minMonths, roomLayout } from './helpers.js';
 
 const objects = roomLayout.landmarks.map((landmark) => ({

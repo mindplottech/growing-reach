@@ -1,6 +1,6 @@
-import { EVENT_LABELS } from './events.js';
-import { findCountermeasure } from './trials.js';
-import { judgeRoom } from './verdict.js';
+import { EVENT_LABELS } from '../sim/events.js';
+import { findCountermeasure } from '../sim/trials.js';
+import { judgeRoom } from '../sim/verdict.js';
 
 const MONTHS_PER_YEAR = 12;
 // Wait for the slider to settle before running all children again.

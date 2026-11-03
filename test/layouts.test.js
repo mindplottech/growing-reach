@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EVENT } from '../src/events.js';
-import { landmarkHeight, selectLayout } from '../src/room.js';
-import { footprintDistance } from '../src/scaffold.js';
-import { createSimulation } from '../src/simulation.js';
+import { EVENT } from '../sim/events.js';
+import { landmarkHeight, selectLayout } from '../sim/room.js';
+import { footprintDistance } from '../sim/scaffold.js';
+import { createSimulation } from '../sim/simulation.js';
 import { byId, ledger, maxMonths, roomFile, settings } from './helpers.js';
 
 const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.d && b.y < a.y + a.d;

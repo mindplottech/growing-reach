@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { drawIndividual, getBodyValues, getTiptoeReference } from '../src/body.js';
+import { drawIndividual, getBodyValues, getTiptoeReference } from '../sim/body.js';
 import {
   byId, climbPoints, close, everyMonth, expectedAt, heightPoints, heightSdPoints,
   ledger, maxMonths, minMonths, reachFormula, SEXES, walkPoints,

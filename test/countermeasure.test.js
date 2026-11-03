@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EVENT } from '../src/events.js';
-import { findCountermeasure, moveAwayFromLock, runTrials, searchMoves } from '../src/trials.js';
+import { EVENT } from '../sim/events.js';
+import { findCountermeasure, moveAwayFromLock, runTrials, searchMoves } from '../sim/trials.js';
 import { ledger, maxMonths, minMonths, roomLayout, settings } from './helpers.js';
 
 const BASE = { ledger, settings, room: roomLayout, boxes: [], months: minMonths, sex: 'female' };

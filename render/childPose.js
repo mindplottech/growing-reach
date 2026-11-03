@@ -1,5 +1,5 @@
-import { EVENT } from './events.js';
-import { REACH_TIPTOE } from './scaffold.js';
+import { EVENT } from '../sim/events.js';
+import { REACH_TIPTOE } from '../sim/scaffold.js';
 
 /** The height of the surface the child stands on now: a foothold's height, or the floor. */
 export const footHeight = (simulation) => simulation.foothold?.height ?? 0;

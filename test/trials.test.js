@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EVENT } from '../src/events.js';
-import { compareTrials, moveAwayFromLock, runTrials } from '../src/trials.js';
-import { footprintDistance } from '../src/scaffold.js';
+import { EVENT } from '../sim/events.js';
+import { compareTrials, moveAwayFromLock, runTrials } from '../sim/trials.js';
+import { footprintDistance } from '../sim/scaffold.js';
 import { ledger, maxMonths, minMonths, roomFile, roomLayout, settings } from './helpers.js';
-import { selectLayout } from '../src/room.js';
+import { selectLayout } from '../sim/room.js';
 
 const BASE = { ledger, settings, room: roomLayout, months: minMonths, sex: 'female' };
 const SHELF = 'low_shelf';

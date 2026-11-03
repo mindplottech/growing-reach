@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canClimb, canReach } from '../src/ability.js';
-import { getBodyValues } from '../src/body.js';
+import { canClimb, canReach } from '../sim/ability.js';
+import { getBodyValues } from '../sim/body.js';
 import { ledger, maxMonths, minMonths } from './helpers.js';
 
 const EPSILON = 0.01;

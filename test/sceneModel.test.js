@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getBodyValues } from '../src/body.js';
-import { landmarkHeight, selectLayout } from '../src/room.js';
+import { getBodyValues } from '../sim/body.js';
+import { landmarkHeight, selectLayout } from '../sim/room.js';
 import {
   buildSceneModel, cameraPlacement, highlightedIds, objectState, reachableNow,
   STATE_CLIMBABLE, STATE_OUT, STATE_REACHABLE,
-} from '../src/sceneModel.js';
-import { footholdReachLevel, REACH_NONE } from '../src/scaffold.js';
+} from '../render/sceneModel.js';
+import { footholdReachLevel, REACH_NONE } from '../sim/scaffold.js';
 import { byId, ledger, maxMonths, minMonths, roomFile, roomLayout } from './helpers.js';
 
 const resolved = (room) => room.landmarks.map((l) => ({ ...l, height: landmarkHeight(ledger, l.heightOf) }));

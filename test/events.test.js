@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getBodyValues, drawIndividual } from '../src/body.js';
-import { EVENT, EVENT_LABELS } from '../src/events.js';
-import { landmarkHeight } from '../src/room.js';
-import { footholdReachLevel, reachLevel, REACH_NONE, REACH_STANDING, REACH_TIPTOE } from '../src/scaffold.js';
-import { createSimulation } from '../src/simulation.js';
+import { getBodyValues, drawIndividual } from '../sim/body.js';
+import { EVENT, EVENT_LABELS } from '../sim/events.js';
+import { landmarkHeight } from '../sim/room.js';
+import { footholdReachLevel, reachLevel, REACH_NONE, REACH_STANDING, REACH_TIPTOE } from '../sim/scaffold.js';
+import { createSimulation } from '../sim/simulation.js';
 import { byId, ledger, roomLayout, settings } from './helpers.js';
 
 const CLIMBER = { ...settings, climb_probability: 1, chain_probability: 0, climb_failure_k: 0 };

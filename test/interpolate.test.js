@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { interpolate } from '../src/interpolate.js';
+import { interpolate } from '../sim/interpolate.js';
 
 const points = [[10, 1], [20, 3], [40, 4]];
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canClimb } from '../src/ability.js';
-import { drawIndividual, getBodyValues } from '../src/body.js';
+import { canClimb } from '../sim/ability.js';
+import { drawIndividual, getBodyValues } from '../sim/body.js';
 import { byId, close, everyMonth, ledger } from './helpers.js';
 
 const entry = byId('climb_height');

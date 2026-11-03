@@ -1,5 +1,5 @@
-import { canClimb, canReach } from './ability.js';
-import { footholdReachLevel, REACH_NONE } from './scaffold.js';
+import { canClimb, canReach } from '../sim/ability.js';
+import { footholdReachLevel, REACH_NONE } from '../sim/scaffold.js';
 
 export const STATE_CLIMBABLE = 'climbable';
 export const STATE_REACHABLE = 'reachable';

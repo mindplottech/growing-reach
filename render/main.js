@@ -1,10 +1,10 @@
 import {
   addFurniture, canRemove, createHistory, isWindowPart, moveObject, moveWindow, placeChild, removeObject,
-} from './editor.js';
+} from '../sim/editor.js';
 import { renderEvidence } from './evidence.js';
 import { mountGuide } from './guide.js';
 import { mountPanel } from './panel.js';
-import { selectLayout } from './room.js';
+import { selectLayout } from '../sim/room.js';
 import { createSession } from './session.js';
 
 const LEDGER_URL = new URL('../data/values_ledger.json', import.meta.url);

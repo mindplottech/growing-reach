@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRng, standardNormal } from '../src/random.js';
+import { createRng, standardNormal } from '../sim/random.js';
 
 const draw = (seed, count, fn) => {
   const rng = createRng(seed);

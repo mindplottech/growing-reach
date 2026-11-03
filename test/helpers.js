@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { selectLayout } from '../src/room.js';
+import { selectLayout } from '../sim/room.js';
 
 export const ledger = JSON.parse(readFileSync(new URL('../data/values_ledger.json', import.meta.url)));
 export const roomFile = JSON.parse(readFileSync(new URL('../data/room_layout.json', import.meta.url)));
@@ -17,7 +17,7 @@ export const close = (actual, expected) =>
 export const everyMonth = () =>
   Array.from({ length: maxMonths - minMonths + 1 }, (_, i) => minMonths + i);
 
-/** Expected value worked out from the ledger's points, independently of src/interpolate.js. */
+/** Expected value worked out from the ledger's points, independently of sim/interpolate.js. */
 export function expectedAt(points, x) {
   if (x <= points[0][0]) return points[0][1];
   const upper = points.findIndex(([px]) => px >= x);

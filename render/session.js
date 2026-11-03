@@ -1,4 +1,4 @@
-import { createSimulation } from './simulation.js';
+import { createSimulation } from '../sim/simulation.js';
 
 // A fixed step keeps the run identical for a seed whatever the frame rate is.
 const STEP_SECONDS = 0.05;

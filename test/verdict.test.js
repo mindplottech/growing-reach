@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EVENT } from '../src/events.js';
-import { runTrials } from '../src/trials.js';
-import { judgeRoom, LEVEL_CAUTION, LEVEL_CLEAR, LEVEL_DANGER } from '../src/verdict.js';
+import { EVENT } from '../sim/events.js';
+import { runTrials } from '../sim/trials.js';
+import { judgeRoom, LEVEL_CAUTION, LEVEL_CLEAR, LEVEL_DANGER } from '../sim/verdict.js';
 import { ledger, maxMonths, minMonths, roomLayout, settings } from './helpers.js';
 
 const BASE = { ledger, settings, room: roomLayout, months: minMonths, sex: 'female' };

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EVENT } from '../src/events.js';
-import { createSimulation } from '../src/simulation.js';
+import { EVENT } from '../sim/events.js';
+import { createSimulation } from '../sim/simulation.js';
 import { byId, ledger, roomLayout, settings } from './helpers.js';
 
 const QUIET = { ...settings, climb_failure_k: 0 };

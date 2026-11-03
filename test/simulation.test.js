@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { canClimb, canReach } from '../src/ability.js';
-import { landmarkHeight } from '../src/room.js';
-import { createSimulation } from '../src/simulation.js';
-import { moveAwayFromLock } from '../src/trials.js';
+import { canClimb, canReach } from '../sim/ability.js';
+import { landmarkHeight } from '../sim/room.js';
+import { createSimulation } from '../sim/simulation.js';
+import { moveAwayFromLock } from '../sim/trials.js';
 import { byId, close, ledger, roomLayout, settings } from './helpers.js';
 
 const STILL = { ...settings, climb_probability: 0 };
@@ -119,10 +119,22 @@ test('every landmark and approach point is inside the room, and the point is off
 });
 
 test('no source file uses unseeded randomness', () => {
-  const dir = new URL('../src/', import.meta.url);
+  for (const folder of ['../sim/', '../render/']) {
+    const dir = new URL(folder, import.meta.url);
+    for (const name of readdirSync(dir).filter((file) => file.endsWith('.js'))) {
+      const source = readFileSync(new URL(name, dir), 'utf8');
+      assert.ok(!source.includes('Math.random'), `${folder}${name} uses Math.random`);
+    }
+  }
+});
+
+test('the calculation in sim/ never touches the page or Three.js', () => {
+  const dir = new URL('../sim/', import.meta.url);
+  // "window" alone is also the name of a room part, so look for the browser objects in use.
+  const browserOnly = [/\bdocument\.[A-Za-z]/, /\bwindow\.[A-Za-z]/, /from 'three/, /requestAnimationFrame/, /\.\.\/render\//];
   for (const name of readdirSync(dir).filter((file) => file.endsWith('.js'))) {
     const source = readFileSync(new URL(name, dir), 'utf8');
-    assert.ok(!source.includes('Math.random'), `${name} uses Math.random`);
+    for (const pattern of browserOnly) assert.ok(!pattern.test(source), `sim/${name} matches ${pattern}`);
   }
 });
 

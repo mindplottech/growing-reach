@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createPoseTracker, floorShadow, footHeight, gestureForEvent, MOTION, motionForEvent, reachMark,
-} from '../src/childPose.js';
-import { EVENT } from '../src/events.js';
-import { landmarkHeight } from '../src/room.js';
-import { REACH_STANDING, REACH_TIPTOE } from '../src/scaffold.js';
-import { buildSceneModel } from '../src/sceneModel.js';
-import { createSimulation } from '../src/simulation.js';
+} from '../render/childPose.js';
+import { EVENT } from '../sim/events.js';
+import { landmarkHeight } from '../sim/room.js';
+import { REACH_STANDING, REACH_TIPTOE } from '../sim/scaffold.js';
+import { buildSceneModel } from '../render/sceneModel.js';
+import { createSimulation } from '../sim/simulation.js';
 import { byId, ledger, roomLayout, settings } from './helpers.js';
 
 const steady = structuredClone(ledger);

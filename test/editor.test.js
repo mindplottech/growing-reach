@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addFurniture, canRemove, createHistory, membersOf, moveObject, moveWindow, placeChild, removeObject,
-} from '../src/editor.js';
-import { landmarkHeight } from '../src/room.js';
-import { createSimulation } from '../src/simulation.js';
+} from '../sim/editor.js';
+import { landmarkHeight } from '../sim/room.js';
+import { createSimulation } from '../sim/simulation.js';
 import { ledger, roomFile, roomLayout, settings } from './helpers.js';
 
 const catalog = roomFile.furniture_catalog.items;
