@@ -132,7 +132,7 @@ button, input, select { font: inherit; color: inherit; }
 
 .tool:disabled:hover { background: transparent; }
 
-.tool-label { font-size: 12px; line-height: 1.3; }
+.tool-label { font-size: 14px; line-height: 1.3; white-space: nowrap; }
 
 .tool[data-tip]:hover::after {
   content: attr(data-tip);
