@@ -59,7 +59,11 @@ const CLIMB_LEAN = 0.4;
 const STEP_LEAN = 0.15;
 const BACKWARD_ARMS = 0.6;
 const JUMP_HOP_CM = 8;
-const LYING_DOWN = Math.PI / 2;
+// A fall is drawn gently: the child sits down with a bump (ころん) and leans back a little.
+const SIT_LEAN_BACK = -0.3;
+// While a climb takes its time, the child holds the edge with both hands, leaning in.
+const HOLD_ARMS = 0.7;
+const HOLD_LEAN = 0.25;
 const TURN_MIN_CM = 0.01;
 
 const clamp01 = (t) => Math.min(Math.max(t, 0), 1);
@@ -97,7 +101,8 @@ function motionShape(kind, elapsed, seconds) {
     default: {
       const falling = clamp01(elapsed / seconds.fall);
       const rising = clamp01((elapsed - seconds.fall - seconds.fall_hold) / seconds.fall);
-      return { along: falling * falling, pitch: LYING_DOWN * falling * (1 - rising) };
+      const sit = falling * (1 - rising);
+      return { along: falling * falling, sit, pitch: SIT_LEAN_BACK * sit };
     }
   }
 }
@@ -114,7 +119,7 @@ export function createPoseTracker(seconds) {
   let seen = 0;
   let yaw = 0;
 
-  return function update({ x, z, feet, events }, frameSeconds) {
+  return function update({ x, z, feet, events, climbing = false }, frameSeconds) {
     if (!drawn || events.length < seen) {
       drawn = { x, z, feet };
       motion = null;
@@ -130,6 +135,7 @@ export function createPoseTracker(seconds) {
     seen = events.length;
 
     let shape = {};
+    if (!motion && climbing) shape = { arms: HOLD_ARMS, lean: HOLD_LEAN };
     if (motion) {
       motion.elapsed += frameSeconds;
       shape = motionShape(motion.kind, motion.elapsed, seconds);
@@ -164,6 +170,7 @@ export function createPoseTracker(seconds) {
       kind: motion?.kind ?? null,
       turned: Boolean(shape.turned),
       pitch: shape.pitch ?? 0,
+      sit: shape.sit ?? 0,
       lean: shape.lean ?? 0,
       arms,
       stretch,

@@ -30,11 +30,17 @@ function height(ledger, months, sex, z) {
   return { value: median + z * sd, sd, category: percentiles.category };
 }
 
+/** Standing reach for a height, by the ledger's formula. */
+export function standingReachFor(ledger, heightCm) {
+  const { slope, intercept } = reachCoefficients(ledger);
+  return heightCm * slope + intercept;
+}
+
 /** Variation comes only from height: the ledger has no residual SD for the reach formula. */
 function reach(ledger, heightResult) {
-  const { slope, intercept } = reachCoefficients(ledger);
+  const { slope } = reachCoefficients(ledger);
   return {
-    value: heightResult.value * slope + intercept,
+    value: standingReachFor(ledger, heightResult.value),
     sd: heightResult.sd * slope,
     sdCategory: item(ledger, 'height_sd').category,
     category: item(ledger, 'reach_height_standing').category,

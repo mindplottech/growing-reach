@@ -155,7 +155,7 @@ test('coming down differs by kind, and a backward descent turns the child round'
   assert.ok(run('climb_down').some((pose) => pose.arms > 0));
 });
 
-test('a fall tips the figure over, holds briefly, then stands up again', () => {
+test('a fall sits the figure down gently, holds briefly, then stands up again', () => {
   const update = createPoseTracker(SECONDS);
   update(at(40), FRAME);
   const events = [event(EVENT.FELL)];
@@ -164,9 +164,11 @@ test('a fall tips the figure over, holds briefly, then stands up again', () => {
   for (let i = 0; i <= framesFor(total) + 1; i += 1) poses.push(update(at(0, events), FRAME));
   const onFloor = framesFor(SECONDS.fall) + 1;
   assert.ok(poses[onFloor].feet < 1, 'quickly on the floor');
-  assert.ok(poses[onFloor].pitch > 1, 'lying over');
+  assert.ok(poses[onFloor].sit > 0.99, 'sitting down');
+  assert.ok(Math.abs(poses[onFloor].pitch) < 0.5, 'not lying over');
   const holding = poses[framesFor(SECONDS.fall + SECONDS.fall_hold / 2)];
-  assert.equal(holding.pitch, poses[onFloor].pitch, 'staying still');
+  assert.equal(holding.sit, poses[onFloor].sit, 'staying still');
+  assert.equal(poses[poses.length - 1].sit, 0, 'up again');
   assert.equal(poses[poses.length - 1].pitch, 0, 'upright again');
 });
 
@@ -236,4 +238,14 @@ test('the plane labels say they are for standing on the floor', () => {
   const simulation = newSimulation();
   const { planes } = buildSceneModel({ ledger, room: roomLayout, landmarks: simulation.landmarks, body: simulation.body });
   for (const { label } of planes) assert.ok(label.includes('床に立ったとき'), label);
+});
+
+test('while a climb takes its time the figure holds the edge, then the climb motion follows', () => {
+  const update = createPoseTracker(SECONDS);
+  update(at(0), FRAME);
+  const holding = update({ ...at(0), climbing: true }, FRAME);
+  assert.ok(holding.arms > 0 && holding.lean > 0);
+  assert.equal(holding.feet, 0, 'still on the floor');
+  const after = update(at(0), FRAME);
+  assert.equal(after.arms, 0);
 });

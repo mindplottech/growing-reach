@@ -6,6 +6,7 @@ import { landmarkHeight } from './room.js';
 import {
   evaluateScaffold, footholdReachLevel, footprintDistance, reachLevel, REACH_NONE, REACH_STANDING,
 } from './scaffold.js';
+import { floorHazardLevel, footholdHazardLevel, placeHazards } from './hazards.js';
 import { createGrid, findPath } from './path.js';
 
 const CM_PER_M = 100;
@@ -85,6 +86,8 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     })),
     ...boxes,
   ];
+  // Dangerous things sit on furniture tops; boxes carry none.
+  const hazards = placeHazards(room, landmarks);
   // Placed boxes are not part of the room object, so their routes cannot be shared.
   const cache = boxes.length === 0
     ? routeCache(room, landmarks, settings)
@@ -105,6 +108,8 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   let current = null;
   let target = null;
   let foothold = null;
+  // The object being climbed onto, while the climb takes its time.
+  let climbing = null;
   let tripLeft = Infinity;
   let waitLeft = 0;
   let afterWait = null;
@@ -174,16 +179,34 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     position.y = on.y + on.d / 2;
   }
 
+  /** Climbing takes time that grows with the step; whether it fails is decided at the top. */
   function attemptClimb(to, stepHeight) {
-    const failure = settings.climb_failure_k * (stepHeight / body.climb.value) ** failureExponent;
-    if (streams.failure() < failure) {
-      fall(to, 'climb_failure');
-      return;
-    }
-    stand(to);
-    record(EVENT.CLIMBED, { height: to.height, stepHeight });
-    reactOnFoothold(to);
-    standOnFoothold();
+    const seconds = settings.climb_seconds_base + settings.climb_seconds_per_cm * stepHeight;
+    climbing = to;
+    wait(seconds, () => {
+      climbing = null;
+      const failure = settings.climb_failure_k * (stepHeight / body.climb.value) ** failureExponent;
+      if (streams.failure() < failure) {
+        fall(to, 'climb_failure');
+        return;
+      }
+      stand(to);
+      record(EVENT.CLIMBED, { height: to.height, stepHeight, climbSeconds: seconds });
+      reactOnFoothold(to);
+      standOnFoothold();
+    });
+  }
+
+  function touchHazard(hazard, level, from) {
+    record(EVENT.TOUCHED_HAZARD, {
+      hazardId: hazard.id,
+      hazardKind: hazard.kind,
+      hazardLabel: hazard.label,
+      onId: hazard.on,
+      height: hazard.height,
+      level,
+      from,
+    });
   }
 
   /** Records what the child on this foothold reaches, and standing at the window. */
@@ -203,6 +226,10 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
       const details = { targetId: object.id, targetLabel: object.label, level };
       if (object.role === ROLE_LOCK) record(EVENT.REACHED_LOCK, details);
       else if (reachLevel(body, object.height) !== REACH_STANDING) record(EVENT.TOUCHED_HIGH, details);
+    }
+    for (const hazard of hazards) {
+      const level = footholdHazardLevel(ledger, body, on, hazard);
+      if (level !== REACH_NONE) touchHazard(hazard, level, 'foothold');
     }
   }
 
@@ -271,6 +298,11 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     if (current.role === ROLE_LOCK && floorLevel !== REACH_NONE) {
       record(EVENT.REACHED_LOCK, { targetId: current.id, targetLabel: current.label, level: floorLevel });
     }
+    // What is on top of this furniture, if the child's hand gets to it from the floor.
+    for (const hazard of hazards.filter(({ on }) => on === current.id)) {
+      const level = floorHazardLevel(ledger, body, current, hazard);
+      if (level !== REACH_NONE) touchHazard(hazard, level, 'floor');
+    }
     const wantsToClimb = streams.climb() < settings.climb_probability;
     if (current.scaffold && canClimb(body, current.height) && wantsToClimb) {
       attemptClimb(current, current.height);
@@ -336,6 +368,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   return {
     body,
     landmarks,
+    hazards,
     position,
     visits,
     events,
@@ -346,6 +379,9 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     },
     get foothold() {
       return foothold;
+    },
+    get climbing() {
+      return climbing;
     },
   };
 }

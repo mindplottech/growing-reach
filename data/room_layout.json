@@ -4,7 +4,8 @@
     "category": "provisional",
     "unit": "cm",
     "heights": "家具の高さはここに書かず、heightOf で values_ledger.json の項目を指す",
-    "moved": "隙間・箱・壁・家具の大きさなどの仮値は sim/params.js にある"
+    "moved": "隙間・箱・壁・家具の大きさなどの仮値は sim/params.js にある",
+    "hazards": "危険な物は家具の上に置く（on が家具、dx・dy は家具の角からの位置、w・d は大きさ）。高さは置いた家具の天板の高さ。位置と大きさは設計者が置いた仮値"
   },
   "width": 450,
   "depth": 360,
@@ -12,6 +13,11 @@
     "x": 225,
     "y": 150
   },
+  "hazards": [
+    { "id": "medicine", "kind": "medicine", "label": "薬", "on": "dining_table", "dx": 60, "dy": 30, "w": 8, "d": 8 },
+    { "id": "scissors", "kind": "scissors", "label": "はさみ", "on": "low_shelf", "dx": 70, "dy": 15, "w": 15, "d": 8 },
+    { "id": "cord", "kind": "cord", "label": "コード", "on": "low_table", "dx": 40, "dy": 25, "w": 30, "d": 4 }
+  ],
   "layouts": [
     {
       "id": "default",

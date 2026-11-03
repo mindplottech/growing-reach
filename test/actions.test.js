@@ -32,7 +32,9 @@ test('with probability 1 every climbable foothold visited on the floor is climbe
   const simulation = run({ used: { ...QUIET, climb_probability: 1, chain_probability: 0 } });
   const fromFloor = simulation.visits.filter((visit) => visit.scaffold !== null);
   assert.ok(fromFloor.length > 0);
-  assert.equal(kinds(simulation, EVENT.CLIMBED).length, fromFloor.length);
+  // Climbing takes time, so a climb may still be under way when the run ends.
+  const underWay = simulation.climbing ? 1 : 0;
+  assert.equal(kinds(simulation, EVENT.CLIMBED).length, fromFloor.length - underWay);
 });
 
 test('whatever the dice say, a child never climbs what canClimb refuses', () => {

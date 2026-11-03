@@ -42,10 +42,14 @@ const ARROW_RADIUS_CM = 1.8;
 const ARROW_HEAD_CM = 14;
 const ARROW_LIFT_CM = 6;
 const CHIP_LIFT_CM = 10;
+const HAZARD_COLOUR = 0xb5534a;
+const HAZARD_THICK_CM = 3;
+const HAZARD_LABEL_SHARE = 0.8;
+const SIT_DROP = 0.14;
 const TRAIL_OPACITY = 0.35;
 const TRAIL_LIFT_CM = 0.6;
 
-function labelSprite(text) {
+function labelSprite(text, { fill = 'rgba(255,255,255,0.95)', ink = '#1f2933', share = 1 } = {}) {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   const font = '600 48px system-ui, -apple-system, "Hiragino Sans", sans-serif';
@@ -54,11 +58,11 @@ function labelSprite(text) {
   canvas.width = Math.ceil(context.measureText(text).width) + padding * 2;
   canvas.height = 84;
   context.font = font;
-  context.fillStyle = 'rgba(255,255,255,0.95)';
+  context.fillStyle = fill;
   context.beginPath();
   context.roundRect(0, 0, canvas.width, canvas.height, canvas.height / 2);
   context.fill();
-  context.fillStyle = '#1f2933';
+  context.fillStyle = ink;
   context.textBaseline = 'middle';
   context.fillText(text, padding, canvas.height / 2 + 2);
   const texture = new THREE.CanvasTexture(canvas);
@@ -66,6 +70,7 @@ function labelSprite(text) {
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true, sizeAttenuation: false });
   const sprite = new THREE.Sprite(material);
   sprite.userData.widthPerHeight = canvas.width / canvas.height;
+  sprite.userData.share = share;
   sprite.renderOrder = 10;
   return sprite;
 }
@@ -122,6 +127,7 @@ function applyPose(figure, pose) {
   root.position.set(pose.x, pose.feet, pose.z);
   root.rotation.y = pose.yaw + (pose.turned ? Math.PI : 0);
   body.rotation.x = pose.lean + pose.pitch;
+  body.position.y = -SIT_DROP * (pose.sit ?? 0);
   body.scale.y = 1 + pose.stretch * STRETCH_SHARE;
   for (const arm of arms) arm.rotation.x = -ARM_RAISE * pose.arms;
 }
@@ -316,7 +322,10 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const size = (LABEL_HEIGHT_PIXELS / height) * 2 * Math.tan(THREE.MathUtils.degToRad(FIELD_OF_VIEW) / 2);
     for (const group of [roomGroup, planeGroup]) {
       group.traverse((node) => {
-        if (node.isSprite) node.scale.set(size * node.userData.widthPerHeight, size, 1);
+        if (node.isSprite) {
+          const height = size * (node.userData.share ?? 1);
+          node.scale.set(height * node.userData.widthPerHeight, height, 1);
+        }
       });
     }
   }
@@ -340,7 +349,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const room = session.getRoom();
     const boxIds = new Set(room.landmarks.filter(({ temporary }) => temporary).map(({ id }) => id));
     const firstBuild = model === null;
-    model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds });
+    model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds, hazards: simulation.hazards });
     updatePose = createPoseTracker(settings.display_seconds);
     trailPoints = -1;
 
@@ -360,6 +369,20 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     addWall(model.depth, 0, model.depth / 2, Math.PI / 2);
 
     model.objects.forEach(addObject);
+    // Dangerous things lie flat on their furniture; they are drawn but not picked or dragged.
+    for (const hazard of model.hazards) {
+      const mesh = new THREE.Mesh(
+        new RoundedBoxGeometry(hazard.w, HAZARD_THICK_CM, hazard.d, CORNER_SEGMENTS, Math.min(hazard.w, hazard.d, HAZARD_THICK_CM) * CORNER_SHARE),
+        new THREE.MeshStandardMaterial({ color: HAZARD_COLOUR, roughness: 0.6 }),
+      );
+      mesh.position.set(hazard.x + hazard.w / 2, hazard.bottom + HAZARD_THICK_CM / 2, hazard.z + hazard.d / 2);
+      mesh.castShadow = true;
+      // A red tag hanging below the thing, so it does not cover the furniture's own label above.
+      const label = labelSprite(hazard.label, { fill: 'rgba(181,83,74,0.95)', ink: '#ffffff', share: HAZARD_LABEL_SHARE });
+      label.center.set(0.5, 1.15);
+      mesh.add(label);
+      roomGroup.add(mesh);
+    }
     if (model.pane) {
       const paneHeight = model.pane.top - model.pane.bottom;
       const pane = new THREE.Mesh(
@@ -459,6 +482,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       z: simulation.position.y,
       feet: footHeight(simulation),
       events: simulation.events,
+      climbing: Boolean(simulation.climbing),
     }, seconds);
     applyPose(child, pose);
     const onFloor = floorShadow(pose.feet);

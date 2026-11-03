@@ -6,6 +6,7 @@ export const EVENT = {
   TOUCHED_HIGH: 'touched_high',
   STOOD_AT_WINDOW: 'stood_at_window',
   REACHED_LOCK: 'reached_lock',
+  TOUCHED_HAZARD: 'touched_hazard',
 };
 
 export const EVENT_LABELS = {
@@ -16,4 +17,5 @@ export const EVENT_LABELS = {
   [EVENT.TOUCHED_HIGH]: '高い所の物に触った',
   [EVENT.STOOD_AT_WINDOW]: '窓台に立った',
   [EVENT.REACHED_LOCK]: '窓の錠に届いた',
+  [EVENT.TOUCHED_HAZARD]: '危険な物に触った',
 };

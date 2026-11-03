@@ -17,6 +17,8 @@ const SETTINGS = {
   foothold_stay_seconds: provisional('足場の上にいる時間', [3, 10], '台帳の立ち止まる時間（2〜7秒）と同じくらいにした', '秒'),
   after_fall_seconds: provisional('転んだあと止まっている時間', 10, '起き上がって次へ向かうまでの間として置いた', '秒'),
   step_length_cm: provisional('歩幅', 30, '台帳のつまずき率（1歩あたり）を、歩いた距離あたりに直すために使う', 'cm'),
+  climb_seconds_base: provisional('登るのにかかる時間（段差によらない分）', 0.5, '手をかけて体を持ち上げ始めるまで。段差0でもかかる時間として置いた', '秒'),
+  climb_seconds_per_cm: provisional('登るのにかかる時間（段差1cmあたり）', 0.02, '段差が高いほど長くかかる。登れる高さ60cmの段差で1.7秒になる', '秒'),
   climb_failure_k: provisional('登るときの失敗しやすさの係数 k', 0.1, '台帳の climb_failure の式にある k。台帳に値がない。登れる高さの6割の段差で失敗が約2%になる'),
   interest_default: provisional('物の興味の強さ（物ごとの選ばれやすさ）', 1.0, '根拠がないので、どの物にも差を付けない。物ごとに interest を持たせると上書きできる'),
   play_seconds: provisional('触って遊ぶ時間', [5, 15], '台帳の眺める時間（2〜7秒）より長く、10分の中で何か所も回れる長さ', '秒'),

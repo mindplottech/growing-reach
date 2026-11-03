@@ -61,7 +61,7 @@ export function cameraPlacement({ width, depth, wallHeight }, aspect, fieldOfVie
  * Everything the 3D view draws, as plain numbers: positions in cm with x and z on the
  * floor and y upwards. The view only draws this; sizes come from the layout and ledger.
  */
-export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Set() }) {
+export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Set(), hazards = [] }) {
   const windowInner = ledger.items
     .find((entry) => entry.id === 'window_sill_height').values.standard_waist_window_inner;
   const objects = landmarks.map((landmark) => {
@@ -87,6 +87,7 @@ export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Se
     depth: room.depth,
     wallHeight: room.wall_height.value,
     objects,
+    hazards: hazards.map(({ id, label, kind, x, y, w, d, height }) => ({ id, label, kind, x, z: y, w, d, bottom: height })),
     pane: sill && { x: sill.x, w: sill.w, bottom: sill.top, top: sill.top + windowInner },
     planes: [
       { id: 'reach', label: '立って届く高さ（床に立ったとき）', height: body.reach.value, category: body.reach.category },
