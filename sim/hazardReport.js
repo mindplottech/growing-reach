@@ -16,7 +16,8 @@ const FALL_WHILE_CLIMBING = 'climb_failure';
 
 /** Read from the record alone: from a foothold is climbing; from the floor, tiptoe or flat. */
 export function methodOf(event) {
-  if (event.from === 'foothold') return METHOD_CLIMBED;
+  const fromFoothold = event.kind === EVENT.REACHED_LOCK ? Boolean(event.footholdId) : event.from === 'foothold';
+  if (fromFoothold) return METHOD_CLIMBED;
   return event.level === REACH_TIPTOE ? METHOD_TIPTOE : METHOD_FLOOR;
 }
 
@@ -28,9 +29,17 @@ const easier = (a, b) => METHOD_ORDER.indexOf(a) < METHOD_ORDER.indexOf(b);
  */
 export function summarizeChild(events) {
   const hazards = new Map();
+  let lock = null;
   let onFurniture = null;
   let whileClimbing = null;
   for (const event of events) {
+    // The window lock is counted the same way: once per child, by the easiest way.
+    if (event.kind === EVENT.REACHED_LOCK) {
+      const method = methodOf(event);
+      if (!lock || easier(method, lock.method)) {
+        lock = { method, footholdLabel: method === METHOD_CLIMBED ? event.footholdLabel : null };
+      }
+    }
     if (event.kind === EVENT.TOUCHED_HAZARD) {
       const method = methodOf(event);
       const known = hazards.get(event.hazardId);
@@ -49,7 +58,21 @@ export function summarizeChild(events) {
       whileClimbing = { height: event.startHeight, label: event.footholdLabel };
     }
   }
-  return { hazards, onFurniture, whileClimbing };
+  return { hazards, lock, onFurniture, whileClimbing };
+}
+
+/** Something worth watching happened to this child: the lock, a climb to a dangerous thing, or a fall. */
+export function somethingHappened(summary) {
+  return Boolean(summary.lock || summary.onFurniture || summary.whileClimbing)
+    || [...summary.hazards.values()].some(({ method }) => method === METHOD_CLIMBED);
+}
+
+/** The lock row: who reached the window lock, how, and its colour by the same rule as the things. */
+export function lockRow(lockObject, children) {
+  const withLock = children.map(({ seed, summary }) => ({
+    seed, summary: { ...summary, hazards: summary.lock ? new Map([[lockObject.id, summary.lock]]) : new Map() },
+  }));
+  return hazardRows([{ id: lockObject.id, label: lockObject.label }], withLock)[0];
 }
 
 /** One row per dangerous thing: who reached it, how, and the colour the counts give it. */

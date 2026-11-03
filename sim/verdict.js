@@ -1,5 +1,7 @@
 import { EVENT } from './events.js';
-import { fallRows, hazardRows, METHOD_CLIMBED, METHOD_TIPTOE, summarizeChild } from './hazardReport.js';
+import {
+  fallRows, hazardRows, lockRow, METHOD_CLIMBED, METHOD_TIPTOE, somethingHappened, summarizeChild,
+} from './hazardReport.js';
 import { footprintDistance } from './scaffold.js';
 import { createSimulation } from './simulation.js';
 
@@ -26,8 +28,9 @@ function howReached({ method, footholdLabel }) {
 const startedFrom = (height) => (height === 0 ? '床' : cm(height));
 
 /** The rows for dangerous things and falls, in fixed sentences with a child list each. */
-function hazardSection(hazards, summaries, total) {
+function hazardSection(hazards, summaries, total, lockObject) {
   const childText = (seed, text) => ({ seed, text: `${seed}番の子　${text}` });
+  const lock = lockObject && lockRow(lockObject, summaries);
   const rows = hazardRows(hazards, summaries).map((row) => ({
     ...row,
     text: `${row.label}：${total}人中${row.children.length}人が届く（うち登って${row.counts.climbed}人）`,
@@ -36,6 +39,11 @@ function hazardSection(hazards, summaries, total) {
   const falls = fallRows(summaries);
   const fallText = (title, { children, highest }) => `${title}：${total}人中${children.length}人${highest === null ? '' : `（いちばん高い所で${cm(highest)}）`}`;
   return {
+    lock: lock && {
+      ...lock,
+      text: `${lock.label}：${total}人中${lock.children.length}人が届く（うち登って${lock.counts.climbed}人）`,
+      children: lock.children.map((child) => childText(child.seed, howReached(child))),
+    },
     rows,
     falls: [
       {
@@ -149,7 +157,13 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
     ids,
     arrows,
     total,
-    hazards: hazardSection(hazards, summaries, total),
+    hazards: hazardSection(hazards, summaries, total, lock && { id: lock.id, label: lock.mapLabel ?? lock.label }),
+    // The children to play first: those who reached the window lock, then the others to whom
+    // something worth watching happened; each group by seed.
+    eventful: [
+      ...summaries.filter(({ summary }) => summary.lock),
+      ...summaries.filter(({ summary }) => !summary.lock && somethingHappened(summary)),
+    ].map(({ seed }) => seed),
     children: Object.fromEntries(Object.entries(children).map(([kind, seeds]) => [kind, seeds.size])),
   };
 }

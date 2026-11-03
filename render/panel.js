@@ -3,8 +3,6 @@ import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 
 const MONTHS_PER_YEAR = 12;
-// Wait for the slider to settle before running all children again.
-const JUDGE_DELAY_MS = 150;
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -33,7 +31,7 @@ function countermeasureLine(search, baselineChildren, limit, label) {
 }
 
 /** The results panel: the verdict on top, the child below, and the details folded away. */
-export function mountPanel({ ledger, settings, session, getChild }) {
+export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   const slider = document.querySelector('#months');
   const monthsLabel = document.querySelector('#months-label');
   const seedInput = document.querySelector('#seed');
@@ -45,8 +43,9 @@ export function mountPanel({ ledger, settings, session, getChild }) {
   const countermeasure = document.querySelector('#countermeasure');
   const hazardBox = document.querySelector('#hazard-rows');
   const fallBox = document.querySelector('#fall-rows');
+  const retry = document.querySelector('#retry');
+  const retryBox = document.querySelector('#retry-box');
   let view = null;
-  let timer = null;
   let lastVerdict = null;
 
   function showChild() {
@@ -61,27 +60,24 @@ export function mountPanel({ ledger, settings, session, getChild }) {
     ]);
   }
 
-  /** Replays one of the hundred children from the start: the same seed gives the same run. */
-  function replay(seed) {
-    seedInput.value = String(seed);
-    session.setSeed(seed);
-    session.setPlaying(true);
-  }
-
   /** One row per dangerous thing and per kind of fall; each opens the list of its children. */
   function rowElements(rows) {
     return rows.map((row) => {
       const details = element('details', 'hazard-row');
       details.dataset.level = row.level ?? 'plain';
+      details.dataset.id = row.id;
       details.append(element('summary', '', row.text));
       if (row.children.length === 0) {
         details.append(element('p', 'hazard-empty', '当てはまる子はいません'));
       } else {
         const list = element('ul', 'hazard-children');
+        const seeds = row.children.map(({ seed }) => seed);
         for (const child of row.children) {
           const button = element('button', 'hazard-child', child.text);
           button.type = 'button';
-          button.addEventListener('click', () => replay(child.seed));
+          button.dataset.seed = String(child.seed);
+          // The children of this row play one after another, from the one chosen.
+          button.addEventListener('click', () => autoplay.useList(seeds, child.seed));
           const item = element('li');
           item.append(button);
           list.append(item);
@@ -93,11 +89,12 @@ export function mountPanel({ ledger, settings, session, getChild }) {
   }
 
   // Falls sit under "くわしく見る" so that the panel fits the screen without scrolling.
-  function showHazards({ rows, falls }) {
-    hazardBox.replaceChildren(...rowElements(rows));
+  function showHazards({ lock, rows, falls }) {
+    hazardBox.replaceChildren(...rowElements([...(lock ? [lock] : []), ...rows]));
     fallBox.replaceChildren(...rowElements(falls));
   }
 
+  /** Runs the same hundred children (seeds 1 to 100) for the room and child as they are now. */
   function judge() {
     const verdict = judgeRoom({ ledger, settings, room: session.getRoom(), ...getChild() });
     lastVerdict = verdict;
@@ -109,15 +106,21 @@ export function mountPanel({ ledger, settings, session, getChild }) {
     fillList(trialCounts, Object.entries(verdict.children).filter(([kind]) => kind !== EVENT.TOUCHED_HAZARD).map(([kind, count]) => [
       EVENT_LABELS[kind], `${verdict.total}人中${count}人`,
     ]));
+    countermeasure.textContent = '';
+    retryBox.hidden = true;
+    verdictBox.classList.remove('stale');
+    view?.setFocus(null);
     view?.setDanger({ level: verdict.level, ids: verdict.ids, arrows: verdict.arrows });
+    autoplay.useEventful(verdict.eventful);
+    return verdict;
   }
 
-  function judgeSoon() {
-    clearTimeout(timer);
-    timer = setTimeout(judge, JUDGE_DELAY_MS);
-    countermeasure.textContent = '';
-    view?.setFocus(null);
+  /** The room changed by hand: the results wait for 「試し直す」. */
+  function markChanged() {
+    retryBox.hidden = false;
+    verdictBox.classList.add('stale');
   }
+  retry.addEventListener('click', judge);
 
   document.querySelector('#find-countermeasure').addEventListener('click', () => {
     const room = session.getRoom();
@@ -132,27 +135,22 @@ export function mountPanel({ ledger, settings, session, getChild }) {
     view?.setFocus(target.id);
   });
 
+  // The child on screen grows while the slider moves; all hundred are run again on release.
   slider.addEventListener('input', () => session.restart());
+  slider.addEventListener('change', judge);
   for (const radio of document.querySelectorAll('input[name="sex"]')) {
-    radio.addEventListener('change', () => session.restart());
+    radio.addEventListener('change', judge);
   }
-  seedInput.addEventListener('change', () => session.setSeed(Number.parseInt(seedInput.value, 10) || 1));
-
-  let judgedFor = null;
+  seedInput.addEventListener('change', () => autoplay.useSeed(Number.parseInt(seedInput.value, 10) || 1));
   session.on('restart', () => {
     showChild();
-    // The seed changes only the child on screen, not the hundred children behind the verdict.
-    const key = JSON.stringify([getChild(), session.getRoom()]);
-    if (key !== judgedFor) {
-      judgedFor = key;
-      judgeSoon();
-    }
+    seedInput.value = String(session.getSeed());
   });
   showChild();
-  judgedFor = JSON.stringify([getChild(), session.getRoom()]);
-  judge();
 
   return {
+    judge,
+    markChanged,
     attachView(next) {
       view = next;
       if (lastVerdict) view.setDanger({ level: lastVerdict.level, ids: lastVerdict.ids, arrows: lastVerdict.arrows });

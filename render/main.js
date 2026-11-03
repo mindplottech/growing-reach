@@ -7,6 +7,7 @@ import { mountEventLog } from './eventLog.js';
 import { mountPanel } from './panel.js';
 import { furnitureCatalog, settings } from '../sim/params.js';
 import { selectLayout } from '../sim/room.js';
+import { createAutoplay } from './autoplay.js';
 import { createSession } from './session.js';
 
 const LEDGER_URL = new URL('../data/values_ledger.json', import.meta.url);
@@ -47,7 +48,7 @@ function messenger() {
 }
 
 /** The toolbar and every edit. Each edit is one step in the history, so it can be undone. */
-function mountEditing({ session, history, startRoom, catalog, say }) {
+function mountEditing({ session, history, startRoom, catalog, say, results }) {
   const hint = document.querySelector('#tool-hint');
   const toolButtons = [...document.querySelectorAll('.tool[data-tool]')];
   const furnitureButton = document.querySelector('[data-tool="furniture"]');
@@ -69,7 +70,8 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
   });
   let view = null;
 
-  function apply(next, failure) {
+  // A change by hand waits for 「試し直す」; undo and reset run the hundred children again at once.
+  function apply(next, failure, { judgeNow = false } = {}) {
     if (!next) {
       say(failure);
       return false;
@@ -77,6 +79,8 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
     history.push(next);
     undoButton.disabled = !history.canUndo();
     session.setRoom(next);
+    if (judgeNow) results.judge();
+    else results.markChanged();
     return true;
   }
 
@@ -146,20 +150,23 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
   for (const button of speedButtons) {
     button.addEventListener('click', () => session.setSpeed(Number(button.dataset.speed)));
   }
-  session.on('speed', () => {
+  const showSpeed = () => {
     for (const button of speedButtons) button.setAttribute('aria-pressed', String(Number(button.dataset.speed) === session.getSpeed()));
-  });
+  };
+  session.on('speed', showSpeed);
+  showSpeed();
   session.on('play', showPlaying);
   showPlaying();
 
   document.querySelector('#reset').addEventListener('click', () => {
-    apply(startRoom);
+    apply(startRoom, null, { judgeNow: true });
     view?.select(null);
     say('最初の部屋に戻しました');
   });
   undoButton.addEventListener('click', () => {
     session.setRoom(history.undo());
     undoButton.disabled = !history.canUndo();
+    results.judge();
     view?.select(null);
   });
 
@@ -205,6 +212,20 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
   };
 }
 
+/** 「いま再生中」 in the corner of the 3D view, with the previous and next child of the queue. */
+function mountNowPlaying({ session, autoplay, getChild }) {
+  const text = document.querySelector('#now-playing-text');
+  const show = () => {
+    const { months } = getChild();
+    const height = session.getSimulation().body.height.value;
+    text.textContent = `いま再生中：${session.getSeed()}番目の子（${Math.floor(months / 12)}歳${months % 12}か月・身長${height.toFixed(1)}cm）`;
+  };
+  document.querySelector('#previous-child').addEventListener('click', () => autoplay.previous());
+  document.querySelector('#next-child').addEventListener('click', () => autoplay.next());
+  session.on('restart', show);
+  show();
+}
+
 async function start() {
   const [ledger, roomFile] = await Promise.all([fetchJson(LEDGER_URL), fetchJson(ROOM_URL)]);
   const startRoom = selectLayout(roomFile, roomFile.layouts[0].id);
@@ -218,13 +239,21 @@ async function start() {
     sex: document.querySelector('input[name="sex"]:checked').value,
   });
 
-  const session = createSession({ ledger, settings, room: startRoom, getChild });
+  const session = createSession({ ledger, settings, room: startRoom, getChild, startSpeed: settings.start_speed });
+  const autoplay = createAutoplay({ session, total: settings.trial_count });
   const history = createHistory(startRoom);
+  // The panel is mounted after the toolbar, so the toolbar reaches it through this.
+  const results = { judge: () => panel.judge(), markChanged: () => panel.markChanged() };
   const toolbar = mountEditing({
-    session, history, startRoom, catalog: furnitureCatalog, say: messenger(),
+    session, history, startRoom, catalog: furnitureCatalog, say: messenger(), results,
   });
-  const panel = mountPanel({ ledger, settings, session, getChild });
-  mountEventLog({ list: document.querySelector('#event-log'), session });
+  const panel = mountPanel({ ledger, settings, session, getChild, autoplay });
+  mountEventLog({
+    list: document.querySelector('#event-log'), flash: document.querySelector('#event-flash'), session, flashSeconds: settings.event_flash_seconds,
+  });
+  mountNowPlaying({ session, autoplay, getChild });
+  // The hundred children are run at once, and the first child starts moving without a click.
+  panel.judge();
 
   renderEvidence(document.querySelector('#evidence-body'), { ledger, roomFile });
   const evidence = document.querySelector('#evidence-dialog');
