@@ -167,8 +167,8 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     position.y = from.approach.y;
   }
 
-  function fall(from, reason) {
-    record(EVENT.FELL, { fromHeight: from.height, reason, footholdId: from.id, footholdLabel: from.label });
+  function fall(from, reason, details = {}) {
+    record(EVENT.FELL, { fromHeight: from.height, reason, footholdId: from.id, footholdLabel: from.label, ...details });
     stepOffFoothold(from);
     wait(settings.after_fall_seconds, chooseTarget);
   }
@@ -179,19 +179,22 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     position.y = on.y + on.d / 2;
   }
 
-  /** Climbing takes time that grows with the step; whether it fails is decided at the top. */
-  function attemptClimb(to, stepHeight) {
+  /**
+   * Climbing takes time that grows with the step; whether it fails is decided at the top.
+   * `startHeight` is where the climb began: 0 for the floor, or the foothold it went from.
+   */
+  function attemptClimb(to, stepHeight, startHeight) {
     const seconds = settings.climb_seconds_base + settings.climb_seconds_per_cm * stepHeight;
     climbing = to;
     wait(seconds, () => {
       climbing = null;
       const failure = settings.climb_failure_k * (stepHeight / body.climb.value) ** failureExponent;
       if (streams.failure() < failure) {
-        fall(to, 'climb_failure');
+        fall(to, 'climb_failure', { startHeight });
         return;
       }
       stand(to);
-      record(EVENT.CLIMBED, { height: to.height, stepHeight, climbSeconds: seconds });
+      record(EVENT.CLIMBED, { height: to.height, stepHeight, startHeight, climbSeconds: seconds });
       reactOnFoothold(to);
       standOnFoothold();
     });
@@ -253,7 +256,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     const wantsToChain = streams.chain() < settings.chain_probability;
     if (steppable.length > 0 && wantsToChain) {
       const next = pick(streams.chain, steppable);
-      attemptClimb(next, Math.abs(next.height - here.height));
+      attemptClimb(next, Math.abs(next.height - here.height), here.height);
       return;
     }
     descend(here, steppable);
@@ -305,7 +308,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     }
     const wantsToClimb = streams.climb() < settings.climb_probability;
     if (current.scaffold && canClimb(body, current.height) && wantsToClimb) {
-      attemptClimb(current, current.height);
+      attemptClimb(current, current.height, 0);
     } else {
       // Look at it for the ledger's dwell time; if it is within reach, sometimes play with it too.
       const look = between(streams.stay, dwell);

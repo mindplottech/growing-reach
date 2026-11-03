@@ -1,4 +1,4 @@
-import { EVENT_LABELS } from '../sim/events.js';
+import { EVENT, EVENT_LABELS } from '../sim/events.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 
@@ -43,6 +43,7 @@ export function mountPanel({ ledger, settings, session, getChild }) {
   const headline = verdictBox.querySelector('.verdict-headline');
   const reasons = verdictBox.querySelector('.verdict-reasons');
   const countermeasure = document.querySelector('#countermeasure');
+  const hazardBox = document.querySelector('#hazard-rows');
   let view = null;
   let timer = null;
   let lastVerdict = null;
@@ -59,13 +60,46 @@ export function mountPanel({ ledger, settings, session, getChild }) {
     ]);
   }
 
+  /** Replays one of the hundred children from the start: the same seed gives the same run. */
+  function replay(seed) {
+    seedInput.value = String(seed);
+    session.setSeed(seed);
+    session.setPlaying(true);
+  }
+
+  /** One row per dangerous thing and per kind of fall; each opens the list of its children. */
+  function showHazards({ rows, falls }) {
+    hazardBox.replaceChildren(...[...rows, ...falls].map((row) => {
+      const details = element('details', 'hazard-row');
+      details.dataset.level = row.level ?? 'plain';
+      details.append(element('summary', '', row.text));
+      if (row.children.length === 0) {
+        details.append(element('p', 'hazard-empty', '当てはまる子はいません'));
+      } else {
+        const list = element('ul', 'hazard-children');
+        for (const child of row.children) {
+          const button = element('button', 'hazard-child', child.text);
+          button.type = 'button';
+          button.addEventListener('click', () => replay(child.seed));
+          const item = element('li');
+          item.append(button);
+          list.append(item);
+        }
+        details.append(list);
+      }
+      return details;
+    }));
+  }
+
   function judge() {
     const verdict = judgeRoom({ ledger, settings, room: session.getRoom(), ...getChild() });
     lastVerdict = verdict;
     verdictBox.dataset.level = verdict.level;
     headline.textContent = verdict.headline;
     reasons.replaceChildren(...verdict.reasons.map((text) => element('li', '', text)));
-    fillList(trialCounts, Object.entries(verdict.children).map(([kind, count]) => [
+    showHazards(verdict.hazards);
+    // Dangerous things have their own rows above, counted by how they were reached.
+    fillList(trialCounts, Object.entries(verdict.children).filter(([kind]) => kind !== EVENT.TOUCHED_HAZARD).map(([kind, count]) => [
       EVENT_LABELS[kind], `${verdict.total}人中${count}人`,
     ]));
     view?.setDanger({ level: verdict.level, ids: verdict.ids, arrows: verdict.arrows });

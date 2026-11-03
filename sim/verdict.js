@@ -1,4 +1,5 @@
 import { EVENT } from './events.js';
+import { fallRows, hazardRows, METHOD_CLIMBED, METHOD_TIPTOE, summarizeChild } from './hazardReport.js';
 import { footprintDistance } from './scaffold.js';
 import { createSimulation } from './simulation.js';
 
@@ -16,6 +17,41 @@ function addTo(map, key, seed) {
 
 const byChildren = ([, a], [, b]) => b.size - a.size;
 
+function howReached({ method, footholdLabel }) {
+  if (method === METHOD_CLIMBED) return `${footholdLabel}に登って`;
+  if (method === METHOD_TIPTOE) return '背伸びで';
+  return '床から';
+}
+
+const startedFrom = (height) => (height === 0 ? '床' : cm(height));
+
+/** The rows for dangerous things and falls, in fixed sentences with a child list each. */
+function hazardSection(hazards, summaries, total) {
+  const childText = (seed, text) => ({ seed, text: `${seed}番の子　${text}` });
+  const rows = hazardRows(hazards, summaries).map((row) => ({
+    ...row,
+    text: `${row.label}：${total}人中${row.children.length}人が届く（うち登って${row.counts.climbed}人）`,
+    children: row.children.map((child) => childText(child.seed, howReached(child))),
+  }));
+  const falls = fallRows(summaries);
+  const fallText = (title, { children, highest }) => `${title}：${total}人中${children.length}人${highest === null ? '' : `（いちばん高い所で${cm(highest)}）`}`;
+  return {
+    rows,
+    falls: [
+      {
+        id: 'on_furniture',
+        text: fallText('家具の上から落ちた', falls.onFurniture),
+        children: falls.onFurniture.children.map(({ seed, label, height }) => childText(seed, `${label}（${cm(height)}）から`)),
+      },
+      {
+        id: 'while_climbing',
+        text: fallText('登る途中で落ちた', falls.whileClimbing),
+        children: falls.whileClimbing.children.map(({ seed, label, height }) => childText(seed, `${label}に登る途中（${startedFrom(height)}から登り始めて）`)),
+      },
+    ],
+  };
+}
+
 /**
  * Runs the same children as the 100-child totals and puts what happened into fixed sentences.
  * Nothing is estimated: every number is a count of children in the record. The words never
@@ -31,11 +67,15 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
   const climbedNearWindow = new Map();
   const children = Object.fromEntries(Object.values(EVENT).map((kind) => [kind, new Set()]));
   let landmarks = [];
+  let hazards = [];
+  const summaries = [];
 
   for (let seed = 1; seed <= total; seed += 1) {
     const simulation = createSimulation({ ledger, settings, months, sex, seed, room });
     simulation.step(settings.trial_seconds);
     landmarks = simulation.landmarks;
+    hazards = simulation.hazards;
+    summaries.push({ seed, summary: summarizeChild(simulation.events) });
     // The lock is part of the window, so being beside either counts as near the window.
     const windowParts = landmarks.filter(({ role }) => role === 'window' || role === 'window_lock');
     const nearWindow = (id) => {
@@ -109,6 +149,7 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
     ids,
     arrows,
     total,
+    hazards: hazardSection(hazards, summaries, total),
     children: Object.fromEntries(Object.entries(children).map(([kind, seeds]) => [kind, seeds.size])),
   };
 }

@@ -284,6 +284,40 @@ button, input, select { font: inherit; color: inherit; }
 
 .verdict-reasons { display: grid; gap: 8px; margin-top: 12px; }
 
+/* ---- Dangerous things and falls: one row each, coloured only when a foothold was involved ---- */
+
+.hazards h2 { margin-bottom: 8px; font-size: 18px; }
+
+.hazard-rows { display: grid; gap: 6px; }
+
+.hazard-row { border-left: 4px solid var(--line); border-radius: 6px; background: var(--surface); }
+
+.hazard-row[data-level="danger"] { border-left-color: var(--danger); background: var(--danger-soft); }
+
+.hazard-row[data-level="caution"] { border-left-color: var(--caution); background: var(--caution-soft); }
+
+.hazard-row summary { padding: 6px 10px; cursor: pointer; line-height: 1.45; }
+
+.hazard-row[data-level="danger"] summary { color: var(--danger); font-weight: 600; }
+
+.hazard-row[data-level="caution"] summary { color: var(--caution); font-weight: 600; }
+
+.hazard-children { max-height: 180px; padding: 0 6px 6px; overflow-y: auto; }
+
+.hazard-child {
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hazard-child:hover { background: var(--accent-soft); }
+
+.hazard-empty { padding: 0 10px 8px; color: var(--muted); }
+
 .verdict-reasons li { padding-left: 1em; text-indent: -1em; }
 
 .verdict-reasons li::before { content: "・"; }

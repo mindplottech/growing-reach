@@ -17,5 +17,5 @@ export const EVENT_LABELS = {
   [EVENT.TOUCHED_HIGH]: '高い所の物に触った',
   [EVENT.STOOD_AT_WINDOW]: '窓台に立った',
   [EVENT.REACHED_LOCK]: '窓の錠に届いた',
-  [EVENT.TOUCHED_HAZARD]: '危険な物に触った',
+  [EVENT.TOUCHED_HAZARD]: '危険な物に届いた',
 };
