@@ -9,6 +9,8 @@ const STEP_SECONDS = 0.05;
 const MS_PER_SECOND = 1000;
 const MAX_FRAME_SECONDS = 0.25;
 const VISITS_SHOWN = 6;
+const EVENTS_SHOWN = 3;
+const OLDER_EVENTS_KEPT = 30;
 const DISPLAY_DECIMALS = 1;
 const CHILD_RADIUS = 9;
 
@@ -112,6 +114,7 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
   const childLine = document.querySelector('#child-values');
   const visitList = document.querySelector('#visits');
   const eventList = document.querySelector('#events');
+  const olderEventList = document.querySelector('#events-older');
   const scaffoldList = document.querySelector('#scaffold-reaches');
   const boxMessage = document.querySelector('#box-message');
   const clearButton = document.querySelector('#clear-boxes');
@@ -146,6 +149,7 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
     carry = 0;
     visitList.replaceChildren();
     eventList.replaceChildren();
+    olderEventList.replaceChildren();
     scaffoldList.replaceChildren();
     paint();
     changeListeners.forEach((listener) => listener());
@@ -156,7 +160,11 @@ export function mountRoomView(ledger, startRoom, settings, getChild) {
     childMark.setAttribute('cy', simulation.position.y);
     if (simulation.events.length !== shownEvents) {
       shownEvents = simulation.events.length;
-      eventList.replaceChildren(...simulation.events.slice(-VISITS_SHOWN).reverse().map(eventItem));
+      const newestFirst = [...simulation.events].reverse();
+      eventList.replaceChildren(...newestFirst.slice(0, EVENTS_SHOWN).map(eventItem));
+      olderEventList.replaceChildren(
+        ...newestFirst.slice(EVENTS_SHOWN, EVENTS_SHOWN + OLDER_EVENTS_KEPT).map(eventItem),
+      );
     }
     if (simulation.visits.length === shownVisits) return;
     shownVisits = simulation.visits.length;

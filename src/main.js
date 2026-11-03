@@ -1,6 +1,7 @@
 import { getBodyValues, getTiptoeReference } from './body.js';
 import { selectLayout } from './room.js';
 import { mountRoomView } from './roomView.js';
+import { mountTabs } from './tabs.js';
 import { mountTrialsView } from './trialsView.js';
 
 const MONTHS_PER_YEAR = 12;
@@ -14,6 +15,7 @@ const monthsLabel = document.querySelector('#months-label');
 const controls = document.querySelector('#controls');
 const valuesList = document.querySelector('#values');
 const legendList = document.querySelector('#legend');
+const summaryList = document.querySelector('#summary');
 const errorBox = document.querySelector('#error');
 
 function element(tag, className, text) {
@@ -108,6 +110,44 @@ function render(ledger) {
     tiptoeCard(ledger, body.tiptoeReach, reachItem.unit, months),
     climbCard,
   );
+  renderSummary(ledger, body);
+}
+
+/** The three values beside the slider, each with a dot for its evidence category. */
+function renderSummary(ledger, body) {
+  const item = (label, { value, category }) => {
+    const li = element('li');
+    const dot = element('span', `dot cat-${category}`);
+    dot.title = ledger._meta.categories[category];
+    dot.setAttribute('role', 'img');
+    dot.setAttribute('aria-label', ledger._meta.categories[category]);
+    li.append(dot, `${label} `, element('strong', '', value.toFixed(DISPLAY_DECIMALS)), 'cm');
+    return li;
+  };
+  summaryList.replaceChildren(
+    item('身長', body.height),
+    item('立って届く', body.reach),
+    item('登れる', body.climb),
+  );
+}
+
+/** The ledger's sources, with their addresses as links. */
+function renderSources(ledger) {
+  document.querySelector('#sources').replaceChildren(
+    ...Object.entries(ledger._meta.sources).map(([key, text]) => {
+      const li = element('li');
+      const url = /https?:\S+/.exec(text)?.[0];
+      li.append(element('strong', '', `${key} `), url ? text.replace(url, '') : text);
+      if (url) {
+        const link = element('a', '', url);
+        link.href = url;
+        link.rel = 'noopener';
+        link.target = '_blank';
+        li.append(link);
+      }
+      return li;
+    }),
+  );
 }
 
 function renderLegend(ledger) {
@@ -149,6 +189,8 @@ async function start() {
   let room = selectLayout(roomFile, layoutSelect.value);
 
   renderLegend(ledger);
+  renderSources(ledger);
+  mountTabs(document.querySelector('#tabs'));
   render(ledger);
   const roomView = mountRoomView(ledger, room, settings, () => ({
     months: Number(monthsInput.value),
@@ -173,7 +215,6 @@ async function start() {
     .then(({ mountView3d }) => {
       stage.classList.add('with-3d');
       modeButtons.hidden = false;
-      document.querySelector('#state-legend').hidden = false;
       document.querySelector('#box-message').textContent = '「配置」で床をタップすると段ボール箱を置け、箱をなぞると動かせます';
       roomView.useMapOnly();
       mountView3d({

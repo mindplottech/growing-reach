@@ -30,8 +30,10 @@ const PLANE_OPACITY = 0.28;
 const PLANE_EASE = 0.15;
 const PLANE_LINGER_MS = 1500;
 const PLANE_FADE_MS = 300;
-const LABEL_HEIGHT_CM = 24;
-const LABEL_GAP_CM = 16;
+// Labels keep this height on screen, whatever the zoom or the size of the view.
+const LABEL_HEIGHT_PIXELS = 22;
+const LIT_LABEL_TINT = 0xfde047;
+const LABEL_GAP_CM = 18;
 const PULSE_MS = 400;
 const SHADOW_RADIUS_CM = 22;
 const SHADOW_OPACITY = 0.3;
@@ -72,9 +74,11 @@ function labelSprite(text) {
   context.fillText(text, padding, canvas.height / 2 + 2);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
+  const material = new THREE.SpriteMaterial({
+    map: texture, depthTest: false, transparent: true, sizeAttenuation: false,
+  });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set((LABEL_HEIGHT_CM * canvas.width) / canvas.height, LABEL_HEIGHT_CM, 1);
+  sprite.userData.widthPerHeight = canvas.width / canvas.height;
   sprite.renderOrder = 10;
   return sprite;
 }
@@ -248,6 +252,7 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     const label = labelSprite(object.label);
     label.position.set(0, height / 2 + LABEL_GAP_CM, 0);
     mesh.add(label);
+    mesh.userData.label = label;
     roomGroup.add(mesh);
     objectMeshes.set(object.id, mesh);
     if (object.kind === 'box') boxMeshes.set(object.id, mesh);
@@ -319,6 +324,7 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
 
     child.root.scale.setScalar(model.childHeight);
     aimSun();
+    fitLabels();
     if (firstBuild) fitCamera();
     applyHighlight(roomView.getHighlightedId());
   }
@@ -343,7 +349,7 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
       position: simulation.position,
       foothold: simulation.foothold,
     });
-    const pulse = 0.55 + 0.45 * Math.sin(now / PULSE_MS);
+    const pulse = 0.8 + 0.2 * Math.sin(now / PULSE_MS);
     for (const [id, mesh] of objectMeshes) {
       const { material, userData } = mesh;
       material.color.setHex(strength > 0 ? STATE_COLOURS[userData.state] ?? userData.base : userData.base);
@@ -351,6 +357,21 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
       else if (reached.has(id)) material.emissive.setHex(REACHED_GLOW).multiplyScalar(REACHED_GLOW_SCALE);
       else material.emissive.setHex(0x000000);
       userData.edge.visible = simulation.foothold?.id === id;
+      userData.label.material.color.setHex(lit.has(id) ? LIT_LABEL_TINT : 0xffffff);
+      userData.label.renderOrder = lit.has(id) ? 11 : 10;
+    }
+  }
+
+  /** With no size attenuation a sprite's scale is its share of the view times this factor. */
+  function fitLabels() {
+    const { clientHeight: height } = container;
+    if (height === 0) return;
+    const fieldOfView = THREE.MathUtils.degToRad(FIELD_OF_VIEW);
+    const size = (LABEL_HEIGHT_PIXELS / height) * 2 * Math.tan(fieldOfView / 2);
+    for (const group of [roomGroup, planeGroup]) {
+      group.traverse((node) => {
+        if (node.isSprite) node.scale.set(size * node.userData.widthPerHeight, size, 1);
+      });
     }
   }
 
@@ -360,6 +381,7 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    fitLabels();
     if (model && !cameraTouched) fitCamera();
   }
 

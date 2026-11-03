@@ -1,4 +1,5 @@
 import { EVENT, EVENT_LABELS } from './events.js';
+import { EVENT as KINDS } from './events.js';
 import { compareTrials, findCountermeasure, moveAwayFromLock, runTrials } from './trials.js';
 
 function element(tag, text) {
@@ -65,9 +66,22 @@ function searchLine(search, baselineChildren, limit) {
   return `${label}を${last.distance}cmまで離しても（探す上限${limit}cm）、窓の錠に届く子 ${baselineChildren}人→${last.children}人で、0人になりません（回数 ${baselineLock}回→${last.lock}回、うち床から${last.lockFromFloor}回）`;
 }
 
+/** The same result in a few words, for the 3D view. */
+function overlayLine(search, baselineChildren) {
+  const { label, baselineLock, found, last } = search;
+  if (baselineLock === 0 || !last) return `窓の錠に届いた子 ${baselineChildren}人`;
+  if (found !== null) return `${label}を${found}cm離すと\n窓の錠に届く子 ${baselineChildren}人→0人`;
+  return `${label}を${last.distance}cm離しても\n窓の錠に届く子 ${baselineChildren}人→${last.children}人`;
+}
+
 /** Runs the batch views. `getCondition` returns the current { months, sex, boxes }. */
 export function mountTrialsView({ ledger, settings, getRoom, getCondition, highlight, onConditionChange }) {
   const results = document.querySelector('#trial-results');
+  const overlay = document.querySelector('#result-overlay');
+  const showOverlay = (text) => {
+    overlay.hidden = text === null;
+    overlay.innerText = text ?? '';
+  };
   const monthsInput = document.querySelector('#compare-months');
   const objectSelect = document.querySelector('#move-object');
   const distanceInput = document.querySelector('#move-cm');
@@ -122,6 +136,8 @@ export function mountTrialsView({ ledger, settings, getRoom, getCondition, highl
       element('h3', `② ${months}か月と${comparedMonths}か月の比較（シード同じ）`),
       comparisonTable(before, runTrials({ ...base, months: comparedMonths })),
     );
+    highlight(before.lockFootholds[0]?.id ?? before.footholds[0]?.id ?? null);
+    showOverlay(`窓の錠に届いた子 ${before.perSeed.length}人中${before.children[KINDS.REACHED_LOCK]}人`);
     return { base, before };
   }
 
@@ -133,6 +149,8 @@ export function mountTrialsView({ ledger, settings, getRoom, getCondition, highl
     const limit = settings.countermeasure_limit_cm;
     const { mostUsed, target, baselineChildren } = findCountermeasure({ ledger, settings, room, boxes, months, sex });
     highlight(target?.id ?? null);
+    const displayed = target && { ...target, label: room.landmarks.find(({ id }) => id === target.id)?.groupLabel ?? target.label };
+    showOverlay(displayed ? overlayLine(displayed, baselineChildren) : null);
     if (!target) {
       countermeasure.replaceChildren(element('p', '足場になった物はありませんでした'));
       return;
@@ -152,6 +170,7 @@ export function mountTrialsView({ ledger, settings, getRoom, getCondition, highl
   onConditionChange(() => {
     refreshObjects();
     highlight(null);
+    showOverlay(null);
     countermeasure.replaceChildren();
   });
   return { run };
