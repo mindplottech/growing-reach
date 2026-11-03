@@ -1,4 +1,10 @@
+import { EVENT_LABELS } from './events.js';
+import { findCountermeasure } from './trials.js';
+import { judgeRoom } from './verdict.js';
+
 const MONTHS_PER_YEAR = 12;
+// Wait for the slider to settle before running all children again.
+const JUDGE_DELAY_MS = 150;
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -17,12 +23,29 @@ function fillList(list, rows) {
   list.replaceChildren(...rows.flatMap(([term, value]) => [element('dt', '', term), element('dd', '', value)]));
 }
 
-/** The results panel: child settings, the verdict and the details behind it. */
-export function mountPanel({ session, getChild }) {
+/** The countermeasure in one sentence; every number is from a rerun of all the children. */
+function countermeasureLine(search, baselineChildren, limit, label) {
+  const { baselineLock, found, last } = search;
+  if (baselineLock === 0) return '窓の錠に届いた子はいません。';
+  if (found !== null) return `${label}を${found}cm離すと、窓の錠に届く子は${baselineChildren}人から0人になります。`;
+  if (!last) return `${label}は、これ以上離す場所がありません。`;
+  return `${label}を${last.distance}cmまで離しても（探す上限${limit}cm）、窓の錠に届く子は${baselineChildren}人から${last.children}人までしか減りません。`;
+}
+
+/** The results panel: the verdict on top, the child below, and the details folded away. */
+export function mountPanel({ ledger, settings, session, getChild }) {
   const slider = document.querySelector('#months');
   const monthsLabel = document.querySelector('#months-label');
   const seedInput = document.querySelector('#seed');
   const childValues = document.querySelector('#child-values');
+  const trialCounts = document.querySelector('#trial-counts');
+  const verdictBox = document.querySelector('#verdict');
+  const headline = verdictBox.querySelector('.verdict-headline');
+  const reasons = verdictBox.querySelector('.verdict-reasons');
+  const countermeasure = document.querySelector('#countermeasure');
+  let view = null;
+  let timer = null;
+  let lastVerdict = null;
 
   function showChild() {
     monthsLabel.textContent = formatAge(getChild().months);
@@ -36,15 +59,62 @@ export function mountPanel({ session, getChild }) {
     ]);
   }
 
+  function judge() {
+    const verdict = judgeRoom({ ledger, settings, room: session.getRoom(), ...getChild() });
+    lastVerdict = verdict;
+    verdictBox.dataset.level = verdict.level;
+    headline.textContent = verdict.headline;
+    reasons.replaceChildren(...verdict.reasons.map((text) => element('li', '', text)));
+    fillList(trialCounts, Object.entries(verdict.children).map(([kind, count]) => [
+      EVENT_LABELS[kind], `${verdict.total}人中${count}人`,
+    ]));
+    view?.setDanger({ level: verdict.level, ids: verdict.ids, arrows: verdict.arrows });
+  }
+
+  function judgeSoon() {
+    clearTimeout(timer);
+    timer = setTimeout(judge, JUDGE_DELAY_MS);
+    countermeasure.textContent = '';
+    view?.setFocus(null);
+  }
+
+  document.querySelector('#find-countermeasure').addEventListener('click', () => {
+    const room = session.getRoom();
+    const { target, baselineChildren } = findCountermeasure({ ledger, settings, room, boxes: [], ...getChild() });
+    if (!target) {
+      countermeasure.textContent = '足場になった物はありませんでした。';
+      return;
+    }
+    const landmark = room.landmarks.find(({ id }) => id === target.id);
+    const label = landmark?.groupLabel ?? target.label;
+    countermeasure.textContent = countermeasureLine(target, baselineChildren, settings.countermeasure_limit_cm, label);
+    view?.setFocus(target.id);
+  });
+
   slider.addEventListener('input', () => session.restart());
   for (const radio of document.querySelectorAll('input[name="sex"]')) {
     radio.addEventListener('change', () => session.restart());
   }
   seedInput.addEventListener('change', () => session.setSeed(Number.parseInt(seedInput.value, 10) || 1));
-  session.on('restart', showChild);
+
+  let judgedFor = null;
+  session.on('restart', () => {
+    showChild();
+    // The seed changes only the child on screen, not the hundred children behind the verdict.
+    const key = JSON.stringify([getChild(), session.getRoom()]);
+    if (key !== judgedFor) {
+      judgedFor = key;
+      judgeSoon();
+    }
+  });
   showChild();
+  judgedFor = JSON.stringify([getChild(), session.getRoom()]);
+  judge();
 
   return {
-    attachView() {},
+    attachView(next) {
+      view = next;
+      if (lastVerdict) view.setDanger({ level: lastVerdict.level, ids: lastVerdict.ids, arrows: lastVerdict.arrows });
+    },
   };
 }
