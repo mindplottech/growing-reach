@@ -108,6 +108,8 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   let current = null;
   let target = null;
   let foothold = null;
+  // The footholds stood on since the child last left the floor, in order.
+  let path = [];
   // The object being climbed onto, while the climb takes its time.
   let climbing = null;
   let tripLeft = Infinity;
@@ -127,6 +129,9 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   };
   const interestOf = (landmark) => landmark.interest ?? settings.interest_default;
   const waitingTime = (rng, rate) => (rate > 0 ? -Math.log(1 - rng()) / rate : Infinity);
+
+  /** The footholds that led here, from the floor up: empty when on the floor. */
+  const chain = () => (foothold ? path.map(({ id, label, height }) => ({ id, label, height })) : []);
 
   function record(kind, details = {}) {
     events.push({
@@ -163,6 +168,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   function stepOffFoothold(from) {
     current = from;
     foothold = null;
+    path = [];
     position.x = from.approach.x;
     position.y = from.approach.y;
   }
@@ -174,6 +180,8 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   }
 
   function stand(on) {
+    if (!foothold) path = [];
+    path.push(on);
     foothold = on;
     position.x = on.x + on.w / 2;
     position.y = on.y + on.d / 2;
@@ -202,6 +210,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
 
   function touchHazard(hazard, level, from) {
     record(EVENT.TOUCHED_HAZARD, {
+      chain: chain(),
       hazardId: hazard.id,
       hazardKind: hazard.kind,
       hazardLabel: hazard.label,
@@ -220,13 +229,13 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
       && on.height >= leanHeight
       && footprintDistance(on, windowFrame) <= room.window_side_gap.value
     ) {
-      record(EVENT.STOOD_AT_WINDOW, { height: on.height });
+      record(EVENT.STOOD_AT_WINDOW, { height: on.height, chain: chain() });
     }
     for (const object of landmarks) {
       if (object === on || object.height <= on.height) continue;
       const level = footholdReachLevel(ledger, body, on, object);
       if (level === REACH_NONE) continue;
-      const details = { targetId: object.id, targetLabel: object.label, level };
+      const details = { targetId: object.id, targetLabel: object.label, level, chain: chain() };
       if (object.role === ROLE_LOCK) record(EVENT.REACHED_LOCK, details);
       else if (reachLevel(body, object.height) !== REACH_STANDING) record(EVENT.TOUCHED_HIGH, details);
     }
@@ -299,7 +308,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     });
     const floorLevel = reachLevel(body, current.height);
     if (current.role === ROLE_LOCK && floorLevel !== REACH_NONE) {
-      record(EVENT.REACHED_LOCK, { targetId: current.id, targetLabel: current.label, level: floorLevel });
+      record(EVENT.REACHED_LOCK, { targetId: current.id, targetLabel: current.label, level: floorLevel, chain: [] });
     }
     // What is on top of this furniture, if the child's hand gets to it from the floor.
     for (const hazard of hazards.filter(({ on }) => on === current.id)) {

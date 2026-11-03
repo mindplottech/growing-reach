@@ -3,6 +3,7 @@ import {
 } from '../sim/editor.js';
 import { renderEvidence } from './evidence.js';
 import { mountGuide } from './guide.js';
+import { mountEventLog } from './eventLog.js';
 import { mountPanel } from './panel.js';
 import { furnitureCatalog, settings } from '../sim/params.js';
 import { selectLayout } from '../sim/room.js';
@@ -203,6 +204,7 @@ async function start() {
     session, history, startRoom, catalog: furnitureCatalog, say: messenger(),
   });
   const panel = mountPanel({ ledger, settings, session, getChild });
+  mountEventLog({ list: document.querySelector('#event-log'), session });
 
   renderEvidence(document.querySelector('#evidence-body'), { ledger, roomFile });
   const evidence = document.querySelector('#evidence-dialog');

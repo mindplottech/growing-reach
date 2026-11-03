@@ -204,6 +204,27 @@ button, input, select { font: inherit; color: inherit; }
   pointer-events: none;
 }
 
+.event-log {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: grid;
+  gap: 2px;
+  max-width: 440px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 90%);
+  font-size: 14px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.event-log[hidden] { display: none; }
+
+.event-log li:last-child { font-weight: 600; }
+
+.event-time { display: inline-block; min-width: 3.2em; color: var(--muted); font-variant-numeric: tabular-nums; }
+
 .trail-toggle {
   position: absolute;
   top: 16px;
