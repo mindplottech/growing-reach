@@ -1,169 +1,39 @@
-import { getBodyValues, getTiptoeReference } from './body.js';
+import { renderEvidence } from './evidence.js';
+import { mountGuide } from './guide.js';
+import { mountPanel } from './panel.js';
 import { selectLayout } from './room.js';
-import { mountRoomView } from './roomView.js';
-import { mountTabs } from './tabs.js';
-import { mountTrialsView } from './trialsView.js';
+import { createSession } from './session.js';
 
-const MONTHS_PER_YEAR = 12;
-const DISPLAY_DECIMALS = 1;
 const LEDGER_URL = new URL('../data/values_ledger.json', import.meta.url);
 const ROOM_URL = new URL('../data/room_layout.json', import.meta.url);
 const SETTINGS_URL = new URL('../data/sim_settings.json', import.meta.url);
+const ICON_URL = (name) => new URL(`../assets/icons/${name}.svg`, import.meta.url).href;
 
-const monthsInput = document.querySelector('#months');
-const monthsLabel = document.querySelector('#months-label');
-const controls = document.querySelector('#controls');
-const valuesList = document.querySelector('#values');
-const legendList = document.querySelector('#legend');
-const summaryList = document.querySelector('#summary');
 const errorBox = document.querySelector('#error');
-
-function element(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-function badge(ledger, category) {
-  return element('span', `badge cat-${category}`, ledger._meta.categories[category]);
-}
-
-function formatAge(months) {
-  const years = Math.floor(months / MONTHS_PER_YEAR);
-  return `${years}歳${months % MONTHS_PER_YEAR}か月`;
-}
-
-function ledgerItem(ledger, id) {
-  return ledger.items.find((entry) => entry.id === id);
-}
-
-function card(ledger, label, result, unit) {
-  const li = element('li', `card cat-${result.category}`);
-  const value = element('p', 'card-value', result.value.toFixed(DISPLAY_DECIMALS));
-  value.append(' ', element('small', '', unit));
-  li.append(element('p', 'card-label', label), value, badge(ledger, result.category));
-  return li;
-}
-
-function tiptoeReference(ledger, months) {
-  const { ageYears, height, value, category } = getTiptoeReference(ledger, months);
-  const line = element(
-    'p',
-    'reference',
-    `参考（計算には使わない）：図鑑 ${ageYears}歳：身長${height}cmの子で${value}cm `,
-  );
-  line.append(badge(ledger, category));
-  return line;
-}
-
-function reachSd(ledger, reach, unit) {
-  const line = element('p', 'reference', `個人差 SD ${reach.sd.toFixed(DISPLAY_DECIMALS)} ${unit} `);
-  line.append(badge(ledger, reach.sdCategory));
-  return line;
-}
-
-/** The range is shown because the gain differs per child and this view has no single child. */
-function tiptoeCard(ledger, tiptoe, unit, months) {
-  const { range: [minGain, maxGain] } = ledgerItem(ledger, 'tiptoe_gain');
-  const li = element('li', `card cat-${tiptoe.category}`);
-  const range = `${tiptoe.min.toFixed(DISPLAY_DECIMALS)}〜${tiptoe.max.toFixed(DISPLAY_DECIMALS)}`;
-  const value = element('p', 'card-value', range);
-  value.append(' ', element('small', '', unit));
-  li.append(
-    element('p', 'card-label', `背伸びで届く高さ（立って届く高さ＋${minGain}〜${maxGain}${unit}）`),
-    value,
-    badge(ledger, tiptoe.category),
-    tiptoeReference(ledger, months),
-  );
-  return li;
-}
-
-/** Says where the two parts of the climb series come from; the months are the ledger's. */
-function climbOrigin(climbItem) {
-  const lastFormulaMonth = climbItem.valid_age_months[1];
-  const [[hatogoMonth]] = climbItem.extension_beyond_45.series;
-  return element(
-    'p',
-    'reference',
-    `${lastFormulaMonth}か月まで：東京都の実測の式／${hatogoMonth}か月：4〜6歳の実験結果に合わせた値`,
-  );
-}
-
-function render(ledger) {
-  const months = Number(monthsInput.value);
-  const sex = new FormData(controls).get('sex');
-  const body = getBodyValues(ledger, { months, sex });
-  const reachItem = ledgerItem(ledger, 'reach_height_standing');
-  const climbItem = ledgerItem(ledger, 'climb_height');
-
-  monthsLabel.textContent = formatAge(months);
-
-  const reachCard = card(ledger, reachItem.label, body.reach, reachItem.unit);
-  reachCard.append(reachSd(ledger, body.reach, reachItem.unit));
-  const climbCard = card(ledger, climbItem.label, body.climb, climbItem.unit);
-  climbCard.append(climbOrigin(climbItem));
-
-  valuesList.replaceChildren(
-    card(ledger, '身長（中央値）', body.height, ledgerItem(ledger, 'height_percentiles').unit),
-    reachCard,
-    tiptoeCard(ledger, body.tiptoeReach, reachItem.unit, months),
-    climbCard,
-  );
-  renderSummary(ledger, body);
-}
-
-/** The three values beside the slider, each with a dot for its evidence category. */
-function renderSummary(ledger, body) {
-  const item = (label, { value, category }) => {
-    const li = element('li');
-    const dot = element('span', `dot cat-${category}`);
-    dot.title = ledger._meta.categories[category];
-    dot.setAttribute('role', 'img');
-    dot.setAttribute('aria-label', ledger._meta.categories[category]);
-    li.append(dot, `${label} `, element('strong', '', value.toFixed(DISPLAY_DECIMALS)), 'cm');
-    return li;
-  };
-  summaryList.replaceChildren(
-    item('身長', body.height),
-    item('立って届く', body.reach),
-    item('登れる', body.climb),
-  );
-}
-
-/** The ledger's sources, with their addresses as links. */
-function renderSources(ledger) {
-  document.querySelector('#sources').replaceChildren(
-    ...Object.entries(ledger._meta.sources).map(([key, text]) => {
-      const li = element('li');
-      const url = /https?:\S+/.exec(text)?.[0];
-      li.append(element('strong', '', `${key} `), url ? text.replace(url, '') : text);
-      if (url) {
-        const link = element('a', '', url);
-        link.href = url;
-        link.rel = 'noopener';
-        link.target = '_blank';
-        li.append(link);
-      }
-      return li;
-    }),
-  );
-}
-
-function renderLegend(ledger) {
-  legendList.replaceChildren(
-    ...Object.keys(ledger._meta.categories).map((category) => {
-      const li = element('li');
-      li.append(badge(ledger, category));
-      return li;
-    }),
-  );
-}
 
 async function fetchJson(url) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
+}
+
+function setIcon(button, name) {
+  button.querySelector('.icon').style.setProperty('--icon', `url(${ICON_URL(name)})`);
+}
+
+/** Wires the toolbar; returns the functions the 3D view calls back into. */
+function mountToolbar({ session }) {
+  const play = document.querySelector('#play');
+  const label = play.querySelector('.tool-label');
+  const showPlaying = () => {
+    const playing = session.isPlaying();
+    setIcon(play, playing ? 'pause' : 'play');
+    label.textContent = playing ? '一時停止' : '再生';
+    play.dataset.tip = playing ? '子どもを止めます' : '子どもを動かします';
+  };
+  play.addEventListener('click', () => session.setPlaying(!session.isPlaying()));
+  session.on('play', showPlaying);
+  showPlaying();
 }
 
 async function start() {
@@ -172,75 +42,50 @@ async function start() {
     fetchJson(ROOM_URL),
     fetchJson(SETTINGS_URL),
   ]);
-
+  const startRoom = selectLayout(roomFile, roomFile.layouts[0].id);
+  const slider = document.querySelector('#months');
   const [minMonths, maxMonths] = ledger._meta.age_range_months;
-  monthsInput.min = minMonths;
-  monthsInput.max = maxMonths;
-  monthsInput.value = minMonths;
-
-  const layoutSelect = document.querySelector('#layout');
-  layoutSelect.replaceChildren(
-    ...roomFile.layouts.map(({ id, name }) => {
-      const option = element('option', '', name);
-      option.value = id;
-      return option;
-    }),
-  );
-  let room = selectLayout(roomFile, layoutSelect.value);
-
-  renderLegend(ledger);
-  renderSources(ledger);
-  mountTabs(document.querySelector('#tabs'));
-  render(ledger);
-  const roomView = mountRoomView(ledger, room, settings, () => ({
-    months: Number(monthsInput.value),
-    sex: new FormData(controls).get('sex'),
-  }));
-  mountTrialsView({
-    ledger,
-    settings,
-    getRoom: () => room,
-    getCondition: () => ({
-      months: Number(monthsInput.value),
-      sex: new FormData(controls).get('sex'),
-      boxes: roomView.getBoxes(),
-    }),
-    highlight: roomView.highlight,
-    onConditionChange: roomView.onConditionChange,
+  slider.min = minMonths;
+  slider.max = maxMonths;
+  slider.value = minMonths;
+  const getChild = () => ({
+    months: Number(slider.value),
+    sex: document.querySelector('input[name="sex"]:checked').value,
   });
-  // The 3D view is display only: if it cannot load, the map and all calculations still work.
-  const stage = document.querySelector('#stage');
-  const modeButtons = document.querySelector('#mode-buttons');
-  import('./view3d.js')
-    .then(({ mountView3d }) => {
-      stage.classList.add('with-3d');
-      modeButtons.hidden = false;
-      document.querySelector('#box-message').textContent = '「配置」で床をタップすると段ボール箱を置け、箱をなぞると動かせます';
-      roomView.useMapOnly();
-      mountView3d({
-        container: stage,
-        ledger,
-        settings,
-        roomView,
-        modeButtons: {
-          view: document.querySelector('#mode-view'),
-          place: document.querySelector('#mode-place'),
-        },
-        slider: monthsInput,
-      });
-    })
-    .catch((error) => {
-      document.querySelector('#box-message').textContent = `3D表示を読み込めませんでした（${error.message}）。図をタップすると段ボール箱を置けます`;
+
+  const session = createSession({ ledger, settings, room: startRoom, getChild });
+  mountToolbar({ session });
+  const panel = mountPanel({ ledger, settings, session, getChild });
+
+  renderEvidence(document.querySelector('#evidence-body'), { ledger, roomFile, settings });
+  const evidence = document.querySelector('#evidence-dialog');
+  document.querySelector('#open-evidence').addEventListener('click', () => evidence.showModal());
+  mountGuide({ dialog: document.querySelector('#guide-dialog'), openButton: document.querySelector('#open-guide') });
+
+  // The 3D view is display only: if it cannot load, the results still work.
+  try {
+    const { mountView3d } = await import('./view3d.js');
+    const view = mountView3d({
+      container: document.querySelector('#stage'),
+      chip: document.querySelector('#delete-selected'),
+      ledger,
+      settings,
+      session,
+      slider,
+      editing: {
+        canMove: () => false,
+        canRemove: () => false,
+        tryMove: () => null,
+        move: () => {},
+        remove: () => {},
+        useTool: () => {},
+        onSelect: () => {},
+      },
     });
-
-  layoutSelect.addEventListener('change', () => {
-    room = selectLayout(roomFile, layoutSelect.value);
-    roomView.setRoom(room);
-  });
-  controls.addEventListener('input', () => {
-    render(ledger);
-    roomView.restart();
-  });
+    panel.attachView(view);
+  } catch (error) {
+    document.querySelector('#tool-hint').textContent = `3D表示を読み込めませんでした（${error.message}）`;
+  }
 }
 
 start().catch((error) => {

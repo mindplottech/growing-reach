@@ -1,40 +1,34 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import {
-  createPoseTracker, floorShadow, footHeight, reachMark,
-} from './childPose.js';
-import {
-  buildSceneModel, cameraPlacement, highlightedIds, reachableNow, STATE_CLIMBABLE, STATE_REACHABLE,
-} from './sceneModel.js';
+import { createPoseTracker, floorShadow, footHeight, reachMark } from './childPose.js';
+import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
 
-// Display only: colours, label sizes, the camera and the proportions of the figure.
-// No body value or layout dimension is written here.
-const PASTELS = [0xf7c9c0, 0xbfe3d0, 0xc8d8f2, 0xf6e2ad, 0xdccdf0, 0xf5cfe0, 0xc5e8ec];
-const BOX_COLOUR = 0xe5c99c;
-const WINDOW_COLOUR = 0xf4efe2;
-const WALL_COLOUR = 0xfffbef;
-const BACKGROUND = 0xf3f1ea;
-const STATE_COLOURS = { [STATE_CLIMBABLE]: 0xf59e0b, [STATE_REACHABLE]: 0x60a5fa };
-const REACHED_GLOW = 0xff9d5c;
-const REACHED_GLOW_SCALE = 0.55;
-const COUNTERMEASURE_GLOW = 0xfde047;
-const FOOTHOLD_EDGE = 0xffffff;
-const FOOTHOLD_EDGE_OPACITY = 0.75;
+// Display only: colours, sizes on screen, the camera and the figure. No body value or
+// layout dimension is written here.
+const PASTELS = [0xf2d4cc, 0xcfe5d9, 0xd2ddef, 0xf1e4bf, 0xe0d6ee, 0xf1d6e2, 0xd0e8eb];
+const BOX_COLOUR = 0xe2c79b;
+const WINDOW_COLOUR = 0xf2eee4;
+const WALL_COLOUR = 0xfffcf2;
+const BACKGROUND = 0xf6f5f1;
+const ACCENT = 0x2f5d8a;
+const DANGER = 0xd32f2f;
+const CAUTION = 0xc9900a;
+const EDGE_OPACITY = 0.95;
+const DANGER_GLOW = 0.32;
+const FOCUS_GLOW = 0.28;
 const CORNER_CM = 5;
 const CORNER_SHARE = 0.3;
 const CORNER_SEGMENTS = 3;
 const SHADOW_MAP_SIZE = 1024;
-const TAP_PIXELS = 8;
-const PLANE_OPACITY = 0.28;
+const TAP_PIXELS = 6;
+const PLANE_OPACITY = 0.22;
 const PLANE_EASE = 0.15;
 const PLANE_LINGER_MS = 1500;
 const PLANE_FADE_MS = 300;
-// Labels keep this height on screen, whatever the zoom or the size of the view.
-const LABEL_HEIGHT_PIXELS = 22;
-const LIT_LABEL_TINT = 0xfde047;
+const LABEL_HEIGHT_PIXELS = 28;
 const LABEL_GAP_CM = 18;
-const PULSE_MS = 400;
+const PULSE_MS = 450;
 const SHADOW_RADIUS_CM = 22;
 const SHADOW_OPACITY = 0.3;
 const STRETCH_SHARE = 0.06;
@@ -42,19 +36,12 @@ const ARM_RAISE = Math.PI * 0.95;
 const MS_PER_SECOND = 1000;
 const MARK_RADIUS_CM = 16;
 const MARK_TUBE_CM = 1.6;
-const MARK_COLOUR = 0x3b82f6;
-const MARK_OVER_LOCK_COLOUR = 0xdc2626;
 const FIELD_OF_VIEW = 40;
 const PLANK_COUNT = 9;
-
-function toneOf(category) {
-  const probe = document.createElement('span');
-  probe.className = `cat-${category}`;
-  document.body.append(probe);
-  const tone = getComputedStyle(probe).getPropertyValue('--tone').trim();
-  probe.remove();
-  return new THREE.Color(tone);
-}
+const ARROW_RADIUS_CM = 1.8;
+const ARROW_HEAD_CM = 14;
+const ARROW_LIFT_CM = 6;
+const CHIP_LIFT_CM = 10;
 
 function labelSprite(text) {
   const canvas = document.createElement('canvas');
@@ -65,18 +52,16 @@ function labelSprite(text) {
   canvas.width = Math.ceil(context.measureText(text).width) + padding * 2;
   canvas.height = 84;
   context.font = font;
-  context.fillStyle = 'rgba(255,255,255,0.94)';
+  context.fillStyle = 'rgba(255,255,255,0.95)';
   context.beginPath();
   context.roundRect(0, 0, canvas.width, canvas.height, canvas.height / 2);
   context.fill();
-  context.fillStyle = '#2f3640';
+  context.fillStyle = '#1f2933';
   context.textBaseline = 'middle';
   context.fillText(text, padding, canvas.height / 2 + 2);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  const material = new THREE.SpriteMaterial({
-    map: texture, depthTest: false, transparent: true, sizeAttenuation: false,
-  });
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true, sizeAttenuation: false });
   const sprite = new THREE.Sprite(material);
   sprite.userData.widthPerHeight = canvas.width / canvas.height;
   sprite.renderOrder = 10;
@@ -90,9 +75,9 @@ function woodTexture() {
   const context = canvas.getContext('2d');
   const plank = canvas.height / PLANK_COUNT;
   for (let i = 0; i < PLANK_COUNT; i += 1) {
-    context.fillStyle = i % 2 === 0 ? '#ecdcc0' : '#e6d4b4';
+    context.fillStyle = i % 2 === 0 ? '#efe2c9' : '#e9dabd';
     context.fillRect(0, i * plank, canvas.width, plank);
-    context.fillStyle = 'rgba(150,120,80,0.25)';
+    context.fillStyle = 'rgba(150,120,80,0.2)';
     context.fillRect(0, i * plank, canvas.width, 2);
   }
   const texture = new THREE.CanvasTexture(canvas);
@@ -102,8 +87,8 @@ function woodTexture() {
 
 /** A round figure one unit tall, two to three heads high, with arms on shoulder joints. */
 function makeChild() {
-  const shirt = new THREE.MeshStandardMaterial({ color: 0x7fb5e6, roughness: 0.7 });
-  const trousers = new THREE.MeshStandardMaterial({ color: 0x5f88b8, roughness: 0.7 });
+  const shirt = new THREE.MeshStandardMaterial({ color: 0x7fa6cf, roughness: 0.7 });
+  const trousers = new THREE.MeshStandardMaterial({ color: 0x4f6f94, roughness: 0.7 });
   const skin = new THREE.MeshStandardMaterial({ color: 0xfcd5ae, roughness: 0.6 });
   const body = new THREE.Group();
   const part = (parent, geometry, material, x, y, scale) => {
@@ -130,7 +115,6 @@ function makeChild() {
   return { root, body, arms };
 }
 
-/** Puts the figure in a pose from the tracker; feet stay at the group's origin. */
 function applyPose(figure, pose) {
   const { root, body, arms } = figure;
   root.position.set(pose.x, pose.feet, pose.z);
@@ -149,8 +133,30 @@ function disposeGroup(group) {
   group.clear();
 }
 
-/** Draws the room in 3D. All changes go through `roomView`, so 2D and 3D stay in step. */
-export function mountView3d({ container, ledger, settings, roomView, modeButtons, slider }) {
+/** A red tube with a cone, from one point to another. */
+function arrow(from, to) {
+  const group = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ color: DANGER, depthTest: false, transparent: true });
+  const direction = new THREE.Vector3().subVectors(to, from);
+  const length = direction.length();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(ARROW_RADIUS_CM, ARROW_RADIUS_CM, length - ARROW_HEAD_CM, 10), material);
+  shaft.position.y = (length - ARROW_HEAD_CM) / 2;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(ARROW_RADIUS_CM * 3.5, ARROW_HEAD_CM, 14), material);
+  head.position.y = length - ARROW_HEAD_CM / 2;
+  group.add(shaft, head);
+  group.position.copy(from);
+  group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  group.renderOrder = 9;
+  shaft.renderOrder = 9;
+  head.renderOrder = 9;
+  return group;
+}
+
+/**
+ * Draws the room and handles pointing at it. Every change to the room goes out through
+ * `editing`; this module never decides whether a change is allowed.
+ */
+export function mountView3d({ container, chip, ledger, settings, session, slider, editing }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -168,17 +174,20 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
 
   const camera = new THREE.PerspectiveCamera(FIELD_OF_VIEW, 1, 10, 5000);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  // The left button is for picking and dragging; the view turns with the right and zooms with the wheel.
+  controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
   controls.enablePan = false;
   controls.maxPolarAngle = Math.PI / 2 - 0.02;
   let cameraTouched = false;
   controls.addEventListener('start', () => {
     cameraTouched = true;
   });
+  renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
 
   const roomGroup = new THREE.Group();
   const planeGroup = new THREE.Group();
-  scene.add(roomGroup, planeGroup);
+  const arrowGroup = new THREE.Group();
+  scene.add(roomGroup, planeGroup, arrowGroup);
   const child = makeChild();
   scene.add(child.root);
   const blob = new THREE.Mesh(
@@ -190,22 +199,25 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
   scene.add(blob);
   const mark = new THREE.Mesh(
     new THREE.TorusGeometry(MARK_RADIUS_CM, MARK_TUBE_CM, 10, 32),
-    new THREE.MeshBasicMaterial({ color: MARK_COLOUR }),
+    new THREE.MeshBasicMaterial({ color: ACCENT }),
   );
   mark.rotation.x = Math.PI / 2;
   scene.add(mark);
-  const updatePose = createPoseTracker(settings.display_seconds);
+  let updatePose = createPoseTracker(settings.display_seconds);
 
   const raycaster = new THREE.Raycaster();
   let lastFrame = null;
   let model = null;
   let floor = null;
-  let boxMeshes = new Map();
+  let backWall = null;
   let objectMeshes = new Map();
-  let lit = new Set();
   let planes = [];
   let sliderHeld = false;
   let planesUntil = 0;
+  let danger = { level: null, ids: new Set(), arrows: [] };
+  let focus = new Set();
+  let selectedId = null;
+  let tool = { type: 'select' };
 
   function fitCamera() {
     const { position, target } = cameraPlacement(model, camera.aspect, FIELD_OF_VIEW);
@@ -238,24 +250,20 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     mesh.position.set(object.x + object.w / 2, object.bottom + height / 2, object.z + object.d / 2);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    mesh.userData.base = baseColour(object, index);
-    mesh.userData.state = object.state;
-
+    mesh.userData.id = object.id;
+    mesh.userData.height = height;
     const edge = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(object.w + 1, height + 1, object.d + 1)),
-      new THREE.LineBasicMaterial({ color: FOOTHOLD_EDGE, transparent: true, opacity: FOOTHOLD_EDGE_OPACITY }),
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(object.w + 2, height + 2, object.d + 2)),
+      new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: EDGE_OPACITY }),
     );
     edge.visible = false;
     mesh.add(edge);
     mesh.userData.edge = edge;
-
     const label = labelSprite(object.label);
     label.position.set(0, height / 2 + LABEL_GAP_CM, 0);
     mesh.add(label);
-    mesh.userData.label = label;
     roomGroup.add(mesh);
     objectMeshes.set(object.id, mesh);
-    if (object.kind === 'box') boxMeshes.set(object.id, mesh);
   }
 
   function addWall(width, x, z, rotation) {
@@ -267,18 +275,44 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     wall.rotation.y = rotation;
     wall.receiveShadow = true;
     roomGroup.add(wall);
+    return wall;
+  }
+
+  function fitLabels() {
+    const { clientHeight: height } = container;
+    if (height === 0) return;
+    const size = (LABEL_HEIGHT_PIXELS / height) * 2 * Math.tan(THREE.MathUtils.degToRad(FIELD_OF_VIEW) / 2);
+    for (const group of [roomGroup, planeGroup]) {
+      group.traverse((node) => {
+        if (node.isSprite) node.scale.set(size * node.userData.widthPerHeight, size, 1);
+      });
+    }
+  }
+
+  function drawArrows() {
+    disposeGroup(arrowGroup);
+    for (const { from, to } of danger.arrows) {
+      const start = objectMeshes.get(from);
+      const end = objectMeshes.get(to);
+      if (!start || !end) continue;
+      const origin = start.position.clone();
+      origin.y += start.userData.height / 2 + ARROW_LIFT_CM;
+      const target = end.position.clone();
+      target.y += end.userData.height / 2;
+      arrowGroup.add(arrow(origin, target));
+    }
   }
 
   function rebuild() {
-    const simulation = roomView.getSimulation();
-    const room = roomView.getRoom();
-    const boxIds = new Set(roomView.getBoxes().map(({ id }) => id));
+    const simulation = session.getSimulation();
+    const room = session.getRoom();
+    const boxIds = new Set(room.landmarks.filter(({ temporary }) => temporary).map(({ id }) => id));
     const firstBuild = model === null;
     model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds });
+    updatePose = createPoseTracker(settings.display_seconds);
 
     disposeGroup(roomGroup);
     disposeGroup(planeGroup);
-    boxMeshes = new Map();
     objectMeshes = new Map();
 
     floor = new THREE.Mesh(
@@ -289,7 +323,7 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     floor.position.set(model.width / 2, 0, model.depth / 2);
     floor.receiveShadow = true;
     roomGroup.add(floor);
-    addWall(model.width, model.width / 2, model.depth, 0);
+    backWall = addWall(model.width, model.width / 2, model.depth, 0);
     addWall(model.depth, 0, model.depth / 2, Math.PI / 2);
 
     model.objects.forEach(addObject);
@@ -297,23 +331,21 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
       const paneHeight = model.pane.top - model.pane.bottom;
       const pane = new THREE.Mesh(
         new THREE.PlaneGeometry(model.pane.w, paneHeight),
-        new THREE.MeshStandardMaterial({ color: 0xbfe7f7, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+        new THREE.MeshStandardMaterial({ color: 0xcfe9f5, transparent: true, opacity: 0.75, side: THREE.DoubleSide }),
       );
       pane.position.set(model.pane.x + model.pane.w / 2, model.pane.bottom + paneHeight / 2, model.depth - 1);
       roomGroup.add(pane);
     }
 
     const previous = new Map(planes.map(({ id, mesh }) => [id, mesh.position.y]));
-    planes = model.planes.map(({ id, label, height, category }) => {
+    planes = model.planes.map(({ id, label, height }) => {
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(model.width, model.depth),
-        new THREE.MeshBasicMaterial({
-          color: toneOf(category), transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
-        }),
+        new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }),
       );
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(model.width / 2, previous.get(id) ?? height, model.depth / 2);
-      const tag = labelSprite(`${label} ${height.toFixed(1)}cm`);
+      const tag = labelSprite(`${label} ${Math.round(height)}cm`);
       // A plane is rotated flat, so its local y runs along the floor and z points up.
       tag.position.set(id === 'reach' ? -model.width / 5 : model.width / 5, model.depth / 2 - 12, LABEL_GAP_CM);
       mesh.add(tag);
@@ -323,17 +355,13 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     });
 
     child.root.scale.setScalar(model.childHeight);
+    if (selectedId && !objectMeshes.has(selectedId)) selectedId = null;
     aimSun();
     fitLabels();
     if (firstBuild) fitCamera();
-    applyHighlight(roomView.getHighlightedId());
+    drawArrows();
   }
 
-  function applyHighlight(id) {
-    lit = highlightedIds(roomView.getSimulation().landmarks, id);
-  }
-
-  /** Planes show while the slider is in use and fade soon after it is let go. */
   function planeStrength(now) {
     if (sliderHeld) return 1;
     const left = planesUntil - now;
@@ -341,38 +369,42 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     return Math.min(left / PLANE_FADE_MS, 1);
   }
 
-  function paintObjects(simulation, strength, now) {
-    const reached = reachableNow({
-      ledger,
-      body: simulation.body,
-      landmarks: simulation.landmarks,
-      position: simulation.position,
-      foothold: simulation.foothold,
-    });
-    const pulse = 0.8 + 0.2 * Math.sin(now / PULSE_MS);
+  function groupOf(id) {
+    return highlightedIds(session.getRoom().landmarks, id);
+  }
+
+  function paintObjects(now) {
+    const pulse = 0.75 + 0.25 * Math.sin(now / PULSE_MS);
+    const selected = selectedId ? groupOf(selectedId) : new Set();
+    const edgeColour = danger.level === 'caution' ? CAUTION : DANGER;
     for (const [id, mesh] of objectMeshes) {
       const { material, userData } = mesh;
-      material.color.setHex(strength > 0 ? STATE_COLOURS[userData.state] ?? userData.base : userData.base);
-      if (lit.has(id)) material.emissive.setHex(COUNTERMEASURE_GLOW).multiplyScalar(pulse);
-      else if (reached.has(id)) material.emissive.setHex(REACHED_GLOW).multiplyScalar(REACHED_GLOW_SCALE);
-      else material.emissive.setHex(0x000000);
-      userData.edge.visible = simulation.foothold?.id === id;
-      userData.label.material.color.setHex(lit.has(id) ? LIT_LABEL_TINT : 0xffffff);
-      userData.label.renderOrder = lit.has(id) ? 11 : 10;
+      const { edge } = userData;
+      if (danger.ids.has(id)) {
+        material.emissive.setHex(edgeColour).multiplyScalar(DANGER_GLOW * pulse);
+      } else if (focus.has(id)) {
+        material.emissive.setHex(ACCENT).multiplyScalar(FOCUS_GLOW * pulse);
+      } else {
+        material.emissive.setHex(0x000000);
+      }
+      edge.visible = selected.has(id) || danger.ids.has(id) || focus.has(id);
+      edge.material.color.setHex(selected.has(id) || !danger.ids.has(id) ? ACCENT : edgeColour);
     }
   }
 
-  /** With no size attenuation a sprite's scale is its share of the view times this factor. */
-  function fitLabels() {
-    const { clientHeight: height } = container;
-    if (height === 0) return;
-    const fieldOfView = THREE.MathUtils.degToRad(FIELD_OF_VIEW);
-    const size = (LABEL_HEIGHT_PIXELS / height) * 2 * Math.tan(fieldOfView / 2);
-    for (const group of [roomGroup, planeGroup]) {
-      group.traverse((node) => {
-        if (node.isSprite) node.scale.set(size * node.userData.widthPerHeight, size, 1);
-      });
+  function placeChip() {
+    const mesh = selectedId && objectMeshes.get(selectedId);
+    if (!mesh || !editing.canRemove(selectedId)) {
+      chip.hidden = true;
+      return;
     }
+    const top = mesh.position.clone();
+    top.y += mesh.userData.height / 2 + CHIP_LIFT_CM;
+    top.x += mesh.geometry.parameters.width / 2;
+    top.project(camera);
+    chip.hidden = top.z > 1;
+    chip.style.left = `${((top.x + 1) / 2) * container.clientWidth}px`;
+    chip.style.top = `${((1 - top.y) / 2) * container.clientHeight}px`;
   }
 
   function resize() {
@@ -386,7 +418,7 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
   }
 
   function render(now) {
-    const simulation = roomView.getSimulation();
+    const simulation = session.getSimulation();
     const seconds = lastFrame === null ? 0 : (now - lastFrame) / MS_PER_SECOND;
     lastFrame = now;
     const pose = updatePose({
@@ -402,7 +434,7 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     blob.material.opacity = SHADOW_OPACITY * onFloor.opacity;
     const reached = reachMark(simulation, pose.feet);
     mark.position.set(pose.x, reached.height, pose.z);
-    mark.material.color.setHex(reached.reachesLock ? MARK_OVER_LOCK_COLOUR : MARK_COLOUR);
+    mark.material.color.setHex(reached.reachesLock ? DANGER : ACCENT);
 
     const strength = planeStrength(now);
     for (const { mesh, tag, height } of planes) {
@@ -411,14 +443,14 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
       tag.material.opacity = strength;
       mesh.position.y += (height - mesh.position.y) * PLANE_EASE;
     }
-    paintObjects(simulation, strength, now);
+    paintObjects(now);
     controls.update();
     renderer.render(scene, camera);
+    placeChip();
     requestAnimationFrame(render);
   }
 
-  // Placement: a tap on the floor adds a box; dragging a box moves it across the floor.
-  let mode = 'view';
+  // ---- Pointing: pick, drag, place ----
   let press = null;
 
   function ray(event) {
@@ -436,53 +468,88 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
     return hit ? { x: hit.point.x, y: hit.point.z } : null;
   }
 
-  renderer.domElement.addEventListener('pointerdown', (event) => {
-    if (mode !== 'place') return;
+  function wallOrFloorPoint(event) {
     ray(event);
-    const [hit] = raycaster.intersectObjects([...boxMeshes.values()], false);
-    const boxId = hit && [...boxMeshes].find(([, mesh]) => mesh === hit.object)[0];
-    press = { x: event.clientX, y: event.clientY, boxId, moved: false, valid: null };
+    const [hit] = raycaster.intersectObjects([backWall, floor]);
+    return hit ? { x: hit.point.x, y: hit.point.z } : null;
+  }
+
+  function pickObject(event) {
+    ray(event);
+    const [hit] = raycaster.intersectObjects([...objectMeshes.values()], false);
+    return hit ? hit.object.userData.id : null;
+  }
+
+  function select(id) {
+    selectedId = id;
+    editing.onSelect(id);
+  }
+
+  renderer.domElement.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    const id = tool.type === 'select' ? pickObject(event) : null;
+    const start = floorPoint(event);
+    const centre = id ? objectMeshes.get(id).position : null;
+    press = {
+      x: event.clientX,
+      y: event.clientY,
+      id,
+      offset: id && start ? { x: start.x - centre.x, y: start.y - centre.z } : { x: 0, y: 0 },
+      moved: false,
+      valid: null,
+    };
     renderer.domElement.setPointerCapture(event.pointerId);
   });
 
   renderer.domElement.addEventListener('pointermove', (event) => {
-    if (!press?.boxId) return;
-    if (Math.hypot(event.clientX - press.x, event.clientY - press.y) < TAP_PIXELS) return;
+    if (!press?.id || !editing.canMove(press.id)) return;
+    if (!press.moved && Math.hypot(event.clientX - press.x, event.clientY - press.y) < TAP_PIXELS) return;
     press.moved = true;
     const point = floorPoint(event);
     if (!point) return;
-    const candidate = roomView.tryMoveBox(press.boxId, point);
+    const target = { x: point.x - press.offset.x, y: point.y - press.offset.y };
+    const candidate = editing.tryMove(press.id, target);
     if (!candidate) return;
-    press.valid = point;
-    const mesh = boxMeshes.get(press.boxId);
-    mesh.position.x = candidate.x + candidate.w / 2;
-    mesh.position.z = candidate.y + candidate.d / 2;
+    press.valid = target;
+    for (const landmark of candidate.landmarks) {
+      const mesh = objectMeshes.get(landmark.id);
+      if (!mesh) continue;
+      mesh.position.x = landmark.x + landmark.w / 2;
+      mesh.position.z = landmark.y + landmark.d / 2;
+    }
+    drawArrows();
   });
 
   renderer.domElement.addEventListener('pointerup', (event) => {
     if (!press) return;
-    const { boxId, moved, valid, x, y } = press;
+    const { id, moved, valid, x, y } = press;
     press = null;
-    if (boxId) {
-      if (moved && valid) roomView.moveBox(boxId, valid);
+    if (moved) {
+      if (id && valid) editing.move(id, valid);
+      else if (id) rebuild();
       return;
     }
     if (Math.hypot(event.clientX - x, event.clientY - y) >= TAP_PIXELS) return;
-    const point = floorPoint(event);
-    if (point) roomView.addBoxAt(point);
+    if (tool.type === 'select') {
+      select(id);
+      return;
+    }
+    const point = tool.type === 'window' ? wallOrFloorPoint(event) : floorPoint(event);
+    if (point) editing.useTool(tool, point);
   });
 
-  function setMode(next) {
-    mode = next;
-    controls.enabled = mode === 'view';
-    for (const [name, button] of Object.entries(modeButtons)) {
-      button.setAttribute('aria-pressed', String(name === mode));
+  window.addEventListener('keydown', (event) => {
+    if (event.target.closest('input, select, textarea, dialog')) return;
+    if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId && editing.canRemove(selectedId)) {
+      event.preventDefault();
+      editing.remove(selectedId);
     }
-  }
-  for (const [name, button] of Object.entries(modeButtons)) {
-    button.addEventListener('click', () => setMode(name));
-  }
+  });
+  chip.addEventListener('click', () => {
+    if (selectedId) editing.remove(selectedId);
+  });
 
+  // Planes show while the age slider is in use and fade soon after it is let go.
   const keepPlanes = () => {
     planesUntil = performance.now() + PLANE_LINGER_MS;
   };
@@ -498,10 +565,23 @@ export function mountView3d({ container, ledger, settings, roomView, modeButtons
   }
 
   new ResizeObserver(resize).observe(container);
-  roomView.onConditionChange(rebuild);
-  roomView.onHighlightChange(applyHighlight);
+  session.on('restart', rebuild);
   resize();
   rebuild();
-  setMode('view');
   requestAnimationFrame(render);
+
+  return {
+    setTool(next) {
+      tool = next;
+      renderer.domElement.style.cursor = next.type === 'select' ? 'default' : 'crosshair';
+    },
+    setDanger(next) {
+      danger = next;
+      drawArrows();
+    },
+    setFocus(id) {
+      focus = id ? groupOf(id) : new Set();
+    },
+    select,
+  };
 }

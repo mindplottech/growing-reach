@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=1280">
   <title>Growing Reach</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="src/style.css">
@@ -16,103 +16,107 @@
   </script>
 </head>
 <body>
-  <main id="app">
-    <section id="viewport" aria-label="リビングの3D表示">
-      <div id="stage">
-        <svg id="room" role="img" aria-label="リビングを上から見た図と、動く子ども"></svg>
+  <header class="app-header">
+    <h1>Growing Reach <span class="app-subtitle">3〜5歳の子の手がどこまで届くか</span></h1>
+    <div class="header-actions">
+      <button id="open-guide" type="button" class="header-button">
+        <span class="icon" style="--icon: url(../assets/icons/circle-help.svg)"></span>使い方
+      </button>
+      <button id="open-evidence" type="button" class="header-button">
+        <span class="icon" style="--icon: url(../assets/icons/book-open.svg)"></span>根拠を見る
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <nav id="toolbar" aria-label="道具">
+      <button type="button" class="tool" data-tool="child" data-tip="床をクリックして子どもを置きます" aria-pressed="false">
+        <span class="icon" style="--icon: url(../assets/icons/baby.svg)"></span><span class="tool-label">子ども</span>
+      </button>
+      <div class="tool-group">
+        <button type="button" class="tool" data-tool="furniture" data-tip="置く家具を選びます" aria-pressed="false" aria-haspopup="menu" aria-expanded="false" aria-controls="furniture-menu">
+          <span class="icon" style="--icon: url(../assets/icons/sofa.svg)"></span><span class="tool-label">家具</span>
+        </button>
+        <div id="furniture-menu" role="menu" aria-label="置く家具" hidden></div>
       </div>
-      <div id="mode-buttons" hidden>
-        <button id="mode-view" type="button">視点</button>
-        <button id="mode-place" type="button">配置</button>
-      </div>
-      <p id="result-overlay" role="status" hidden></p>
+      <button type="button" class="tool" data-tool="window" data-tip="壁をクリックして窓を動かします" aria-pressed="false">
+        <span class="icon" style="--icon: url(../assets/icons/app-window.svg)"></span><span class="tool-label">窓</span>
+      </button>
+      <button id="play" type="button" class="tool" data-tip="子どもを動かします">
+        <span class="icon" style="--icon: url(../assets/icons/play.svg)"></span><span class="tool-label">再生</span>
+      </button>
+      <button id="reset" type="button" class="tool" data-tip="最初の部屋に戻します">
+        <span class="icon" style="--icon: url(../assets/icons/rotate-ccw.svg)"></span><span class="tool-label">リセット</span>
+      </button>
+      <button id="undo" type="button" class="tool" data-tip="ひとつ前の配置に戻します" disabled>
+        <span class="icon" style="--icon: url(../assets/icons/undo-2.svg)"></span><span class="tool-label">元に戻す</span>
+      </button>
+    </nav>
+
+    <section id="canvas-area" aria-label="部屋の3D表示">
+      <div id="stage"></div>
+      <button id="delete-selected" type="button" class="delete-chip" aria-label="選んだ物を取り除く" hidden>
+        <span class="icon" style="--icon: url(../assets/icons/x.svg)"></span>
+      </button>
+      <p id="tool-hint" class="canvas-hint">家具はドラッグで動かせます。右ドラッグで向きを変え、ホイールで拡大します。</p>
+      <p id="canvas-message" class="canvas-message" role="status" hidden></p>
     </section>
 
-    <aside id="panel">
-      <section id="main-controls">
-        <form id="controls">
-          <label id="months-title" for="months">月齢 <output id="months-label" for="months"></output></label>
-          <input id="months" type="range" step="1">
-          <div class="control-row">
-            <fieldset>
-              <legend class="visually-hidden">性別</legend>
-              <label><input type="radio" name="sex" value="female" checked> 女の子</label>
-              <label><input type="radio" name="sex" value="male"> 男の子</label>
-            </fieldset>
-            <label class="layout-choice"><span class="visually-hidden">配置</span><select id="layout"></select></label>
-          </div>
-        </form>
-        <ul id="summary" aria-label="今の月齢の値"></ul>
+    <aside id="results" aria-label="結果">
+      <section id="verdict" class="verdict" data-level="pending" aria-live="polite">
+        <p class="verdict-headline">計算しています…</p>
+        <ul class="verdict-reasons"></ul>
       </section>
 
-      <div id="tabs" role="tablist" aria-label="パネルの切り替え">
-        <button id="tab-now" role="tab" type="button" aria-controls="panel-now" aria-selected="true">いま起きていること</button>
-        <button id="tab-trials" role="tab" type="button" aria-controls="panel-trials" aria-selected="false" tabindex="-1">100人の集計と対策</button>
-        <button id="tab-values" role="tab" type="button" aria-controls="panel-values" aria-selected="false" tabindex="-1">使っている値と根拠</button>
-      </div>
+      <section class="child-settings" aria-labelledby="child-title">
+        <h2 id="child-title">子ども</h2>
+        <label class="months-label" for="months">月齢 <output id="months-label" for="months"></output></label>
+        <input id="months" type="range" step="1">
+        <p class="months-range">3歳〜5歳（36〜60か月）</p>
+        <fieldset class="sex-choice">
+          <legend class="visually-hidden">性別</legend>
+          <label><input type="radio" name="sex" value="female" checked> 女の子</label>
+          <label><input type="radio" name="sex" value="male"> 男の子</label>
+        </fieldset>
+      </section>
 
-      <div id="tab-panels">
-        <section id="panel-now" role="tabpanel" aria-labelledby="tab-now" tabindex="0">
-          <div id="room-controls">
-            <label for="seed">シード</label>
-            <input id="seed" type="number" value="1" step="1" inputmode="numeric">
-            <button id="pause" type="button">一時停止</button>
-            <button id="clear-boxes" type="button">箱を全部片付ける</button>
-          </div>
-          <p id="box-message" role="status">図をタップすると段ボール箱を置けます</p>
-          <p id="child-values"></p>
-          <h3>出来事の記録</h3>
-          <ol id="events" aria-label="新しい出来事"></ol>
-          <details id="events-older-box">
-            <summary>それより前の出来事</summary>
-            <ol id="events-older"></ol>
-          </details>
-          <h3>足場にすると新しく届く物</h3>
-          <ul id="scaffold-reaches"></ul>
-          <details>
-            <summary>到着の記録</summary>
-            <ol id="visits" aria-label="到着の記録（新しい順）"></ol>
-          </details>
-        </section>
-
-        <section id="panel-trials" role="tabpanel" aria-labelledby="tab-trials" tabindex="0" hidden>
-          <p class="hint">今の月齢・性別・置いた箱で、シード1〜100の子が決まった時間過ごした結果です。</p>
-          <div class="trial-inputs">
-            <label>②で比べる月齢 <input id="compare-months" type="number" step="1" inputmode="numeric"></label>
-            <label>①で動かす物 <select id="move-object"></select></label>
-            <label>①で離す距離（cm） <input id="move-cm" type="number" inputmode="numeric" min="0"></label>
-          </div>
-          <button id="run-trials" type="button">集計を実行</button>
-          <div id="trial-results"></div>
-          <h3>計算で出す対策</h3>
-          <p class="hint">窓の錠に届いたときの足場の1位を光らせ、窓の錠から離しながら毎回集計をやり直します。</p>
-          <button id="find-countermeasure" type="button">対策を計算</button>
-          <div id="countermeasure"></div>
-        </section>
-
-        <section id="panel-values" role="tabpanel" aria-labelledby="tab-values" tabindex="0" hidden>
-          <h3>今の月齢の値（中央値の子）</h3>
-          <ul id="values"></ul>
-          <h3>区分</h3>
-          <ul id="legend" aria-label="区分の凡例"></ul>
-          <h3>3Dの色と印</h3>
-          <ul id="state-legend">
-            <li><span class="swatch state-climbable"></span>登れる高さより低い（月齢を動かしている間）</li>
-            <li><span class="swatch state-reachable"></span>立って届く高さより低い（月齢を動かしている間）</li>
-            <li><span class="swatch state-reached"></span>今届いている物</li>
-            <li><span class="swatch state-lit"></span>対策で選ばれた足場</li>
-            <li><span class="swatch mark-ring"></span>子どもの輪：今の場所から立って届く高さ</li>
-            <li><span class="swatch mark-over-lock"></span>輪が窓の錠の高さ以上</li>
-          </ul>
-          <h3>置いている仮値</h3>
-          <div id="layout-assumptions"></div>
-          <h3>出典</h3>
-          <ul id="sources"></ul>
-        </section>
-      </div>
+      <details id="more" class="more">
+        <summary>くわしく見る</summary>
+        <h3>この子の値</h3>
+        <dl id="child-values" class="value-list"></dl>
+        <label class="seed-label">子どもの番号（シード） <input id="seed" type="number" value="1" step="1" inputmode="numeric"></label>
+        <h3>100人の内訳</h3>
+        <dl id="trial-counts" class="value-list"></dl>
+        <h3>対策を計算する</h3>
+        <p class="hint">窓の錠に届いたときの足場を、窓から少しずつ離して100人分を計算し直します。</p>
+        <button id="find-countermeasure" type="button" class="secondary-button">計算する</button>
+        <p id="countermeasure"></p>
+      </details>
       <p id="error" role="alert" hidden></p>
     </aside>
   </main>
+
+  <dialog id="evidence-dialog" class="sheet" aria-labelledby="evidence-title">
+    <header class="sheet-header">
+      <h2 id="evidence-title">使っている値と根拠</h2>
+      <form method="dialog"><button class="close-button" aria-label="閉じる"><span class="icon" style="--icon: url(../assets/icons/x.svg)"></span></button></form>
+    </header>
+    <div id="evidence-body" class="sheet-body"></div>
+  </dialog>
+
+  <dialog id="guide-dialog" class="guide" aria-labelledby="guide-title">
+    <h2 id="guide-title">使い方</h2>
+    <ol class="guide-steps">
+      <li><span class="step-number">1</span><span class="icon" style="--icon: url(../assets/icons/baby.svg)"></span><span><strong>子どもを置く</strong>月齢と性別を選び、床に子どもを置きます。</span></li>
+      <li><span class="step-number">2</span><span class="icon" style="--icon: url(../assets/icons/sofa.svg)"></span><span><strong>家具と窓を置く</strong>家の様子に近づけるよう、家具を置いたり動かしたりします。</span></li>
+      <li><span class="step-number">3</span><span class="icon" style="--icon: url(../assets/icons/play.svg)"></span><span><strong>再生</strong>子どもが動き、右側に結果が出ます。</span></li>
+    </ol>
+    <form method="dialog" class="guide-actions">
+      <label><input id="guide-hide" type="checkbox"> もう表示しない</label>
+      <button class="primary-button">はじめる</button>
+    </form>
+  </dialog>
+
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
