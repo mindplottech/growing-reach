@@ -1,3 +1,4 @@
+import { createPlayback } from '../sim/playback.js';
 import { createSimulation } from '../sim/simulation.js';
 
 // A fixed step keeps the run identical for a seed whatever the frame rate is.
@@ -14,14 +15,15 @@ export function createSession({ ledger, settings, room: startRoom, getChild }) {
   let seed = 1;
   let playing = false;
   let simulation = null;
-  let carry = 0;
+  let speed = 1;
+  const playback = createPlayback({ stepSeconds: STEP_SECONDS, maxFrameSeconds: MAX_FRAME_SECONDS });
   let lastFrame;
-  const listeners = { restart: [], play: [] };
+  const listeners = { restart: [], play: [], speed: [] };
   const emit = (type) => listeners[type].forEach((listener) => listener());
 
   function restart() {
     simulation = createSimulation({ ledger, settings, ...getChild(), seed, room });
-    carry = 0;
+    playback.reset();
     emit('restart');
   }
 
@@ -29,11 +31,8 @@ export function createSession({ ledger, settings, room: startRoom, getChild }) {
     const elapsed = lastFrame === undefined ? 0 : (now - lastFrame) / MS_PER_SECOND;
     lastFrame = now;
     if (playing) {
-      carry += Math.min(elapsed, MAX_FRAME_SECONDS);
-      while (carry >= STEP_SECONDS) {
-        simulation.step(STEP_SECONDS);
-        carry -= STEP_SECONDS;
-      }
+      const steps = playback.stepsFor(elapsed, speed);
+      for (let i = 0; i < steps; i += 1) simulation.step(STEP_SECONDS);
     }
     requestAnimationFrame(frame);
   }
@@ -46,6 +45,12 @@ export function createSession({ ledger, settings, room: startRoom, getChild }) {
     getRoom: () => room,
     getSeed: () => seed,
     isPlaying: () => playing,
+    getSpeed: () => speed,
+    /** Faster playback takes more of the same steps per frame; the record does not change. */
+    setSpeed(next) {
+      speed = next;
+      emit('speed');
+    },
     setRoom(next) {
       room = next;
       restart();

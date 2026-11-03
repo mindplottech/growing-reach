@@ -54,7 +54,19 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
   const menu = document.querySelector('#furniture-menu');
   const undoButton = document.querySelector('#undo');
   const play = document.querySelector('#play');
+  const helpButton = document.querySelector('#show-hint');
   let tool = { type: 'select' };
+  let helpOpen = false;
+
+  // The hint shows when asked for with ？, and while a placing tool waits for a click.
+  function showHint() {
+    hint.hidden = !(helpOpen || tool.type !== 'select');
+    helpButton.setAttribute('aria-pressed', String(helpOpen));
+  }
+  helpButton.addEventListener('click', () => {
+    helpOpen = !helpOpen;
+    showHint();
+  });
   let view = null;
 
   function apply(next, failure) {
@@ -75,6 +87,7 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
       item.setAttribute('aria-checked', String(next.type === 'furniture' && item.dataset.kind === next.kind));
     }
     hint.textContent = HINTS[next.type];
+    showHint();
     view?.setTool(next);
   }
 
@@ -129,6 +142,13 @@ function mountEditing({ session, history, startRoom, catalog, say }) {
     play.dataset.tip = playing ? '子どもを止めます' : '子どもを動かします';
   };
   play.addEventListener('click', () => session.setPlaying(!session.isPlaying()));
+  const speedButtons = [...document.querySelectorAll('.speed[data-speed]')];
+  for (const button of speedButtons) {
+    button.addEventListener('click', () => session.setSpeed(Number(button.dataset.speed)));
+  }
+  session.on('speed', () => {
+    for (const button of speedButtons) button.setAttribute('aria-pressed', String(Number(button.dataset.speed) === session.getSpeed()));
+  });
   session.on('play', showPlaying);
   showPlaying();
 
@@ -192,7 +212,7 @@ async function start() {
   const [minMonths, maxMonths] = ledger._meta.age_range_months;
   slider.min = minMonths;
   slider.max = maxMonths;
-  slider.value = minMonths;
+  slider.value = settings.start_months;
   const getChild = () => ({
     months: Number(slider.value),
     sex: document.querySelector('input[name="sex"]:checked').value,
@@ -227,7 +247,9 @@ async function start() {
     toolbar.attachView(view);
     panel.attachView(view);
   } catch (error) {
-    document.querySelector('#tool-hint').textContent = `3D表示を読み込めませんでした（${error.message}）`;
+    const hint = document.querySelector('#tool-hint');
+    hint.textContent = `3D表示を読み込めませんでした（${error.message}）`;
+    hint.hidden = false;
   }
 }
 

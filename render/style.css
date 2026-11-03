@@ -151,7 +151,48 @@ button, input, select { font: inherit; color: inherit; }
 
 .tool[aria-expanded="true"]::after { display: none; }
 
+.tool-help[aria-pressed="true"]::after { display: none; }
+
 .tool-group { position: relative; }
+
+.speed-choice {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+
+.speed {
+  width: 24px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.speed[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+.tool-check { min-height: 56px; }
+
+.tool-check input { width: 18px; height: 18px; margin: 0 0 2px; accent-color: var(--accent); }
+
+.tool-help { margin-top: auto; min-height: 44px; }
+
+.help-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 700;
+}
 
 #furniture-menu {
   position: absolute;
@@ -192,6 +233,8 @@ button, input, select { font: inherit; color: inherit; }
 
 #stage canvas { display: block; width: 100%; height: 100%; }
 
+.canvas-hint[hidden] { display: none; }
+
 .canvas-hint {
   position: absolute;
   bottom: 16px;
@@ -224,21 +267,6 @@ button, input, select { font: inherit; color: inherit; }
 .event-log li:last-child { font-weight: 600; }
 
 .event-time { display: inline-block; min-width: 3.2em; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-.trail-toggle {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgb(255 255 255 / 90%);
-  cursor: pointer;
-}
-
-.trail-toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
 
 .canvas-message {
   position: absolute;
