@@ -568,9 +568,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     // The two seconds around a dangerous moment only matter while the record is playing; paused
     // or finished, the child just stands there and may yawn.
     const live = session.isPlaying() && !(session.isFinished?.() ?? false);
-    const scene = session.getScene();
+    const playingScene = session.getScene();
     const hazardMoments = live ? simulation.events.filter(({ kind }) => HAZARD_EVENTS.has(kind)).map(({ time }) => time) : [];
-    if (live && scene?.moment !== null && scene?.moment !== undefined) hazardMoments.push(scene.moment);
+    if (live && playingScene?.moment !== null && playingScene?.moment !== undefined) hazardMoments.push(playingScene.moment);
     const idle = updateIdle({ still: !pose.busy && idleClock >= busyUntil, time: simulation.time, hazardMoments }, realSeconds);
     applyIdle(child, idle, pose, gait);
     followChild(pose);
