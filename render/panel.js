@@ -99,15 +99,14 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const lines = [];
     const parts = [];
     if (child.individual.height !== undefined) parts.push(`身長は下から${rank(child.individual.height)}番目くらい`);
-    if (child.individual.climb !== undefined) parts.push(`登れる高さは下から${rank(child.individual.climb)}番目くらい`);
     lines.push(`${formatAge(at)}の子100人の中で、${parts.join('、')}。`);
     const extreme = Object.values(child.individual).some((z) => Math.abs(z) > 3);
     if (extreme) lines.push('台帳の分布から大きく外れた値です。月齢か数値を確かめてください。');
     if (child.months !== at) {
       const body = session.getSimulation().body;
-      lines.push(`${formatAge(child.months)}では、身長 ${cm(body.height.value)}・登れる高さ ${cm(body.climb.value)} として計算しています（順位が変わらないとみなした仮値）。`);
+      lines.push(`${formatAge(child.months)}では、身長 ${cm(body.height.value)}・登れる高さ ${cm(body.climb.value)} と推測して計算しています（身長の順位が変わらないとみなした仮値）。`);
     } else {
-      lines.push(`登れる高さ ${cm(measuredBody.climb.value)}・立って届く高さ ${cm(measuredBody.reach.value)} として計算しています。`);
+      lines.push(`身長から、登れる高さ ${cm(measuredBody.climb.value)}・立って届く高さ ${cm(measuredBody.reach.value)} と推測して計算しています。`);
     }
     myChildPosition.replaceChildren(...lines.map((text, i) => element(i === 0 ? 'strong' : 'span', '', text)).flatMap((node, i) => (i ? [document.createElement('br'), node] : [node])));
   }

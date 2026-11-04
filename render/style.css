@@ -328,7 +328,15 @@ button, input, select { font: inherit; color: inherit; }
 .months-range { color: var(--muted); }
 
 .my-child { margin-top: 8px; }
-.my-child > summary { cursor: pointer; font-weight: 700; min-height: 40px; display: flex; align-items: center; }
+.my-child > summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); list-style: none; }
+.my-child > summary::-webkit-details-marker { display: none; }
+.my-child > summary:hover { background: rgba(0, 0, 0, 0.04); }
+.my-child-summary-icon { width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 9px; border-color: transparent transparent transparent currentColor; transition: transform 0.15s; }
+.my-child[open] > summary .my-child-summary-icon { transform: rotate(90deg); }
+.my-child > summary > span:nth-child(2) { white-space: nowrap; }
+.my-child-summary-hint { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+.my-child[open] > summary .my-child-summary-hint { display: none; }
+.my-child > :not(summary) { margin-left: 4px; }
 .my-child legend { font-size: 12px; color: var(--muted); padding: 0; }
 .measure-label { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .measure-label input { width: 88px; min-height: 36px; padding: 0 8px; font-size: 16px; }

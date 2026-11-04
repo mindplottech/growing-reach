@@ -244,20 +244,19 @@ async function start() {
     const shown = measuredMonths ?? Number(slider.value);
     measuredAge.textContent = `${Math.floor(shown / 12)}歳${shown % 12}か月`;
   };
-  for (const id of ['#child-height', '#child-climb']) {
-    document.querySelector(id).addEventListener('input', () => {
-      measuredMonths = Number(slider.value);
-      showMeasuredAge();
-    });
-  }
+  document.querySelector('#child-height').addEventListener('input', () => {
+    measuredMonths = Number(slider.value);
+    showMeasuredAge();
+  });
   slider.addEventListener('input', () => { if (measuredMonths === null) showMeasuredAge(); });
   showMeasuredAge();
   const getChild = () => {
     const months = Number(slider.value);
     if (!myChild.open) return { months, sex: SEX_ANY, individual: null, measurements: null, measuredMonths: null };
     const sex = document.querySelector('input[name="sex"]:checked')?.value ?? SEX_ANY;
-    const measurements = { heightCm: measurement('#child-height'), climbCm: measurement('#child-climb') };
-    const given = measurements.heightCm !== null || measurements.climbCm !== null;
+    // Only the height is asked; the climb height is estimated from it by the ledger's formula.
+    const measurements = { heightCm: measurement('#child-height'), climbCm: null };
+    const given = measurements.heightCm !== null;
     const at = measuredMonths ?? months;
     const { z, notes } = given ? individualFromMeasurements(ledger, { months: at, sex, ...measurements }) : { z: null, notes: [] };
     return { months, sex, individual: z, measurements: { ...measurements, notes }, measuredMonths: given ? at : null };
