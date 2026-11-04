@@ -1,9 +1,14 @@
-import { EVENT, EVENT_LABELS } from '../sim/events.js';
+import {
+  compareResults, conclusion, differenceText, SECTION_COUNTS, SECTION_HAZARDS, toneOf,
+} from '../sim/compare.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
 
 const MONTHS_PER_YEAR = 12;
+const SECONDS_PER_MINUTE = 60;
+const MODE_MONTHS = 'months';
+const MODE_ROOM = 'room';
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -31,41 +36,36 @@ function countermeasureLine(search, baselineChildren, limit, label) {
   return `${label}を${last.distance}cmまで離しても（探す上限${limit}cm）、窓の錠に届く子は${baselineChildren}人から${last.children}人までしか減りません。`;
 }
 
-/** What the last two calculations differ in, named for the reader. */
-function compareLabels(before, now, kind) {
-  if (!before) return null;
-  if (before.months !== now.months) return [formatAge(before.months), formatAge(now.months)];
-  const sexWord = { female: '女の子', male: '男の子' };
-  if (before.sex !== now.sex) return [sexWord[before.sex], sexWord[now.sex]];
-  return { undo: ['戻す前', '戻した後'], reset: ['リセット前', 'リセット後'], room: ['動かす前', '動かした後'] }[kind] ?? null;
-}
-
-const countText = ({ children, counts }) => `${children.length}人（うち登って${counts.climbed}人）`;
+const sexWord = { female: '女の子', male: '男の子' };
 
 /**
- * The results panel. The main screen says, per place, only how a child gets a hand to it, in
- * the colour of the same rule; the numbers are under "くわしく見る". Pressing a row plays only
- * the runs that reached that place.
+ * The results panel: one sentence of what changed between two conditions, then the table of
+ * both, side by side, with the difference. By months, the left is the youngest age and the right
+ * the age on the slider; after 「試し直す」, the left is the room before the move and the right
+ * the room after, at the same age. 「元に戻す」 and 「リセット」 go back to the months.
  */
 export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
+  const [baseMonths] = ledger._meta.age_range_months;
   const slider = document.querySelector('#months');
   const monthsLabel = document.querySelector('#months-label');
   const seedInput = document.querySelector('#seed');
   const childValues = document.querySelector('#child-values');
-  const trialCounts = document.querySelector('#trial-counts');
-  const verdictBox = document.querySelector('#verdict');
+  const conclusionBox = document.querySelector('#verdict');
+  const table = document.querySelector('#result-table');
+  const leftHead = document.querySelector('#col-left');
+  const rightHead = document.querySelector('#col-right');
+  const conditions = document.querySelector('#conditions');
+  const reachList = document.querySelector('#reach-words');
   const reasons = document.querySelector('#verdict-reasons');
-  const countRows = document.querySelector('#count-rows');
-  const compareLine = document.querySelector('#compare-line');
   const countermeasure = document.querySelector('#countermeasure');
-  const hazardBox = document.querySelector('#hazard-rows');
-  const fallBox = document.querySelector('#fall-rows');
   const retry = document.querySelector('#retry');
+  const total = settings.trial_count;
   let view = null;
   let lastTags = null;
-  let lastChild = null;
-  let lastWords = new Map();
-  let lastCounts = new Map();
+  let mode = MODE_MONTHS;
+  // The room the right-hand result was last calculated for: "before" once the room is moved.
+  let judgedRoom = null;
+  let beforeRoom = null;
 
   function showChild() {
     monthsLabel.textContent = formatAge(getChild().months);
@@ -81,83 +81,128 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
 
   /** Marks the row whose runs are playing, if one was pressed. */
   function showPressed() {
-    for (const button of document.querySelectorAll('.place-row')) {
-      button.setAttribute('aria-pressed', String(button.dataset.id === autoplay.row()));
+    for (const row of table.querySelectorAll('.result-row')) {
+      row.setAttribute('aria-current', String(row.dataset.id === autoplay.row()));
     }
   }
 
-  function playRow(id, seeds) {
-    autoplay.useRow(id, seeds);
-    showPressed();
+  /** A count with a thin bar for its share of the hundred, and the climbers for a place. */
+  function countCell(count, climbed) {
+    const cell = element('td');
+    cell.append(element('span', 'count', `${count}人`));
+    if (climbed !== undefined) cell.append(element('span', 'climbed', `（登って${climbed}人）`));
+    const bar = element('span', 'bar');
+    const fill = element('span', 'bar-fill');
+    fill.style.width = `${(count / total) * 100}%`;
+    bar.append(fill);
+    cell.append(bar);
+    return cell;
   }
 
-  /** One place: its name and how a child reaches it, in its colour; a change shows what it was. */
-  function placeRow(row, compare) {
-    const words = reachWords(row);
-    const button = element('button', 'place-row');
-    button.type = 'button';
-    button.dataset.level = words.level;
-    button.dataset.id = row.id;
-    button.disabled = row.children.length === 0;
-    button.append(element('span', 'row-name', row.label));
-    const before = compare ? lastWords.get(row.id) : null;
-    const how = element('span', 'row-how');
-    if (before && before.text !== words.text) {
-      how.append(element('span', `row-before row-before-${before.level}`, before.text), ' → ');
-      button.classList.add('row-changed');
+  function rowElement(row, sectionId) {
+    const tr = element('tr', 'result-row');
+    tr.dataset.id = row.id;
+    if (row.level) tr.dataset.level = row.level;
+    const name = element('td');
+    if (row.seeds) {
+      // Pressing the name plays only the runs of the right-hand result that are in this row.
+      const button = element('button', 'row-play', row.label);
+      button.type = 'button';
+      button.disabled = row.seeds.length === 0;
+      button.addEventListener('click', () => {
+        autoplay.useRow(row.id, row.seeds);
+        showPressed();
+      });
+      name.append(button);
+    } else {
+      name.textContent = row.label;
     }
-    how.append(words.text);
-    button.append(how);
-    button.addEventListener('click', () => playRow(row.id, row.children.map(({ seed }) => seed)));
-    return button;
+    const withClimbed = sectionId === SECTION_HAZARDS;
+    const diff = element('td', 'diff', differenceText(row.left, row.right));
+    diff.dataset.tone = toneOf(row.left, row.right);
+    tr.append(
+      name,
+      countCell(row.left, withClimbed ? row.leftClimbed : undefined),
+      countCell(row.right, withClimbed ? row.rightClimbed : undefined),
+      diff,
+    );
+    return tr;
   }
 
-  /** Runs the same hundred children (seeds 1 to 100) for the room and child as they are now. */
+  function showTable(sections) {
+    for (const body of table.querySelectorAll('tbody')) body.remove();
+    for (const section of sections) {
+      const body = element('tbody', section.id === SECTION_COUNTS ? 'small' : '');
+      const title = element('tr', 'section-title');
+      const th = element('th', '', section.title);
+      th.colSpan = 4;
+      th.scope = 'colgroup';
+      title.append(th);
+      body.append(title, ...section.rows.map((row) => rowElement(row, section.id)));
+      table.append(body);
+    }
+  }
+
+  const minutes = (seconds) => (seconds % SECONDS_PER_MINUTE === 0 ? `${seconds / SECONDS_PER_MINUTE}分` : `${seconds}秒`);
+  const averages = ({ averages: { height, climb } }) => `平均の身長 ${Math.round(height)}cm・平均の登れる高さ ${Math.round(climb)}cm`;
+
+  /** The conditions both results were run under, in one line. */
+  function conditionLine(names, left, right, child) {
+    const shared = `${total}人・各${minutes(settings.trial_seconds)}・${sexWord[child.sex]}`;
+    if (mode === MODE_ROOM) return `${shared}・${formatAge(child.months)}（${averages(right)}）`;
+    return `${shared}｜${names[0]}：${averages(left)}｜${names[1]}：${averages(right)}`;
+  }
+
+  function places(verdict) {
+    const { lock, rows } = verdict.hazards;
+    return [...(lock ? [lock] : []), ...rows];
+  }
+
+  /**
+   * Runs the same hundred children (seeds 1 to 100) for both conditions. `kind` is what led
+   * here: 'room' (「試し直す」) compares the room before and after; 'undo' and 'reset' go back
+   * to comparing by months; anything else keeps the comparison as it is.
+   */
   function judge(kind = null) {
     const child = getChild();
-    const verdict = judgeRoom({ ledger, settings, room: session.getRoom(), ...child });
-    const labels = compareLabels(lastChild, child, kind);
-    const compare = Boolean(labels);
-    const { lock, rows, falls } = verdict.hazards;
-    const places = [...(lock ? [lock] : []), ...rows];
+    const room = session.getRoom();
+    if (kind === 'room' && judgedRoom) {
+      mode = MODE_ROOM;
+      beforeRoom = judgedRoom;
+    } else if (kind === 'undo' || kind === 'reset') {
+      mode = MODE_MONTHS;
+    }
+    const right = judgeRoom({ ledger, settings, room, ...child });
+    const left = mode === MODE_ROOM
+      ? judgeRoom({ ledger, settings, room: beforeRoom, ...child })
+      : judgeRoom({ ledger, settings, room, months: baseMonths, sex: child.sex });
+    const names = mode === MODE_ROOM ? ['動かす前', '動かした後'] : [formatAge(baseMonths), formatAge(child.months)];
+    judgedRoom = room;
 
-    verdictBox.dataset.level = lock ? reachWords(lock).level : 'plain';
-    verdictBox.replaceChildren(...(lock ? [placeRow(lock, compare)] : []));
-    hazardBox.replaceChildren(...rows.map((row) => placeRow(row, compare)));
-    compareLine.hidden = !compare;
-    if (compare) compareLine.textContent = `${labels[0]} → ${labels[1]} で比べています`;
+    const sections = compareResults(left, right);
+    const said = conclusion(sections, { leftName: names[0], rightName: names[1], kind: mode });
+    conclusionBox.dataset.tone = said.tone;
+    conclusionBox.replaceChildren(element('p', 'conclusion-text', said.text));
+    [leftHead.textContent, rightHead.textContent] = names;
+    showTable(sections);
+    conditions.textContent = `使った条件：${conditionLine(names, left, right, child)}`;
 
-    // The numbers, with the calculation before, only under "くわしく見る".
-    const counts = new Map(places.map((row) => [row.id, countText(row)]));
-    fillList(countRows, places.map((row) => {
-      const before = compare && lastCounts.get(row.id);
-      return [row.label, before ? `${labels[0]} ${before} → ${labels[1]} ${counts.get(row.id)}` : counts.get(row.id)];
-    }));
-    fallBox.replaceChildren(...falls.map((fall) => {
-      const button = element('button', 'place-row fall-row', fall.text);
-      button.type = 'button';
-      button.dataset.id = `fall-${fall.id}`;
-      button.disabled = fall.children.length === 0;
-      button.addEventListener('click', () => playRow(`fall-${fall.id}`, fall.children.map(({ seed }) => seed)));
-      return button;
-    }));
-    reasons.replaceChildren(...verdict.reasons.map((text) => element('li', '', text)));
-    fillList(trialCounts, Object.entries(verdict.children).filter(([key]) => key !== EVENT.TOUCHED_HAZARD).map(([key, count]) => [
-      EVENT_LABELS[key], `${verdict.total}人中${count}人`,
+    // How each place was reached, in words, for both conditions.
+    const leftWords = new Map(places(left).map((row) => [row.id, reachWords(row).text]));
+    fillList(reachList, places(right).map((row) => [
+      row.label, `${names[0]}：${leftWords.get(row.id) ?? '届かない'}／${names[1]}：${reachWords(row).text}`,
     ]));
+    reasons.replaceChildren(...right.reasons.map((text) => element('li', '', text)));
 
-    lastWords = new Map(places.map((row) => [row.id, reachWords(row)]));
-    lastCounts = counts;
-    lastChild = child;
-    lastTags = lastWords;
+    lastTags = new Map(places(right).map((row) => [row.id, reachWords(row)]));
     countermeasure.textContent = '';
     retry.disabled = true;
     retry.dataset.pending = 'false';
     document.querySelector('#results').classList.remove('stale');
     view?.setTags(lastTags);
-    autoplay.useEventful(verdict.eventful);
+    autoplay.useEventful(right.eventful);
     showPressed();
-    return verdict;
+    return right;
   }
 
   /** The room changed by hand: the results wait for 「試し直す」. */

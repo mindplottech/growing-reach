@@ -95,20 +95,23 @@
         </fieldset>
       </section>
 
-      <section id="verdict" class="verdict" data-level="pending" aria-live="polite">
-        <p class="verdict-headline">計算しています…</p>
+      <section id="verdict" class="conclusion" data-tone="pending" aria-live="polite">
+        <p class="conclusion-text">計算しています…</p>
       </section>
-      <p id="compare-line" class="compare-line" hidden></p>
 
-      <section class="hazards" aria-labelledby="hazards-title">
-        <h2 id="hazards-title">危険な物</h2>
-        <div id="hazard-rows" class="hazard-rows"></div>
-      </section>
+      <table id="result-table" class="result-table" aria-label="2つの条件の結果">
+        <colgroup><col class="col-name"><col class="col-count"><col class="col-count"><col class="col-diff"></colgroup>
+        <thead>
+          <tr><th scope="col">できごと</th><th scope="col" id="col-left"></th><th scope="col" id="col-right"></th><th scope="col">差</th></tr>
+        </thead>
+      </table>
+
+      <p id="conditions" class="conditions"></p>
 
       <details id="more" class="more">
         <summary>くわしく見る</summary>
-        <h3>人数（100人中）</h3>
-        <dl id="count-rows" class="value-list count-list"></dl>
+        <h3>届き方</h3>
+        <dl id="reach-words" class="value-list reach-list"></dl>
         <h3>窓の錠に届いた足場</h3>
         <ul id="verdict-reasons" class="verdict-reasons"></ul>
         <h3>この子の値</h3>
@@ -116,10 +119,6 @@
         <label class="seed-label">子どもの番号（シード） <input id="seed" type="number" value="1" step="1" inputmode="numeric"></label>
         <h3>この子に起きたこと</h3>
         <ol id="event-log" class="event-log"></ol>
-        <h3>転落（100人中）</h3>
-        <div id="fall-rows" class="hazard-rows"></div>
-        <h3>100人の内訳</h3>
-        <dl id="trial-counts" class="value-list"></dl>
         <h3>対策を計算する</h3>
         <p class="hint">窓の錠に届いたときの足場を、窓から少しずつ離して100人分を計算し直します。</p>
         <button id="find-countermeasure" type="button" class="secondary-button">計算する</button>

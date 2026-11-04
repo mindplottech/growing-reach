@@ -83,10 +83,14 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
   let landmarks = [];
   let hazards = [];
   const summaries = [];
+  let heightSum = 0;
+  let climbSum = 0;
 
   for (let seed = 1; seed <= total; seed += 1) {
     const simulation = createSimulation({ ledger, settings, months, sex, seed, room });
     simulation.step(settings.trial_seconds);
+    heightSum += simulation.body.height.value;
+    climbSum += simulation.body.climb.value;
     landmarks = simulation.landmarks;
     hazards = simulation.hazards;
     summaries.push({ seed, summary: summarizeChild(simulation.events) });
@@ -173,5 +177,7 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
       ...summaries.filter(({ summary }) => !summary.lock && somethingHappened(summary)),
     ].map(({ seed }) => seed),
     children: Object.fromEntries(Object.entries(children).map(([kind, seeds]) => [kind, seeds.size])),
+    // The mean of the hundred children's bodies, for the line of conditions under the table.
+    averages: { height: heightSum / total, climb: climbSum / total },
   };
 }
