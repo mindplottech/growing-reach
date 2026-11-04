@@ -333,6 +333,9 @@ button, input, select { font: inherit; color: inherit; }
 .measure-label { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .measure-label input { width: 88px; min-height: 36px; padding: 0 8px; font-size: 16px; }
 .my-child-note:empty { display: none; }
+.my-child-position { margin: 8px 0 0; padding: 8px 10px; background: var(--panel-soft, #f3f1ec); border-radius: 6px; font-size: 13px; line-height: 1.6; }
+.my-child-position:empty { display: none; }
+.my-child-position strong { font-weight: 700; }
 .sex-choice { display: flex; gap: 24px; margin: 4px 0 0; padding: 0; border: 0; }
 
 .sex-choice label { display: flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }

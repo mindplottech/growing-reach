@@ -67,3 +67,10 @@ test('the median individual gives the same counts whichever seed draws the rest'
   const twice = judgeRoom({ ...base, individual: { height: 0, climb: 0 } });
   assert.deepEqual(once.hazards.lock.counts, twice.hazards.lock.counts);
 });
+
+test('the normal share below z matches the known values', async () => {
+  const { normalCdf } = await import('../sim/random.js');
+  assert.ok(Math.abs(normalCdf(0) - 0.5) < 1e-6);
+  assert.ok(Math.abs(normalCdf(1.96) - 0.975) < 1e-4);
+  assert.ok(Math.abs(normalCdf(-1) - 0.1587) < 1e-4);
+});

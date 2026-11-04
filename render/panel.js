@@ -5,6 +5,8 @@ import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
+import { getBodyValues } from '../sim/body.js';
+import { normalCdf } from '../sim/random.js';
 
 const MONTHS_PER_YEAR = 12;
 const SECONDS_PER_MINUTE = 60;
@@ -62,6 +64,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   const retry = document.querySelector('#retry');
   const myChild = document.querySelector('#my-child');
   const myChildNote = document.querySelector('#my-child-note');
+  const myChildPosition = document.querySelector('#my-child-position');
   const total = settings.trial_count;
   let view = null;
   let lastTags = null;
@@ -82,6 +85,31 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       ['登れる高さ', cm(climb.value)],
       ['歩く速さ', `${walkSpeed.value.toFixed(2)} m/s`],
     ]);
+  }
+
+  /** Where the typed child sits among a hundred of the same age, and their body at the slider's age. */
+  function showPosition(child) {
+    if (!child.individual) {
+      myChildPosition.replaceChildren();
+      return;
+    }
+    const at = child.measuredMonths;
+    const measuredBody = getBodyValues(ledger, { months: at, sex: child.sex, z: child.individual });
+    const rank = (z) => Math.min(100, Math.max(1, Math.round(normalCdf(z) * 100)));
+    const lines = [];
+    const parts = [];
+    if (child.individual.height !== undefined) parts.push(`身長は下から${rank(child.individual.height)}番目くらい`);
+    if (child.individual.climb !== undefined) parts.push(`登れる高さは下から${rank(child.individual.climb)}番目くらい`);
+    lines.push(`${formatAge(at)}の子100人の中で、${parts.join('、')}。`);
+    const extreme = Object.values(child.individual).some((z) => Math.abs(z) > 3);
+    if (extreme) lines.push('台帳の分布から大きく外れた値です。月齢か数値を確かめてください。');
+    if (child.months !== at) {
+      const body = session.getSimulation().body;
+      lines.push(`${formatAge(child.months)}では、身長 ${cm(body.height.value)}・登れる高さ ${cm(body.climb.value)} として計算しています（順位が変わらないとみなした仮値）。`);
+    } else {
+      lines.push(`登れる高さ ${cm(measuredBody.climb.value)}・立って届く高さ ${cm(measuredBody.reach.value)} として計算しています。`);
+    }
+    myChildPosition.replaceChildren(...lines.map((text, i) => element(i === 0 ? 'strong' : 'span', '', text)).flatMap((node, i) => (i ? [document.createElement('br'), node] : [node])));
   }
 
   /** Marks the cell whose scenes are playing, if one was pressed. */
@@ -233,6 +261,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     [leftHead.textContent, rightHead.textContent] = names;
     showTable(sections, right.unit);
     myChildNote.textContent = child.measurements?.notes?.join('。') ?? '';
+    showPosition(child);
     conditions.textContent = `使った条件：${conditionLine(names, left, right, child)}`;
 
     // How each place was reached, in words, for both conditions.
