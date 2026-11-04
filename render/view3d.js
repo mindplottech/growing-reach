@@ -262,6 +262,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let gait = null;
   let updatePose = createPoseTracker(settings.display_seconds, gait);
   let updateIdle = createIdle(settings.idle_figure);
+  // The idle animation runs on its own clock, so it goes on while the run is paused or over.
+  let idleClock = 0;
   let busyUntil = -Infinity;
 
   const raycaster = new THREE.Raycaster();
@@ -532,7 +534,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   function render(now) {
     const simulation = session.getSimulation();
     // The figure moves at the playback speed, like the simulation clock.
-    const seconds = lastFrame === null ? 0 : ((now - lastFrame) / MS_PER_SECOND) * session.getSpeed();
+    const realSeconds = lastFrame === null ? 0 : (now - lastFrame) / MS_PER_SECOND;
+    const seconds = realSeconds * session.getSpeed();
     lastFrame = now;
     const pose = updatePose({
       x: simulation.position.x,
@@ -544,11 +547,16 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     applyPose(child, pose, gait);
     // Still means: nothing going on now, and nothing for a moment before. The moments of
     // touching something dangerous come from the record so far and the scene's known moment.
-    if (pose.busy) busyUntil = simulation.time + STILL_AFTER_SECONDS;
+    // Blinks, breaths and yawns take real time, whatever the playback speed.
+    idleClock += realSeconds;
+    if (pose.busy) busyUntil = idleClock + STILL_AFTER_SECONDS;
+    // The two seconds around a dangerous moment only matter while the record is playing; paused
+    // or finished, the child just stands there and may yawn.
+    const live = session.isPlaying() && !session.isFinished();
     const scene = session.getScene();
-    const hazardMoments = simulation.events.filter(({ kind }) => HAZARD_EVENTS.has(kind)).map(({ time }) => time);
-    if (scene?.moment !== null && scene?.moment !== undefined) hazardMoments.push(scene.moment);
-    const idle = updateIdle({ still: !pose.busy && simulation.time >= busyUntil, time: simulation.time, hazardMoments }, seconds);
+    const hazardMoments = live ? simulation.events.filter(({ kind }) => HAZARD_EVENTS.has(kind)).map(({ time }) => time) : [];
+    if (live && scene?.moment !== null && scene?.moment !== undefined) hazardMoments.push(scene.moment);
+    const idle = updateIdle({ still: !pose.busy && idleClock >= busyUntil, time: simulation.time, hazardMoments }, realSeconds);
     applyIdle(child, idle, pose, gait);
     followChild(pose);
     const onFloor = floorShadow(pose.feet);

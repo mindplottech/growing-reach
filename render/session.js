@@ -68,6 +68,7 @@ export function createSession({ ledger, settings, room: startRoom, getChild, sta
     getSeed: () => seed,
     getScene: () => scene,
     isPlaying: () => playing,
+    isFinished: () => finished,
     getSpeed: () => speed,
     setSpeed(next) {
       speed = next;
