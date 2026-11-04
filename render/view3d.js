@@ -539,7 +539,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       const box = document.querySelector('#error');
       if (box) {
         box.hidden = false;
-        box.textContent = `3D表示でエラーが起きました（${error.message}）。ページを再読み込み（Ctrl+F5）してください。`;
+        const where = String(error.stack ?? '').split('\n').slice(0, 4).join(' / ');
+        box.textContent = `3D表示でエラーが起きました（${error.message}）。ページを再読み込み（Ctrl+F5）してください。 ${where}`;
       }
       throw error;
     }
