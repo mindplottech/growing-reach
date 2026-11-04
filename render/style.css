@@ -341,8 +341,10 @@ button, input, select { font: inherit; color: inherit; }
 .measure-label { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .measure-label input { width: 88px; min-height: 36px; padding: 0 8px; font-size: 16px; }
 .my-child-note:empty { display: none; }
-.result-table.same-condition .col-count:first-of-type, .result-table.same-condition th:nth-child(2), .result-table.same-condition td:nth-child(2),
-.result-table.same-condition th:nth-child(4), .result-table.same-condition td:nth-child(4), .result-table.same-condition .col-diff { display: none; }
+.result-table.same-condition col:nth-child(2), .result-table.same-condition th:nth-child(2), .result-table.same-condition td:nth-child(2),
+.result-table.same-condition col:nth-child(4), .result-table.same-condition th:nth-child(4), .result-table.same-condition td:nth-child(4) { display: none; }
+.result-table.same-condition .col-name { width: 62%; }
+.result-table.same-condition .col-count { width: 38%; }
 .summary-line { margin: 0 0 6px; font-size: 13px; line-height: 1.5; }
 .my-child-position { margin: 8px 0 0; padding: 8px 10px; background: var(--panel-soft, #f3f1ec); border-radius: 6px; font-size: 13px; line-height: 1.6; }
 .my-child-position:empty { display: none; }

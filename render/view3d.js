@@ -41,6 +41,11 @@ const WALK_BOB = 0.8;
 const ARM_SWING_SHARE = 0.6;
 const ARM_GUARD_RAISE = Math.PI * 0.45;
 const ARM_GUARD_SPREAD = 0.5;
+// 「子どもに近づく」: the camera keeps this distance from the child (in child heights), looks
+// slightly down, and eases towards the child each frame.
+const FOLLOW_DISTANCE_HEIGHTS = 3.2;
+const FOLLOW_PITCH = 0.55;
+const FOLLOW_EASE = 0.08;
 const noRaycast = () => {};
 // The tags of the lock and the dangerous things take the colour of their row in the results.
 const TAG_STYLES = {
@@ -147,7 +152,7 @@ function disposeGroup(group) {
  * Draws the room and handles pointing at it. Every change to the room goes out through
  * `editing`; this module never decides whether a change is allowed.
  */
-export function mountView3d({ container, chip, ledger, settings, session, slider, editing, trailToggle }) {
+export function mountView3d({ container, chip, ledger, settings, session, slider, editing, trailToggle, followButton = null }) {
   // id → { level, text } from the last calculation; id → the tag sprite and its thing.
   let tagLevels = new Map();
   let tags = new Map();
@@ -245,6 +250,31 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     camera.position.set(position.x, position.y, position.z);
     controls.update();
   }
+
+  // Following: the camera glides to a close view of the child and keeps it while on; turning
+  // the camera by hand keeps the distance but takes the new direction. Off goes back to the room.
+  let following = false;
+  function followChild(pose) {
+    if (!following || !model) return;
+    const target = new THREE.Vector3(pose.x, pose.feet + model.childHeight / 2, pose.z);
+    const offset = camera.position.clone().sub(controls.target);
+    offset.y = 0;
+    if (offset.lengthSq() < 1) offset.set(0, 0, 1);
+    const distance = model.childHeight * FOLLOW_DISTANCE_HEIGHTS;
+    offset.setLength(distance * Math.cos(FOLLOW_PITCH));
+    const wanted = target.clone().add(offset).add(new THREE.Vector3(0, distance * Math.sin(FOLLOW_PITCH), 0));
+    controls.target.lerp(target, FOLLOW_EASE);
+    camera.position.lerp(wanted, FOLLOW_EASE);
+  }
+  function setFollowing(next) {
+    following = next;
+    followButton?.setAttribute('aria-pressed', String(next));
+    if (!next) {
+      cameraTouched = false;
+      if (model) fitCamera();
+    }
+  }
+  followButton?.addEventListener('click', () => setFollowing(!following));
 
   function aimSun() {
     const { width, depth, wallHeight } = model;
@@ -477,6 +507,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       climbing: Boolean(simulation.climbing),
     }, seconds);
     applyPose(child, pose, gait);
+    followChild(pose);
     const onFloor = floorShadow(pose.feet);
     blob.position.set(pose.x, 0.5, pose.z);
     blob.scale.setScalar(onFloor.scale);

@@ -297,6 +297,7 @@ async function start() {
       slider,
       editing: toolbar.editing,
       trailToggle: document.querySelector('#show-trail'),
+      followButton: document.querySelector('#follow-child'),
     });
     toolbar.attachView(view);
     panel.attachView(view);
