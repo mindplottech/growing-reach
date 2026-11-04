@@ -31,7 +31,7 @@ export function createSession({ ledger, settings, room: startRoom, getChild, sta
   const endTime = () => scene?.end ?? settings.trial_seconds;
 
   function begin() {
-    const child = scene ? { months: scene.months, sex: scene.sex } : getChild();
+    const child = scene ? { months: scene.months, sex: scene.sex, individual: scene.individual ?? null } : getChild();
     simulation = createSimulation({ ledger, settings, ...child, seed, room: runRoom() });
     // Computing up to the start in one go gives the same record as stepping there frame by frame.
     if (scene?.start > 0) simulation.step(scene.start);

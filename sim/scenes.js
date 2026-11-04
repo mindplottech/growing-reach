@@ -136,6 +136,7 @@ export function buildPlaylists({ verdict, condition, before, after, trialSeconds
     seed,
     months: condition.months,
     sex: condition.sex,
+    individual: condition.individual ?? null,
     room: condition.room,
     ...sceneWindow(scene.time, { before, after, trialSeconds }),
     moment: scene.time,

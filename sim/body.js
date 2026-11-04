@@ -22,12 +22,33 @@ function reachCoefficients(ledger) {
   return { slope: Number(match[1]), intercept: -Number(match[2]) };
 }
 
-function height(ledger, months, sex, z) {
+/** The sex that stands for a child in general: the ledger's average of both. */
+export const SEX_ANY = 'any';
+
+/** Median and SD of height at an age: by sex from the survey, or the ledger's average of both. */
+function heightDistribution(ledger, months, sex) {
+  if (sex === SEX_ANY) {
+    const both = item(ledger, 'height_both_sexes');
+    return {
+      median: interpolate(zip(both.anchor_months, both.values.P50), months),
+      sd: interpolate(zip(both.anchor_months, both.values.SD), months),
+      category: both.category,
+      sdCategory: both.category,
+    };
+  }
   const percentiles = item(ledger, 'height_percentiles');
   const sds = item(ledger, 'height_sd');
-  const median = interpolate(zip(percentiles.anchor_months, percentiles.values[sex].P50), months);
-  const sd = interpolate(zip(sds.anchor_months, sds.values[sex]), months);
-  return { value: median + z * sd, sd, category: percentiles.category };
+  return {
+    median: interpolate(zip(percentiles.anchor_months, percentiles.values[sex].P50), months),
+    sd: interpolate(zip(sds.anchor_months, sds.values[sex]), months),
+    category: percentiles.category,
+    sdCategory: sds.category,
+  };
+}
+
+function height(ledger, months, sex, z) {
+  const { median, sd, category, sdCategory } = heightDistribution(ledger, months, sex);
+  return { value: median + z * sd, sd, category, sdCategory };
 }
 
 /** Standing reach for a height, by the ledger's formula. */
@@ -42,7 +63,7 @@ function reach(ledger, heightResult) {
   return {
     value: standingReachFor(ledger, heightResult.value),
     sd: heightResult.sd * slope,
-    sdCategory: item(ledger, 'height_sd').category,
+    sdCategory: heightResult.sdCategory,
     category: item(ledger, 'reach_height_standing').category,
   };
 }
@@ -60,11 +81,25 @@ function tiptoeReach(ledger, reachResult, position) {
   };
 }
 
+/** The median climb height at an age, from the ledger's series (formula, then its extension). */
+function climbMedian(ledger, months) {
+  const entry = item(ledger, 'climb_height');
+  return interpolate([...entry.series_from_formula, ...entry.extension_beyond_45.series], months);
+}
+
+/** Reads the coefficients of "climb = height * a - b" so they stay in the ledger. */
+function climbFromHeightCoefficients(ledger) {
+  const { formula_from_height: formula } = item(ledger, 'climb_height');
+  const match = /^climb = ([\d.]+) \* height - ([\d.]+)$/.exec(formula);
+  if (!match) throw new Error(`unexpected climb-from-height formula: ${formula}`);
+  return { slope: Number(match[1]), intercept: -Number(match[2]) };
+}
+
 /** Both sexes share one series: the ledger warns against the sex-specific formulas. */
 function climb(ledger, months, z) {
   const entry = item(ledger, 'climb_height');
   const { extension_beyond_45: extension, individual_sd: individualSd } = entry;
-  const median = interpolate([...entry.series_from_formula, ...extension.series], months);
+  const median = climbMedian(ledger, months);
   const sd = individualSd.value;
   // category_rule: an exact point keeps its own category, any other month the weaker one.
   const beyondData = extension.point_categories[months] ?? extension.category;
@@ -102,7 +137,7 @@ export function getBodyValues(ledger, { months, sex, z: individual }) {
   if (!(months >= minMonths && months <= maxMonths)) {
     throw new RangeError(`months must be within ${minMonths}-${maxMonths}: ${months}`);
   }
-  if (!Object.hasOwn(item(ledger, 'height_percentiles').values, sex)) {
+  if (sex !== SEX_ANY && !Object.hasOwn(item(ledger, 'height_percentiles').values, sex)) {
     throw new RangeError(`unknown sex: ${sex}`);
   }
   const heightResult = height(ledger, months, sex, z.height);
@@ -138,4 +173,32 @@ export function getTiptoeReference(ledger, months) {
   if (!row) return null;
   const { height: measuredHeight, reach: value } = row;
   return { ageYears, height: measuredHeight, value, category: entry.category };
+}
+
+/**
+ * The position (z, in SD units) of one child from what a parent can measure: height in cm and,
+ * if known, the highest thing the child climbs onto in cm. With height alone, the climb height
+ * comes from the ledger's height formula. The result is `{ z, notes }`: z holds only the
+ * quantities that were given (the rest stay median), and notes say where an input fell outside
+ * the ledger's ranges. Every number comes from the ledger.
+ */
+export function individualFromMeasurements(ledger, { months, sex, heightCm = null, climbCm = null }) {
+  const z = {};
+  const notes = [];
+  if (heightCm !== null) {
+    const { median, sd } = heightDistribution(ledger, months, sex);
+    z.height = (heightCm - median) / sd;
+  }
+  const climbEntry = item(ledger, 'climb_height');
+  const climbSd = climbEntry.individual_sd.value;
+  if (climbCm !== null) {
+    z.climb = (climbCm - climbMedian(ledger, months)) / climbSd;
+  } else if (heightCm !== null) {
+    const { slope, intercept } = climbFromHeightCoefficients(ledger);
+    const [low, high] = climbEntry.formula_from_height_valid_height_cm;
+    const used = Math.min(Math.max(heightCm, low), high);
+    if (used !== heightCm) notes.push(`身長${heightCm}cmは登れる高さの式の範囲（${low}〜${high}cm）の外なので、${used}cmとして計算`);
+    z.climb = (used * slope + intercept - climbMedian(ledger, months)) / climbSd;
+  }
+  return { z, notes };
 }

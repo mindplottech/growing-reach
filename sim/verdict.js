@@ -29,7 +29,7 @@ function howReached({ method, footholdLabel }) {
 const startedFrom = (height) => (height === 0 ? '床' : cm(height));
 
 /** The rows for dangerous things and falls, in fixed sentences with a child list each. */
-function hazardSection(hazards, summaries, total, lockObject, landmarks) {
+function hazardSection(hazards, summaries, total, lockObject, landmarks, unit) {
   const childText = (seed, text) => ({ seed, text: `${seed}番の子　${text}` });
   // The foothold by the short name the room shows on it (いす for ダイニングチェア).
   const shown = (label) => {
@@ -40,15 +40,15 @@ function hazardSection(hazards, summaries, total, lockObject, landmarks) {
   const lock = lockObject && named(lockRow(lockObject, summaries));
   const rows = hazardRows(hazards, summaries).map(named).map((row) => ({
     ...row,
-    text: `${row.label}：${total}人中${row.children.length}人が届く（うち登って${row.counts.climbed}人）`,
+    text: `${row.label}：${total}${unit}中${row.children.length}${unit}が届く（うち登って${row.counts.climbed}${unit}）`,
     children: row.children.map((child) => childText(child.seed, howReached(child))),
   }));
   const falls = fallRows(summaries);
-  const fallText = (title, { children, highest }) => `${title}：${total}人中${children.length}人${highest === null ? '' : `（いちばん高い所で${cm(highest)}）`}`;
+  const fallText = (title, { children, highest }) => `${title}：${total}${unit}中${children.length}${unit}${highest === null ? '' : `（いちばん高い所で${cm(highest)}）`}`;
   return {
     lock: lock && {
       ...lock,
-      text: `${lock.label}：${total}人中${lock.children.length}人が届く（うち登って${lock.counts.climbed}人）`,
+      text: `${lock.label}：${total}${unit}中${lock.children.length}${unit}が届く（うち登って${lock.counts.climbed}${unit}）`,
       children: lock.children.map((child) => childText(child.seed, howReached(child))),
     },
     rows,
@@ -72,8 +72,10 @@ function hazardSection(hazards, summaries, total, lockObject, landmarks) {
  * Nothing is estimated: every number is a count of children in the record. The words never
  * say a room is safe; the clearest result only says no child reached the lock.
  */
-export function judgeRoom({ ledger, settings, room, months, sex }) {
+export function judgeRoom({ ledger, settings, room, months, sex, individual = null }) {
   const total = settings.trial_count;
+  // A hundred children in general, or a hundred runs of one fixed child (「うちの子」).
+  const unit = individual ? '回' : '人';
   const reachedLock = new Set();
   const stood = new Set();
   const lockFromFloor = new Set();
@@ -89,7 +91,7 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
   let climbSum = 0;
 
   for (let seed = 1; seed <= total; seed += 1) {
-    const simulation = createSimulation({ ledger, settings, months, sex, seed, room });
+    const simulation = createSimulation({ ledger, settings, months, sex, seed, room, individual });
     simulation.step(settings.trial_seconds);
     heightSum += simulation.body.height.value;
     climbSum += simulation.body.climb.value;
@@ -121,7 +123,7 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
   const find = (id) => landmarks.find((landmark) => landmark.id === id);
   const lock = landmarks.find(({ role }) => role === 'window_lock');
   const windowFrame = landmarks.find(({ role }) => role === 'window');
-  const of = (count) => `（${total}人中${count}人）`;
+  const of = (count) => `（${total}${unit}中${count}${unit}）`;
   const reasons = [];
   const arrows = [];
   const ids = new Set();
@@ -172,7 +174,9 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
     ids,
     arrows,
     total,
-    hazards: hazardSection(hazards, summaries, total, lock && { id: lock.id, label: lock.mapLabel ?? lock.label }, landmarks),
+    unit,
+    individual,
+    hazards: hazardSection(hazards, summaries, total, lock && { id: lock.id, label: lock.mapLabel ?? lock.label }, landmarks, unit),
     // The runs to play, and only these: those who reached the window lock first, then the others
     // who reached a dangerous thing or fell; each group by seed.
     eventful: [

@@ -67,8 +67,9 @@ const ROLE_LOCK = 'window_lock';
  * whether they can is computed from the body. Random times are drawn ahead of time,
  * so the result does not depend on the size of the steps.
  */
-export function createSimulation({ ledger, settings, months, sex, seed, room, boxes = [] }) {
-  const body = getBodyValues(ledger, { months, sex, z: drawIndividual(seed) });
+export function createSimulation({ ledger, settings, months, sex, seed, room, boxes = [], individual = null }) {
+  // A fixed individual (「うちの子」) keeps its given z; the rest of the body is still drawn by seed.
+  const body = getBodyValues(ledger, { months, sex, z: { ...drawIndividual(seed), ...individual } });
   const streams = Object.fromEntries(
     Object.entries(STREAMS).map(([name, offset]) => [name, createRng(seed ^ offset)]),
   );

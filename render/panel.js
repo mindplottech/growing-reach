@@ -1,5 +1,5 @@
 import {
-  compareResults, conclusion, differenceText, SECTION_COUNTS, SECTION_HAZARDS, toneOf,
+  compareResults, conclusion, differenceText, SECTION_COUNTS, SECTION_HAZARDS, TONE_SAME, toneOf,
 } from '../sim/compare.js';
 import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
@@ -37,7 +37,7 @@ function countermeasureLine(search, baselineChildren, limit, label) {
   return `${label}を${last.distance}cmまで離しても（探す上限${limit}cm）、窓の錠に届く子は${baselineChildren}人から${last.children}人までしか減りません。`;
 }
 
-const sexWord = { female: '女の子', male: '男の子' };
+const sexWord = { female: '女の子', male: '男の子', any: '一般の子（男女平均）' };
 
 /**
  * The results panel: one sentence of what changed between two conditions, then the table of
@@ -46,7 +46,7 @@ const sexWord = { female: '女の子', male: '男の子' };
  * the room after, at the same age. 「元に戻す」 and 「リセット」 go back to the months.
  */
 export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
-  const [baseMonths] = ledger._meta.age_range_months;
+  const [youngestMonths] = ledger._meta.age_range_months;
   const slider = document.querySelector('#months');
   const monthsLabel = document.querySelector('#months-label');
   const seedInput = document.querySelector('#seed');
@@ -60,6 +60,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   const reasons = document.querySelector('#verdict-reasons');
   const countermeasure = document.querySelector('#countermeasure');
   const retry = document.querySelector('#retry');
+  const myChild = document.querySelector('#my-child');
+  const myChildNote = document.querySelector('#my-child-note');
   const total = settings.trial_count;
   let view = null;
   let lastTags = null;
@@ -116,10 +118,10 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   }
 
   /** A count with a thin bar for its share of the hundred, and the climbers for a place. */
-  function countCell(count, climbed) {
+  function countCell(count, climbed, unit) {
     const cell = element('td');
-    cell.append(element('span', 'count', `${count}人`));
-    if (climbed !== undefined) cell.append(element('span', 'climbed', `（登って${climbed}人）`));
+    cell.append(element('span', 'count', `${count}${unit}`));
+    if (climbed !== undefined) cell.append(element('span', 'climbed', `（登って${climbed}${unit}）`));
     const bar = element('span', 'bar');
     const fill = element('span', 'bar-fill');
     fill.style.width = `${(count / total) * 100}%`;
@@ -128,15 +130,15 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     return cell;
   }
 
-  function rowElement(row, sectionId) {
+  function rowElement(row, sectionId, unit) {
     const tr = element('tr', 'result-row');
     tr.dataset.id = row.id;
     if (row.level) tr.dataset.level = row.level;
     const name = element('td', 'row-name', row.label);
     const withClimbed = sectionId === SECTION_HAZARDS;
-    const leftCell = countCell(row.left, withClimbed ? row.leftClimbed : undefined);
-    const rightCell = countCell(row.right, withClimbed ? row.rightClimbed : undefined);
-    const diff = element('td', 'diff', differenceText(row.left, row.right));
+    const leftCell = countCell(row.left, withClimbed ? row.leftClimbed : undefined, unit);
+    const rightCell = countCell(row.right, withClimbed ? row.rightClimbed : undefined, unit);
+    const diff = element('td', 'diff', differenceText(row.left, row.right, unit));
     diff.dataset.tone = toneOf(row.left, row.right);
     if (row.seeds) {
       if (row.left > 0) playable(leftCell, 'left', row.id);
@@ -150,7 +152,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     return tr;
   }
 
-  function showTable(sections) {
+  function showTable(sections, unit) {
     for (const body of table.querySelectorAll('tbody')) body.remove();
     for (const section of sections) {
       const body = element('tbody', section.id === SECTION_COUNTS ? 'small' : '');
@@ -159,19 +161,31 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       th.colSpan = 4;
       th.scope = 'colgroup';
       title.append(th);
-      body.append(title, ...section.rows.map((row) => rowElement(row, section.id)));
+      body.append(title, ...section.rows.map((row) => rowElement(row, section.id, unit)));
       table.append(body);
     }
   }
 
   const minutes = (seconds) => (seconds % SECONDS_PER_MINUTE === 0 ? `${seconds / SECONDS_PER_MINUTE}分` : `${seconds}秒`);
-  const averages = ({ averages: { height, climb } }) => `平均の身長 ${Math.round(height)}cm・平均の登れる高さ ${Math.round(climb)}cm`;
+  const averages = ({ averages: { height, climb }, individual }) => (individual
+    ? `身長 ${Math.round(height)}cm・登れる高さ ${Math.round(climb)}cm`
+    : `平均の身長 ${Math.round(height)}cm・平均の登れる高さ ${Math.round(climb)}cm`);
 
   /** The conditions both results were run under, in one line. */
   function conditionLine(names, left, right, child) {
-    const shared = `${total}人・各${minutes(settings.trial_seconds)}・${sexWord[child.sex]}`;
+    const shared = child.individual
+      ? `この子の体（${sexWord[child.sex]}${measured(child.measurements)}）で${total}回・各${minutes(settings.trial_seconds)}。行動だけが毎回違う`
+      : `${total}人・各${minutes(settings.trial_seconds)}・${sexWord[child.sex]}`;
     if (mode === MODE_ROOM) return `${shared}・${formatAge(child.months)}（${averages(right)}）`;
     return `${shared}｜${names[0]}：${averages(left)}｜${names[1]}：${averages(right)}`;
+  }
+
+  /** What was typed for 「うちの子」, as it is shown in the conditions line. */
+  function measured({ heightCm, climbCm }) {
+    const parts = [];
+    if (heightCm !== null) parts.push(`身長${heightCm}cm`);
+    if (climbCm !== null) parts.push(`登れる高さ${climbCm}cm`);
+    return parts.length ? `・${parts.join('・')}` : '';
   }
 
   function places(verdict) {
@@ -193,12 +207,14 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     } else if (kind === 'undo' || kind === 'reset') {
       mode = MODE_MONTHS;
     }
+    // By months, the left column is the youngest age; for 「うちの子」 it is the age the child was measured at.
+    const baseMonths = child.measuredMonths ?? youngestMonths;
     const right = judgeRoom({ ledger, settings, room, ...child });
     const left = mode === MODE_ROOM
       ? judgeRoom({ ledger, settings, room: beforeRoom, ...child })
-      : judgeRoom({ ledger, settings, room, months: baseMonths, sex: child.sex });
+      : judgeRoom({ ledger, settings, room, months: baseMonths, sex: child.sex, individual: child.individual });
     const names = mode === MODE_ROOM ? ['動かす前', '動かした後'] : [formatAge(baseMonths), formatAge(child.months)];
-    const leftCondition = mode === MODE_ROOM ? { ...child, room: beforeRoom } : { months: baseMonths, sex: child.sex, room };
+    const leftCondition = mode === MODE_ROOM ? { ...child, room: beforeRoom } : { months: baseMonths, sex: child.sex, individual: child.individual, room };
     judgedRoom = room;
     const span = { before: settings.scene_before_seconds, after: settings.scene_after_seconds, trialSeconds: settings.trial_seconds };
     plays = {
@@ -207,11 +223,16 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     };
 
     const sections = compareResults(left, right);
-    const said = conclusion(sections, { leftName: names[0], rightName: names[1], kind: mode });
+    const said = mode === MODE_MONTHS && child.months === baseMonths
+      ? { tone: TONE_SAME, text: child.individual
+        ? 'スライダーで月齢を上げると、この子がこの部屋で何に届くようになるかが右の列に出ます。'
+        : 'スライダーで月齢を上げると、この部屋で何に届くようになるかが右の列に出ます。' }
+      : conclusion(sections, { leftName: names[0], rightName: names[1], kind: mode, unit: right.unit });
     conclusionBox.dataset.tone = said.tone;
     conclusionBox.replaceChildren(element('p', 'conclusion-text', said.text));
     [leftHead.textContent, rightHead.textContent] = names;
-    showTable(sections);
+    showTable(sections, right.unit);
+    myChildNote.textContent = child.measurements?.notes?.join('。') ?? '';
     conditions.textContent = `使った条件：${conditionLine(names, left, right, child)}`;
 
     // How each place was reached, in words, for both conditions.
@@ -255,8 +276,10 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   // The child on screen grows while the slider moves; all hundred are run again on release.
   slider.addEventListener('input', () => session.restart());
   slider.addEventListener('change', () => judge());
-  for (const radio of document.querySelectorAll('input[name="sex"]')) {
-    radio.addEventListener('change', () => judge());
+  // 「うちの子に合わせる」: opening, closing, the sex and each measurement run the hundred again.
+  myChild.addEventListener('toggle', () => judge());
+  for (const input of myChild.querySelectorAll('input')) {
+    input.addEventListener('change', () => judge());
   }
   // A whole run by number, of the right-hand condition: from the start to the end of the trial.
   seedInput.addEventListener('change', () => {

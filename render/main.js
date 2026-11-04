@@ -1,3 +1,4 @@
+import { SEX_ANY, individualFromMeasurements } from '../sim/body.js';
 import {
   addFurniture, canRemove, createHistory, isWindowPart, moveObject, moveWindow, placeChild, removeObject,
 } from '../sim/editor.js';
@@ -228,10 +229,39 @@ async function start() {
   slider.min = minMonths;
   slider.max = maxMonths;
   slider.value = settings.start_months;
-  const getChild = () => ({
-    months: Number(slider.value),
-    sex: document.querySelector('input[name="sex"]:checked').value,
-  });
+  // The child in general (no sex, median body) unless 「うちの子に合わせる」 is open; then the sex
+  // chosen there and the z worked out from the measurements typed there. Nothing is stored or sent.
+  const myChild = document.querySelector('#my-child');
+  const measurement = (id) => {
+    const value = Number.parseFloat(document.querySelector(id).value);
+    return Number.isFinite(value) ? value : null;
+  };
+  // The measurements belong to the age the slider showed when they were typed; the slider then
+  // moves the same child (same z) to other ages.
+  const measuredAge = document.querySelector('#my-child-age');
+  let measuredMonths = null;
+  const showMeasuredAge = () => {
+    const shown = measuredMonths ?? Number(slider.value);
+    measuredAge.textContent = `${Math.floor(shown / 12)}歳${shown % 12}か月`;
+  };
+  for (const id of ['#child-height', '#child-climb']) {
+    document.querySelector(id).addEventListener('input', () => {
+      measuredMonths = Number(slider.value);
+      showMeasuredAge();
+    });
+  }
+  slider.addEventListener('input', () => { if (measuredMonths === null) showMeasuredAge(); });
+  showMeasuredAge();
+  const getChild = () => {
+    const months = Number(slider.value);
+    if (!myChild.open) return { months, sex: SEX_ANY, individual: null, measurements: null, measuredMonths: null };
+    const sex = document.querySelector('input[name="sex"]:checked')?.value ?? SEX_ANY;
+    const measurements = { heightCm: measurement('#child-height'), climbCm: measurement('#child-climb') };
+    const given = measurements.heightCm !== null || measurements.climbCm !== null;
+    const at = measuredMonths ?? months;
+    const { z, notes } = given ? individualFromMeasurements(ledger, { months: at, sex, ...measurements }) : { z: null, notes: [] };
+    return { months, sex, individual: z, measurements: { ...measurements, notes }, measuredMonths: given ? at : null };
+  };
 
   const session = createSession({ ledger, settings, room: startRoom, getChild, startSpeed: settings.start_speed });
   const autoplay = createAutoplay({ session });

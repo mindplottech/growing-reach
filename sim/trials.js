@@ -25,11 +25,11 @@ function rankFootholds(events) {
  * One trial is one child (one seed) spending the set time in the room. The children are
  * seeds 1 to the set count, so two runs with different conditions compare the same children.
  */
-export function runTrials({ ledger, settings, room, boxes = [], months, sex }) {
+export function runTrials({ ledger, settings, room, boxes = [], months, sex, individual = null }) {
   const perSeed = [];
   const allEvents = [];
   for (let seed = 1; seed <= settings.trial_count; seed += 1) {
-    const simulation = createSimulation({ ledger, settings, months, sex, seed, room, boxes });
+    const simulation = createSimulation({ ledger, settings, months, sex, seed, room, boxes, individual });
     simulation.step(settings.trial_seconds);
     perSeed.push({ seed, counts: tallyEvents(simulation.events) });
     allEvents.push(...simulation.events);

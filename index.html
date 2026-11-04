@@ -94,11 +94,19 @@
         <label class="months-label" for="months">月齢 <output id="months-label" for="months"></output></label>
         <input id="months" type="range" step="1">
         <p class="months-range">1歳3か月〜5歳（15〜60か月）</p>
-        <fieldset class="sex-choice">
-          <legend class="visually-hidden">性別</legend>
-          <label><input type="radio" name="sex" value="female" checked> 女の子</label>
-          <label><input type="radio" name="sex" value="male"> 男の子</label>
-        </fieldset>
+        <details id="my-child" class="my-child">
+          <summary>うちの子に合わせる</summary>
+          <fieldset class="sex-choice">
+            <legend>性別</legend>
+            <label><input type="radio" name="sex" value="female"> 女の子</label>
+            <label><input type="radio" name="sex" value="male"> 男の子</label>
+          </fieldset>
+          <p class="hint">スライダーの月齢（<output id="my-child-age"></output>）のときの値を入れてください。入れたあとにスライダーを動かすと、その先の月齢を描きます。</p>
+          <label class="measure-label">身長 <input id="child-height" type="number" min="60" max="130" step="0.1" inputmode="decimal" placeholder="例 85"> cm</label>
+          <label class="measure-label">登れる一番高い所 <input id="child-climb" type="number" min="0" max="150" step="1" inputmode="numeric" placeholder="例 40"> cm</label>
+          <p class="hint">入れた値はこの端末の外に送られず、保存もされません。閉じると一般の子に戻ります。</p>
+          <p id="my-child-note" class="hint my-child-note"></p>
+        </details>
       </section>
 
       <section id="verdict" class="conclusion" data-tone="pending" aria-live="polite">

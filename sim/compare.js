@@ -27,6 +27,7 @@ function places(verdict) {
  * record; nothing is estimated. A dangerous thing's colour is that of the right-hand result.
  */
 export function compareResults(left, right) {
+  const unit = right.unit ?? '人';
   const leftPlaces = new Map(places(left).map((row) => [row.id, row]));
   const hazards = places(right).map((row) => {
     const before = leftPlaces.get(row.id);
@@ -60,15 +61,15 @@ export function compareResults(left, right) {
   return [
     { id: SECTION_HAZARDS, title: '危険な物', rows: hazards },
     { id: SECTION_FALLS, title: '転倒・転落', rows: falls },
-    { id: SECTION_COUNTS, title: '100人の内訳', rows: counts },
+    { id: SECTION_COUNTS, title: `${right.total}${unit}の内訳`, rows: counts },
   ];
 }
 
 /** The difference as it is written in the table: +62人, ±0, -5人. */
-export function differenceText(left, right) {
+export function differenceText(left, right, unit = '人') {
   const change = right - left;
   if (change === 0) return '±0';
-  return `${change > 0 ? '+' : '-'}${Math.abs(change)}人`;
+  return `${change > 0 ? '+' : '-'}${Math.abs(change)}${unit}`;
 }
 
 export function toneOf(left, right) {
@@ -82,7 +83,7 @@ export function toneOf(left, right) {
  * most among the dangerous things and the falls (the first in the table on a tie); with none
  * grown, the one that shrank the most; with no change at all, it says so.
  */
-export function conclusion(sections, { leftName, rightName, kind }) {
+export function conclusion(sections, { leftName, rightName, kind, unit = '人' }) {
   const rows = sections.filter(({ id }) => id !== SECTION_COUNTS).flatMap(({ rows: each }) => each);
   const pick = (better) => rows.reduce((best, row) => (better(row, best) ? row : best), null);
   const grown = pick((row, best) => row.right - row.left > 0 && (!best || row.right - row.left > best.right - best.left));
@@ -94,6 +95,8 @@ export function conclusion(sections, { leftName, rightName, kind }) {
   return {
     tone: row === grown ? TONE_UP : TONE_DOWN,
     rowId: row.id,
-    text: `${lead}『${row.phrase}』子が${row.left}人から${row.right}人に${verb}。`,
+    text: unit === '人'
+      ? `${lead}『${row.phrase}』子が${row.left}人から${row.right}人に${verb}。`
+      : `${lead}この子が『${row.phrase}』回が${row.left}回から${row.right}回に${verb}。`,
   };
 }
