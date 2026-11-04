@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EVENT } from '../sim/events.js';
 import { findCountermeasure, moveAwayFromLock, runTrials, searchMoves } from '../sim/trials.js';
-import { ledger, maxMonths, minMonths, roomLayout, settings } from './helpers.js';
+import { ledger, maxMonths, scenarioMonths, roomLayout, settings } from './helpers.js';
 
-const BASE = { ledger, settings, room: roomLayout, boxes: [], months: minMonths, sex: 'female' };
+const BASE = { ledger, settings, room: roomLayout, boxes: [], months: scenarioMonths, sex: 'female' };
 const lockCount = (result) => result.counts[EVENT.REACHED_LOCK];
 const shelf = { id: 'low_shelf', label: '低い棚' };
 
 test('the reported distance and counts are exactly what a rerun gives', () => {
-  for (const months of [minMonths, maxMonths]) {
+  for (const months of [scenarioMonths, maxMonths]) {
     const base = { ...BASE, months };
     const { baselineLock, baselineChildren, target } = findCountermeasure(base);
     const baseline = runTrials(base);
@@ -24,7 +24,7 @@ test('the reported distance and counts are exactly what a rerun gives', () => {
 });
 
 test('a reported distance is the first tried with no lock reaches, and nothing is reported otherwise', () => {
-  for (const months of [minMonths, maxMonths]) {
+  for (const months of [scenarioMonths, maxMonths]) {
     const { target } = findCountermeasure({ ...BASE, months });
     const firstZero = target.tried.find(({ lock }) => lock === 0);
     assert.equal(target.found, firstZero ? firstZero.distance : null);
@@ -55,7 +55,7 @@ test('when children reach the lock from the floor, zero is not reported', () => 
 });
 
 test('the target is the top foothold for the lock, and the overall top is reported separately', () => {
-  for (const months of [minMonths, maxMonths]) {
+  for (const months of [scenarioMonths, maxMonths]) {
     const { baseline, mostUsed, target } = findCountermeasure({ ...BASE, months });
     assert.equal(target.id, baseline.lockFootholds[0].id);
     assert.deepEqual(mostUsed, baseline.footholds[0]);

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { EVENT } from '../sim/events.js';
 import { compareTrials, moveAwayFromLock, runTrials } from '../sim/trials.js';
 import { footprintDistance } from '../sim/scaffold.js';
-import { ledger, maxMonths, minMonths, roomFile, roomLayout, settings } from './helpers.js';
+import { ledger, maxMonths, scenarioMonths, roomFile, roomLayout, settings } from './helpers.js';
 import { selectLayout } from '../sim/room.js';
 
-const BASE = { ledger, settings, room: roomLayout, months: minMonths, sex: 'female' };
+const BASE = { ledger, settings, room: roomLayout, months: scenarioMonths, sex: 'female' };
 const SHELF = 'low_shelf';
 const MOVE_CM = 60;
 const lock = roomLayout.landmarks.find(({ role }) => role === 'window_lock');
@@ -42,7 +42,7 @@ test('moving a foothold keeps it in the room and takes it further from the lock'
   assert.ok(shelfOf(roomLayout).x !== shelfOf(moved.room).x, 'the original layout is not changed');
 });
 
-for (const months of [minMonths, maxMonths]) {
+for (const months of [scenarioMonths, maxMonths]) {
   test(`at ${months} months, moving the foothold from the window does not raise lock reaches from footholds`, () => {
     const before = runTrials({ ...BASE, months });
     const moved = moveAwayFromLock({ room: roomLayout }, SHELF, MOVE_CM);
@@ -53,7 +53,7 @@ for (const months of [minMonths, maxMonths]) {
   });
 }
 
-test('at the youngest age, moving it does not raise the lock count overall', () => {
+test('at 36 months, moving it does not raise the lock count overall', () => {
   const key = EVENT.REACHED_LOCK;
   const moved = moveAwayFromLock({ room: roomLayout }, SHELF, MOVE_CM);
   assert.ok(runTrials({ ...BASE, room: moved.room }).counts[key] <= runTrials(BASE).counts[key]);

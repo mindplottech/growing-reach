@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { EVENT } from '../sim/events.js';
 import { runTrials } from '../sim/trials.js';
 import { judgeRoom, LEVEL_CAUTION, LEVEL_CLEAR, LEVEL_DANGER } from '../sim/verdict.js';
-import { ledger, maxMonths, minMonths, roomLayout, settings } from './helpers.js';
+import { ledger, maxMonths, scenarioMonths, roomLayout, settings } from './helpers.js';
 
-const BASE = { ledger, settings, room: roomLayout, months: minMonths, sex: 'female' };
+const BASE = { ledger, settings, room: roomLayout, months: scenarioMonths, sex: 'female' };
 const without = (...ids) => ({ ...roomLayout, landmarks: roomLayout.landmarks.filter(({ id }) => !ids.includes(id)) });
 const total = settings.trial_count;
 
 test('the verdict counts the same children as the 100-child totals', () => {
-  for (const months of [minMonths, maxMonths]) {
+  for (const months of [scenarioMonths, maxMonths]) {
     const verdict = judgeRoom({ ...BASE, months });
     const totals = runTrials({ ...BASE, months });
     assert.deepEqual(verdict.children, totals.children);

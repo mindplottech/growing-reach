@@ -75,14 +75,20 @@ function climb(ledger, months, z) {
   };
 }
 
-/** Only the first point is the measured group mean; the rest of the series is derived. */
+/**
+ * Only the months the ledger lists as measured group means keep the measured category; the
+ * rest of the series is derived. The SD is its own series (a toddler group and an older group).
+ */
 function walkSpeed(ledger, months, z) {
   const entry = item(ledger, 'walk_speed');
-  const { series_used: series, sd_used: sd, category } = entry.age_4to5_candidates;
+  const {
+    series_used: series, sd_series_used: sdSeries, measured_points_months: measured, category,
+  } = entry.age_4to5_candidates;
+  const sd = interpolate(sdSeries, months);
   return {
     value: interpolate(series, months) + z * sd,
     sd,
-    category: months === series[0][0] ? entry.category : category,
+    category: measured.includes(months) ? entry.category : category,
   };
 }
 
@@ -121,10 +127,15 @@ export function drawIndividual(seed) {
   };
 }
 
-/** The ledger's tiptoe reach for the child's age in years. Display only, never computed with. */
+/**
+ * The ledger's tiptoe reach for the child's age in years. Display only, never computed with.
+ * Returns null for an age the ledger has no row for (the source only covers 3 to 5 years).
+ */
 export function getTiptoeReference(ledger, months) {
   const entry = item(ledger, 'reach_height_tiptoe_zukan');
   const ageYears = Math.floor(months / 12);
-  const { height: measuredHeight, reach: value } = entry.values_by_age_years[ageYears];
+  const row = entry.values_by_age_years[ageYears];
+  if (!row) return null;
+  const { height: measuredHeight, reach: value } = row;
   return { ageYears, height: measuredHeight, value, category: entry.category };
 }

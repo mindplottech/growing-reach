@@ -7,7 +7,7 @@ import {
   STATE_CLIMBABLE, STATE_OUT, STATE_REACHABLE,
 } from '../render/sceneModel.js';
 import { footholdReachLevel, REACH_NONE } from '../sim/scaffold.js';
-import { byId, ledger, maxMonths, minMonths, roomFile, roomLayout } from './helpers.js';
+import { byId, ledger, maxMonths, scenarioMonths, roomFile, roomLayout } from './helpers.js';
 
 const resolved = (room) => room.landmarks.map((l) => ({ ...l, height: landmarkHeight(ledger, l.heightOf) }));
 const body = (months) => getBodyValues(ledger, { months, sex: 'female' });
@@ -23,7 +23,7 @@ test('an object takes its state from which plane it is under', () => {
 });
 
 test('the planes follow the body values and their ledger categories', () => {
-  for (const months of [minMonths, 48, maxMonths]) {
+  for (const months of [scenarioMonths, 48, maxMonths]) {
     const b = body(months);
     const [reach, climb] = model(months).planes;
     assert.equal(reach.height, b.reach.value);
@@ -35,10 +35,10 @@ test('the planes follow the body values and their ledger categories', () => {
 
 test('growing moves objects under the planes', () => {
   const stateOf = (months, id) => model(months).objects.find((o) => o.id === id).state;
-  assert.equal(stateOf(minMonths, 'window'), STATE_REACHABLE);
+  assert.equal(stateOf(scenarioMonths, 'window'), STATE_REACHABLE);
   assert.equal(stateOf(maxMonths, 'window'), objectState(body(maxMonths), landmarkHeight(ledger, ['furniture_heights', 'window_frame'])));
   const heightsOut = (months) => model(months).objects.filter((o) => o.state === STATE_OUT).length;
-  assert.ok(heightsOut(maxMonths) <= heightsOut(minMonths));
+  assert.ok(heightsOut(maxMonths) <= heightsOut(scenarioMonths));
 });
 
 test('sizes come from the layout and the ledger', () => {
@@ -88,7 +88,7 @@ test('highlighting a part of a group lights the whole group', () => {
 
 test('what lights up from a foothold follows the same judgement as the record', () => {
   const landmarks = resolved(roomLayout);
-  const b = body(minMonths);
+  const b = body(scenarioMonths);
   const shelf = landmarks.find(({ id }) => id === 'low_shelf');
   const reached = reachableNow({ ledger, body: b, landmarks, position: { x: 0, y: 0 }, foothold: shelf });
   const expected = landmarks

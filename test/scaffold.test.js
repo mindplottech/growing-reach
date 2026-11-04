@@ -6,7 +6,7 @@ import {
   evaluateScaffold, footholdReachLevel, footprintDistance, horizontalReach, isBetterReach,
   reachLevel, REACH_NONE, REACH_STANDING, REACH_TIPTOE,
 } from '../sim/scaffold.js';
-import { byId, close, ledger, maxMonths, minMonths, roomLayout } from './helpers.js';
+import { byId, close, ledger, maxMonths, scenarioMonths, roomLayout } from './helpers.js';
 
 const objects = roomLayout.landmarks.map((landmark) => ({
   ...landmark,
@@ -24,8 +24,8 @@ function lockResult(body) {
   return evaluateScaffold(ledger, body, shelf, objects).objects.find(({ id }) => id === lock.id);
 }
 
-test('at the youngest age a foothold decides whether the window lock is reached', () => {
-  const body = getBodyValues(ledger, { months: minMonths, sex: 'female' });
+test('at 36 months a foothold decides whether the window lock is reached', () => {
+  const body = getBodyValues(ledger, { months: scenarioMonths, sex: 'female' });
   assert.equal(reachLevel(body, lock.height), REACH_NONE);
   assert.equal(lockResult(body).level, REACH_STANDING);
   assert.equal(lockResult(body).floorLevel, REACH_NONE);
@@ -53,7 +53,7 @@ test('the horizontal formula is read from the ledger and fails loudly if changed
 });
 
 test('a foothold further away than the horizontal reach does not reach the object', () => {
-  const body = getBodyValues(ledger, { months: minMonths, sex: 'female' });
+  const body = getBodyValues(ledger, { months: scenarioMonths, sex: 'female' });
   const place = (distance) => ({ ...shelf, x: lock.x - shelf.w - distance, y: lock.y });
   const limit = (reachValue) => horizontalReach(ledger, shelf.height + reachValue, lock.height);
   const standingLimit = limit(body.reach.value);
@@ -82,7 +82,7 @@ test('a higher object beyond tiptoe reach is not reached even when touching the 
 });
 
 test('a child who cannot climb it has no foothold', () => {
-  const body = getBodyValues(ledger, { months: minMonths, sex: 'male' });
+  const body = getBodyValues(ledger, { months: scenarioMonths, sex: 'male' });
   const tooHigh = { ...shelf, height: body.climb.value + 1 };
   assert.equal(evaluateScaffold(ledger, body, tooHigh, objects), null);
 });
@@ -102,7 +102,7 @@ test('only objects above the foothold are judged', () => {
 });
 
 test('a far foothold reaches nothing', () => {
-  const body = getBodyValues(ledger, { months: minMonths, sex: 'female' });
+  const body = getBodyValues(ledger, { months: scenarioMonths, sex: 'female' });
   const sofa = find('sofa');
   const result = evaluateScaffold(ledger, body, sofa, objects);
   assert.equal(result.objects.find(({ id }) => id === lock.id).level, REACH_NONE);

@@ -56,6 +56,10 @@ test('the zukan reference carries the height it was measured at', () => {
   const { values_by_age_years: values } = byId('reach_height_tiptoe_zukan');
   for (const months of everyMonth()) {
     const reference = getTiptoeReference(ledger, months);
+    if (reference === null) {
+      assert.equal(values[Math.floor(months / 12)], undefined);
+      continue;
+    }
     assert.equal(reference.height, values[reference.ageYears].height);
     assert.equal(reference.value, values[reference.ageYears].reach);
   }

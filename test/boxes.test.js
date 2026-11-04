@@ -5,7 +5,7 @@ import { moveBox, placeBox } from '../sim/boxes.js';
 import { landmarkHeight } from '../sim/room.js';
 import { evaluateScaffold, reachLevel, REACH_NONE, REACH_STANDING } from '../sim/scaffold.js';
 import { createSimulation } from '../sim/simulation.js';
-import { ledger, maxMonths, minMonths, roomLayout, settings } from './helpers.js';
+import { ledger, maxMonths, scenarioMonths, roomLayout, settings } from './helpers.js';
 
 const furniture = roomLayout.landmarks.map((landmark) => ({
   ...landmark,
@@ -44,7 +44,7 @@ test('a box cannot overlap furniture or another box', () => {
 });
 
 test('a box near the window lets a child reach the lock they could not reach before', () => {
-  const body = getBodyValues(ledger, { months: minMonths, sex: 'female' });
+  const body = getBodyValues(ledger, { months: scenarioMonths, sex: 'female' });
   assert.equal(reachLevel(body, lock.height), REACH_NONE);
   const box = placeBox(roomLayout, furniture, { x: NEAR_LOCK.x + spec.w / 2, y: NEAR_LOCK.y + spec.d / 2 }, 1);
   assert.ok(box, 'the spot beside the lock must be free');
@@ -55,14 +55,14 @@ test('a box near the window lets a child reach the lock they could not reach bef
 });
 
 test('a box out of range of the lock does not help', () => {
-  const body = getBodyValues(ledger, { months: minMonths, sex: 'female' });
+  const body = getBodyValues(ledger, { months: scenarioMonths, sex: 'female' });
   const box = placeBox(roomLayout, furniture, FREE_SPOT, 1);
   const result = evaluateScaffold(ledger, body, box, [...furniture, box]);
   assert.equal(result.objects.find((object) => object.id === lock.id).level, REACH_NONE);
 });
 
 test('a child who cannot climb the box cannot use it', () => {
-  const body = getBodyValues(ledger, { months: minMonths, sex: 'female', z: { climb: -10 } });
+  const body = getBodyValues(ledger, { months: scenarioMonths, sex: 'female', z: { climb: -10 } });
   const box = placeBox(roomLayout, furniture, FREE_SPOT, 1);
   assert.equal(evaluateScaffold(ledger, body, box, [...furniture, box]), null);
 });

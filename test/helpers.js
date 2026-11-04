@@ -8,6 +8,12 @@ export const roomLayout = selectLayout(roomFile, roomFile.layouts[0].id);
 export { settings } from '../sim/params.js';
 export const byId = (id, source = ledger) => source.items.find((entry) => entry.id === id);
 export const [minMonths, maxMonths] = ledger._meta.age_range_months;
+/**
+ * The age the room scenarios were written for (3 years 0 months). The ledger's range now starts
+ * at 15 months, where a median child reaches none of the room's footholds, so scenario tests keep
+ * this age; only the body and range tests use minMonths.
+ */
+export const scenarioMonths = 36;
 export const SEXES = ['male', 'female'];
 
 export const close = (actual, expected) =>

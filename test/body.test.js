@@ -71,10 +71,10 @@ test('climb is interpolated between series points at every month', () => {
 });
 
 test('walk speed equals the ledger at series points and is interpolated between them', () => {
-  const { sd_used: sd } = byId('walk_speed').age_4to5_candidates;
+  const { sd_series_used: sdSeries } = byId('walk_speed').age_4to5_candidates;
   for (const months of everyMonth()) {
     close(body(months).walkSpeed.value, expectedAt(walkPoints(), months));
-    assert.equal(body(months).walkSpeed.sd, sd);
+    close(body(months).walkSpeed.sd, expectedAt(sdSeries, months));
   }
   for (const [months, value] of walkPoints()) {
     assert.equal(body(months).walkSpeed.value, value);
@@ -89,8 +89,11 @@ test('categories come from the ledger and change where the evidence ends', () =>
   assert.equal(body(lastValid + 1).climb.category, climbEntry.extension_beyond_45.category);
   assert.equal(body(maxMonths).height.category, byId('height_percentiles').category);
   assert.equal(body(maxMonths).reach.category, byId('reach_height_standing').category);
-  assert.equal(body(minMonths).walkSpeed.category, walkEntry.category);
-  assert.equal(body(minMonths + 1).walkSpeed.category, walkEntry.age_4to5_candidates.category);
+  for (const months of walkEntry.age_4to5_candidates.measured_points_months) {
+    assert.equal(body(months).walkSpeed.category, walkEntry.category);
+  }
+  assert.equal(body(minMonths).walkSpeed.category, walkEntry.age_4to5_candidates.category);
+  assert.equal(body(maxMonths).walkSpeed.category, walkEntry.age_4to5_candidates.category);
 });
 
 test('z shifts each value by its ledger SD', () => {
@@ -140,7 +143,12 @@ test('the tiptoe reference follows the completed age in years', () => {
   const entry = byId('reach_height_tiptoe_zukan');
   for (const months of everyMonth()) {
     const years = Math.floor(months / 12);
-    assert.equal(getTiptoeReference(ledger, months).value, entry.values_by_age_years[years].reach);
+    const row = entry.values_by_age_years[years];
+    if (!row) {
+      assert.equal(getTiptoeReference(ledger, months), null);
+      continue;
+    }
+    assert.equal(getTiptoeReference(ledger, months).value, row.reach);
     assert.equal(getTiptoeReference(ledger, months).category, entry.category);
   }
 });

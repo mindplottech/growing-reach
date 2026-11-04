@@ -8,7 +8,7 @@ import { createPlayback } from '../sim/playback.js';
 import { buildPlaylists, fallKindOf, FALL_KIND_ON_FURNITURE, FALL_KIND_WHILE_CLIMBING } from '../sim/scenes.js';
 import { createSimulation } from '../sim/simulation.js';
 import { judgeRoom } from '../sim/verdict.js';
-import { ledger, minMonths, roomLayout, settings } from './helpers.js';
+import { ledger, scenarioMonths, roomLayout, settings } from './helpers.js';
 
 const STEP_SECONDS = 0.05;
 const child = { months: 48, sex: 'female' };
@@ -105,16 +105,16 @@ test('the automatic order: climbed to the lock, then climbed to other things, th
 });
 
 test('the left condition plays its own children, from its own record', () => {
-  const left = judgeRoom({ ledger, settings, room: roomLayout, months: minMonths, sex: child.sex });
-  const leftPlays = buildPlaylists({ verdict: left, condition: { months: minMonths, sex: child.sex, room: roomLayout }, ...span });
+  const left = judgeRoom({ ledger, settings, room: roomLayout, months: scenarioMonths, sex: child.sex });
+  const leftPlays = buildPlaylists({ verdict: left, condition: { months: scenarioMonths, sex: child.sex, room: roomLayout }, ...span });
   const [first] = leftPlays.byThing.get(left.hazards.lock.id);
-  assert.equal(first.months, minMonths);
-  const record = counted(first.seed, minMonths);
+  assert.equal(first.months, scenarioMonths);
+  const record = counted(first.seed, scenarioMonths);
   assert.ok(record.some((event) => event.kind === EVENT.REACHED_LOCK && event.time === first.moment));
 });
 
 test('the table counts do not depend on what is played or how', () => {
-  const left = judgeRoom({ ledger, settings, room: roomLayout, months: minMonths, sex: child.sex });
+  const left = judgeRoom({ ledger, settings, room: roomLayout, months: scenarioMonths, sex: child.sex });
   const before = compareResults(left, verdict);
   for (const scene of plays.auto.slice(0, 10)) played(scene);
   const again = judgeRoom({ ledger, settings, room: roomLayout, ...child });
