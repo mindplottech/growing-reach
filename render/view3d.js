@@ -531,7 +531,21 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     if (model && !cameraTouched) fitCamera();
   }
 
+  // A failure inside one frame is shown on the page instead of silently stopping the 3D view.
   function render(now) {
+    try {
+      renderFrame(now);
+    } catch (error) {
+      const box = document.querySelector('#error');
+      if (box) {
+        box.hidden = false;
+        box.textContent = `3D表示でエラーが起きました（${error.message}）。ページを再読み込み（Ctrl+F5）してください。`;
+      }
+      throw error;
+    }
+  }
+
+  function renderFrame(now) {
     const simulation = session.getSimulation();
     // The figure moves at the playback speed, like the simulation clock.
     const realSeconds = lastFrame === null ? 0 : (now - lastFrame) / MS_PER_SECOND;
@@ -552,7 +566,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     if (pose.busy) busyUntil = idleClock + STILL_AFTER_SECONDS;
     // The two seconds around a dangerous moment only matter while the record is playing; paused
     // or finished, the child just stands there and may yawn.
-    const live = session.isPlaying() && !session.isFinished();
+    const live = session.isPlaying() && !(session.isFinished?.() ?? false);
     const scene = session.getScene();
     const hazardMoments = live ? simulation.events.filter(({ kind }) => HAZARD_EVENTS.has(kind)).map(({ time }) => time) : [];
     if (live && scene?.moment !== null && scene?.moment !== undefined) hazardMoments.push(scene.moment);
