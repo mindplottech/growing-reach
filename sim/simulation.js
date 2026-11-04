@@ -379,6 +379,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   chooseTarget();
 
   return {
+    months,
     body,
     landmarks,
     hazards,

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { makeChild } from './childFigure3d.js';
+import { applyProportions, BASE_UNIT_HEIGHT, makeChild } from './childFigure3d.js';
+import { gaitFor } from './gait.js';
 import { createPoseTracker, floorShadow, footHeight } from './childPose.js';
 import { buildFurniture, buildSkirting } from './furniture3d.js';
 import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
@@ -34,6 +35,12 @@ const HAZARD_COLOUR = 0xb5534a;
 const HAZARD_THICK_CM = 3;
 const HAZARD_LABEL_SHARE = 0.8;
 const SIT_DROP = 0.14;
+// Walking, for the look only: a small bob per step, the arms swing a share of the legs, and the
+// youngest hold the arms up and out (high guard).
+const WALK_BOB = 0.8;
+const ARM_SWING_SHARE = 0.6;
+const ARM_GUARD_RAISE = Math.PI * 0.45;
+const ARM_GUARD_SPREAD = 0.5;
 const noRaycast = () => {};
 // The tags of the lock and the dangerous things take the colour of their row in the results.
 const TAG_STYLES = {
@@ -98,14 +105,33 @@ function woodTexture() {
   return texture;
 }
 
-function applyPose(figure, pose) {
-  const { root, body, arms } = figure;
-  root.position.set(pose.x, pose.feet, pose.z);
+function applyPose(figure, pose, gait) {
+  const { root, body, arms, legs } = figure;
+  const { phase, moving } = pose.walk ?? { phase: 0, moving: 0 };
+  const swing = Math.sin(phase) * moving;
+  root.position.set(pose.x, pose.feet + WALK_BOB * Math.abs(Math.sin(phase)) * moving, pose.z);
   root.rotation.y = pose.yaw + (pose.turned ? Math.PI : 0);
   body.rotation.x = pose.lean + pose.pitch;
+  // The toddler's sway: the body rolls from side to side with each step.
+  body.rotation.z = gait ? gait.sway * Math.cos(phase) * moving : 0;
   body.position.y = -SIT_DROP * (pose.sit ?? 0);
   body.scale.y = 1 + pose.stretch * STRETCH_SHARE;
-  for (const arm of arms) arm.rotation.x = -ARM_RAISE * pose.arms;
+  // Legs swing in opposition; feet stand apart by the ledger's stride width.
+  const legSwing = gait ? gait.legSwing : 0;
+  const stance = gait ? (gait.strideWidthCm / 2) / (gait.heightCm || 1) : 0;
+  legs.forEach((hip, i) => {
+    hip.rotation.x = (i === 0 ? 1 : -1) * swing * legSwing;
+    if (gait) hip.position.x = (i === 0 ? -1 : 1) * Math.max(0.055, stance);
+  });
+  // Arms: a gesture wins; otherwise the youngest hold them up as a guard, and the others swing
+  // them opposite to the legs.
+  arms.forEach((arm, i) => {
+    const guard = gait ? gait.armGuard : 0;
+    const armSwing = (i === 0 ? -1 : 1) * swing * legSwing * ARM_SWING_SHARE * (1 - guard);
+    const raise = Math.max(pose.arms * ARM_RAISE, guard * ARM_GUARD_RAISE * (0.6 + 0.4 * moving));
+    arm.rotation.x = -raise + armSwing;
+    arm.rotation.z = (i === 0 ? 1 : -1) * guard * ARM_GUARD_SPREAD;
+  });
 }
 
 function disposeGroup(group) {
@@ -197,7 +223,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       line.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     }
   }
-  let updatePose = createPoseTracker(settings.display_seconds);
+  let gait = null;
+  let updatePose = createPoseTracker(settings.display_seconds, gait);
 
   const raycaster = new THREE.Raycaster();
   let lastFrame = null;
@@ -327,7 +354,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const boxIds = new Set(room.landmarks.filter(({ temporary }) => temporary).map(({ id }) => id));
     const firstBuild = model === null;
     model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds, hazards: simulation.hazards });
-    updatePose = createPoseTracker(settings.display_seconds);
+    gait = { ...gaitFor(ledger, settings, simulation.months), heightCm: simulation.body.height.value };
+    updatePose = createPoseTracker(settings.display_seconds, gait);
     trailPoints = -1;
 
     disposeGroup(roomGroup);
@@ -386,7 +414,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       return { id, mesh, tag, height };
     });
 
-    child.root.scale.setScalar(model.childHeight);
+    const { unitHeight } = applyProportions(child, gait);
+    child.root.scale.setScalar(model.childHeight * (BASE_UNIT_HEIGHT / unitHeight));
     if (selectedId && !objectMeshes.has(selectedId)) selectedId = null;
     aimSun();
     fitLabels();
@@ -447,7 +476,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       events: simulation.events,
       climbing: Boolean(simulation.climbing),
     }, seconds);
-    applyPose(child, pose);
+    applyPose(child, pose, gait);
     const onFloor = floorShadow(pose.feet);
     blob.position.set(pose.x, 0.5, pose.z);
     blob.scale.setScalar(onFloor.scale);

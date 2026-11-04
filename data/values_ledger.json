@@ -135,7 +135,8 @@
       "TFD2024": "東京消防庁（2024年10月）『救急搬送データから見る日常生活事故の実態 令和5年』 https://www.tfd.metro.tokyo.lg.jp/content/000063566.pdf",
       "SNYDER1977": "Snyder RG ほか（1977）Anthropometry of Infants, Children, and Youths to Age 18 for Product Safety Design. UM-HSRI-77-17, U.S. CPSC（ERIC ED153998） https://eric.ed.gov/?id=ED153998",
       "WARREN1984": "Warren WH（1984）Perceiving affordances: Visual guidance of stair climbing. J Exp Psychol Hum Percept Perform 10(5):683-703",
-      "DUSING2007": "Dusing SC, Thorpe DE (2007) A normative sample of temporal and spatial gait parameters in children using the GAITRite electronic walkway. Gait & Posture 25:135-139 https://doi.org/10.1016/j.gaitpost.2006.06.003（要旨と Table 1・2 を確認、群別の絶対速度は Appendix A で未確認）"
+      "DUSING2007": "Dusing SC, Thorpe DE (2007) A normative sample of temporal and spatial gait parameters in children using the GAITRite electronic walkway. Gait & Posture 25:135-139 https://doi.org/10.1016/j.gaitpost.2006.06.003（要旨と Table 1・2 を確認、群別の絶対速度は Appendix A で未確認）",
+      "SUTHERLAND1980": "Sutherland DH, Olshen R, Cooper L, Woo SL (1980) The development of mature gait. J Bone Joint Surg Am 62(3):336-353（二次引用：1歳児の腕の high guard、2歳頃までの消失。数値は未取得）"
     },
     "updated": "2026-11-04",
     "data_age_range_months": [
@@ -1267,6 +1268,38 @@
       "source": "CFA2024",
       "table_page": "表9「一般調査による乳幼児の運動機能通過率」p.15、本文 p.16",
       "note": "キーは月齢区間（例 15-16 は1年3〜4月未満）。月齢の下限15か月の根拠（ひとり歩き88.4%、次の区間96.9%）。本文：ひとり歩きは生後1年4〜5か月未満の90%以上。PDFの表は列が詰まって抽出されるため、列の対応は本文の90%の記述と照合した。"
+    },
+    {
+      "id": "gait_display",
+      "label": "歩き方（表示のみ）",
+      "category": "measured",
+      "use_in_simulation": false,
+      "display": "figure",
+      "anchor_months": [
+        29,
+        42,
+        77
+      ],
+      "values": {
+        "step_length_m": [
+          0.34,
+          0.38,
+          0.49
+        ],
+        "cycle_time_s": [
+          0.75,
+          0.76,
+          0.87
+        ],
+        "stride_width_m": [
+          0.09,
+          0.08,
+          0.08
+        ]
+      },
+      "source": "RYGELOVA2023",
+      "table_page": "Table 2（非正規化の step length・cycle time・stride width、各群の平均。Table 1 の平均年齢 2.4・3.5・6.4歳を 29・42・77か月に置く）",
+      "note": "子どもの図形の歩幅・脚の振りの速さ・足の開きにだけ使う。歩く速さは walk_speed（計算側）のまま。29か月より下は端の値。腕を肩の高さに上げる構え（high guard）が1歳台で見られ2歳頃までに消えること、よちよち歩きの左右の揺れは Sutherland ほか（1980）J Bone Joint Surg 62A:336-353 の観察所見（二次引用、数値なし）で、揺れ幅と腕の高さの数値は params.js の仮値。"
     }
   ]
 }

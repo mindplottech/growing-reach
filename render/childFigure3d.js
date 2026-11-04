@@ -16,6 +16,7 @@ const HAIR_TILT = -0.35;
 const EYE = { radius: 0.014, x: 0.036, up: 0.012 };
 const MOUTH_SHAPE = { radius: 0.024, tube: 0.006, down: 0.03 };
 const SHOULDER = { x: 0.122, y: 0.68 };
+const HIP_Y = 0.33;
 
 /** The figure, with the body group that leans and the two shoulder groups that raise the arms. */
 export function makeChild() {
@@ -32,22 +33,31 @@ export function makeChild() {
     return mesh;
   };
 
-  // Legs and feet.
-  for (const side of [-1, 1]) {
-    part(body, new THREE.BoxGeometry(0.075, 0.04, 0.115), new THREE.MeshStandardMaterial({ color: SHOES, roughness: 0.7 }), [side * 0.055, 0.02, 0.015]);
-    part(body, new THREE.CapsuleGeometry(0.042, 0.17, 4, 10), skin, [side * 0.055, 0.165, 0]);
-    part(body, new THREE.CylinderGeometry(0.058, 0.058, 0.07, 14), shorts, [side * 0.055, 0.285, 0]);
-  }
+  // Legs and feet, each hanging from a hip that swings when walking. The hips sit on the
+  // `lower` group, which the proportions can shorten; the torso rides on top of it.
+  const lower = new THREE.Group();
+  body.add(lower);
+  const legs = [-1, 1].map((side) => {
+    const hip = new THREE.Group();
+    hip.position.set(side * 0.055, HIP_Y, 0);
+    part(hip, new THREE.BoxGeometry(0.075, 0.04, 0.115), new THREE.MeshStandardMaterial({ color: SHOES, roughness: 0.7 }), [0, 0.02 - HIP_Y, 0.015]);
+    part(hip, new THREE.CapsuleGeometry(0.042, 0.17, 4, 10), skin, [0, 0.165 - HIP_Y, 0]);
+    part(hip, new THREE.CylinderGeometry(0.058, 0.058, 0.07, 14), shorts, [0, 0.285 - HIP_Y, 0]);
+    lower.add(hip);
+    return hip;
+  });
   // Shorts, then the T-shirt over a round belly.
-  part(body, new THREE.CylinderGeometry(0.118, 0.122, 0.1, 18), shorts, [0, 0.345, 0]);
-  part(body, new THREE.SphereGeometry(0.13, 22, 16), shirt, [0, 0.54, 0], [1, 1.3, 0.85]);
-  part(body, new THREE.SphereGeometry(0.1, 18, 14), shirt, [0, 0.47, 0.035], [1, 0.9, 0.95]);
-  part(body, new THREE.CylinderGeometry(0.035, 0.04, 0.06, 12), skin, [0, 0.765, 0]);
+  const torso = new THREE.Group();
+  body.add(torso);
+  part(torso, new THREE.CylinderGeometry(0.118, 0.122, 0.1, 18), shorts, [0, 0.345, 0]);
+  part(torso, new THREE.SphereGeometry(0.13, 22, 16), shirt, [0, 0.54, 0], [1, 1.3, 0.85]);
+  const belly = part(torso, new THREE.SphereGeometry(0.1, 18, 14), shirt, [0, 0.47, 0.035], [1, 0.9, 0.95]);
+  part(torso, new THREE.CylinderGeometry(0.035, 0.04, 0.06, 12), skin, [0, 0.765, 0]);
 
   // Head with hair over the top half, two eyes and a smile.
   const head = new THREE.Group();
   head.position.set(0, HEAD.y, 0);
-  body.add(head);
+  torso.add(head);
   part(head, new THREE.SphereGeometry(HEAD.radius, 24, 18), skin, [0, 0, 0]);
   const hair = part(head, new THREE.SphereGeometry(HEAD.radius * 1.06, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: HAIR, roughness: 0.9 }), [0, 0.004, -0.004]);
   hair.rotation.x = HAIR_TILT;
@@ -67,11 +77,31 @@ export function makeChild() {
     part(shoulder, new THREE.CylinderGeometry(0.043, 0.04, 0.07, 12), shirt, [0, -0.05, 0]);
     part(shoulder, new THREE.CapsuleGeometry(0.034, 0.12, 4, 10), skin, [0, -0.13, 0]);
     part(shoulder, new THREE.SphereGeometry(0.04, 12, 10), skin, [0, -0.215, 0]);
-    body.add(shoulder);
+    torso.add(shoulder);
     return shoulder;
   });
 
   const root = new THREE.Group();
   root.add(body);
-  return { root, body, arms };
+  return { root, body, arms, legs, lower, torso, head, belly };
 }
+
+const BELLY_BASE = [1, 0.9, 0.95];
+
+/**
+ * Builds the figure for an age: a bigger head, a rounder belly and shorter legs for the
+ * youngest, easing to the five-year-old's shape (shares of 1). Display only: the figure's total
+ * height is still the ledger's, set by the root scale.
+ */
+export function applyProportions(figure, { headShare, bellyShare, legShare }) {
+  figure.head.scale.setScalar(headShare);
+  figure.belly.scale.set(BELLY_BASE[0] * bellyShare, BELLY_BASE[1] * bellyShare, BELLY_BASE[2] * bellyShare);
+  // Shorter legs: the lower group shrinks from the floor, and the torso comes down to meet it.
+  figure.lower.scale.y = legShare;
+  figure.torso.position.y = -HIP_Y * (1 - legShare);
+  // The top of the head in figure units, so the root scale can keep the ledger's height.
+  return { unitHeight: HEAD.y + HEAD.radius * headShare - HIP_Y * (1 - legShare) };
+}
+
+/** The top of the head of the base figure, in figure units. */
+export const BASE_UNIT_HEIGHT = HEAD.y + HEAD.radius;

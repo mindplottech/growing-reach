@@ -65,6 +65,8 @@ const SIT_LEAN_BACK = -0.3;
 const HOLD_ARMS = 0.7;
 const HOLD_LEAN = 0.25;
 const TURN_MIN_CM = 0.01;
+// The walk cycle settles within about this many seconds after the child stops.
+const WALK_SETTLE_SECONDS = 0.25;
 
 const clamp01 = (t) => Math.min(Math.max(t, 0), 1);
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -114,11 +116,15 @@ function motionShape(kind, elapsed, seconds) {
  */
 const START_YAW = Math.PI;
 
-export function createPoseTracker(seconds) {
+export function createPoseTracker(seconds, gait = null) {
   let drawn = null;
   let motion = null;
   let gesture = null;
   let seen = 0;
+  // The walk cycle: phase advances with distance walked on the floor (π per step), and the
+  // amount of swing eases in while moving and out when standing.
+  let phase = 0;
+  let moving = 0;
   // Before the first step the child faces the camera (-z), so the face is in sight.
   let yaw = START_YAW;
 
@@ -154,9 +160,17 @@ export function createPoseTracker(seconds) {
       drawn = next;
     } else {
       const next = { x, z, feet };
+      const walked = Math.hypot(next.x - drawn.x, next.z - drawn.z);
+      if (gait && walked > 0 && feet === drawn.feet) {
+        phase += (walked / gait.stepCm) * Math.PI;
+        moving = Math.min(1, moving + frameSeconds / WALK_SETTLE_SECONDS);
+      } else {
+        moving = Math.max(0, moving - frameSeconds / WALK_SETTLE_SECONDS);
+      }
       faceTowards(next);
       drawn = next;
     }
+    if (motion) moving = Math.max(0, moving - frameSeconds / WALK_SETTLE_SECONDS);
 
     let arms = shape.arms ?? 0;
     let stretch = 0;
@@ -178,6 +192,7 @@ export function createPoseTracker(seconds) {
       lean: shape.lean ?? 0,
       arms,
       stretch,
+      walk: { phase, moving },
     };
   };
 
