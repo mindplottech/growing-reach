@@ -193,6 +193,8 @@ export function createPoseTracker(seconds, gait = null) {
       arms,
       stretch,
       walk: { phase, moving },
+      // Anything that is not standing still: a motion, a gesture, climbing, or walking.
+      busy: Boolean(motion) || Boolean(gesture) || climbing || moving > 0,
     };
   };
 

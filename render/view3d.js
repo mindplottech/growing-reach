@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { applyProportions, BASE_UNIT_HEIGHT, makeChild } from './childFigure3d.js';
 import { gaitFor } from './gait.js';
+import { createIdle } from './idle.js';
+import { EVENT } from '../sim/events.js';
 import { createPoseTracker, floorShadow, footHeight } from './childPose.js';
 import { buildFurniture, buildSkirting } from './furniture3d.js';
 import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
@@ -46,6 +48,14 @@ const ARM_GUARD_SPREAD = 0.5;
 const FOLLOW_DISTANCE_HEIGHTS = 3.2;
 const FOLLOW_PITCH = 0.55;
 const FOLLOW_EASE = 0.08;
+// The idle animation (display only): how long after any motion the child counts as still, and
+// how far each movement goes on the figure.
+const STILL_AFTER_SECONDS = 1.0;
+const BLINK_SQUEEZE = 0.12;
+const YAWN_HEAD_BACK = 0.28;
+const YAWN_ARMS = Math.PI * 0.9;
+const YAWN_MOUTH_FROM = 0.45;
+const HAZARD_EVENTS = new Set([EVENT.TOUCHED_HAZARD, EVENT.REACHED_LOCK, EVENT.TOUCHED_HIGH]);
 const noRaycast = () => {};
 // The tags of the lock and the dangerous things take the colour of their row in the results.
 const TAG_STYLES = {
@@ -109,6 +119,27 @@ function woodTexture() {
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
+/** The idle movements on the figure: eyes, belly, head and arms. `idle` is from render/idle.js. */
+function applyIdle(figure, idle, pose, gait) {
+  const { eyes, belly, head, mouth, openMouth, arms } = figure;
+  const closed = Math.max(idle.blink, idle.yawn > YAWN_MOUTH_FROM ? 1 : 0);
+  for (const eye of eyes) eye.scale.y = 1 - (1 - BLINK_SQUEEZE) * closed;
+  const bellyShare = gait ? gait.bellyShare : 1;
+  belly.scale.y = BELLY_BASE_Y * bellyShare * (1 + idle.breath);
+  belly.scale.x = bellyShare * (1 + idle.breath * 0.5);
+  head.rotation.z = idle.tilt;
+  head.rotation.x = -YAWN_HEAD_BACK * idle.yawn;
+  const open = idle.yawn > YAWN_MOUTH_FROM;
+  mouth.visible = !open;
+  openMouth.visible = open;
+  if (open) openMouth.scale.set(0.015 * (0.6 + idle.yawn), 0.02 * idle.yawn, 0.012);
+  // The yawn's stretch wins over a walking swing, but never over a reach or climb.
+  if (idle.yawn > 0 && !pose.busy) {
+    for (const arm of arms) arm.rotation.x = Math.min(arm.rotation.x, -YAWN_ARMS * idle.yawn);
+  }
+}
+const BELLY_BASE_Y = 0.9;
 
 function applyPose(figure, pose, gait) {
   const { root, body, arms, legs } = figure;
@@ -230,6 +261,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   }
   let gait = null;
   let updatePose = createPoseTracker(settings.display_seconds, gait);
+  let updateIdle = createIdle(settings.idle_figure);
+  let busyUntil = -Infinity;
 
   const raycaster = new THREE.Raycaster();
   let lastFrame = null;
@@ -386,6 +419,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds, hazards: simulation.hazards });
     gait = { ...gaitFor(ledger, settings, simulation.months), heightCm: simulation.body.height.value };
     updatePose = createPoseTracker(settings.display_seconds, gait);
+    updateIdle = createIdle(settings.idle_figure);
+    busyUntil = -Infinity;
     trailPoints = -1;
 
     disposeGroup(roomGroup);
@@ -507,6 +542,14 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       climbing: Boolean(simulation.climbing),
     }, seconds);
     applyPose(child, pose, gait);
+    // Still means: nothing going on now, and nothing for a moment before. The moments of
+    // touching something dangerous come from the record so far and the scene's known moment.
+    if (pose.busy) busyUntil = simulation.time + STILL_AFTER_SECONDS;
+    const scene = session.getScene();
+    const hazardMoments = simulation.events.filter(({ kind }) => HAZARD_EVENTS.has(kind)).map(({ time }) => time);
+    if (scene?.moment !== null && scene?.moment !== undefined) hazardMoments.push(scene.moment);
+    const idle = updateIdle({ still: !pose.busy && simulation.time >= busyUntil, time: simulation.time, hazardMoments }, seconds);
+    applyIdle(child, idle, pose, gait);
     followChild(pose);
     const onFloor = floorShadow(pose.feet);
     blob.position.set(pose.x, 0.5, pose.z);

@@ -10,6 +10,8 @@ const SHORTS = 0x3f5a7a;
 const SHOES = 0x5a4a42;
 const EYES = 0x222222;
 const MOUTH = 0x9a4a3c;
+const OPEN_MOUTH = 0x5a2320;
+const OPEN_MOUTH_SIZE = { x: 0.015, y: 0.02, z: 0.012 };
 
 const HEAD = { radius: 0.1, y: 0.875 };
 const HAIR_TILT = -0.35;
@@ -63,11 +65,12 @@ export function makeChild() {
   hair.rotation.x = HAIR_TILT;
   const onFace = (x, y) => Math.sqrt(HEAD.radius ** 2 - x ** 2 - y ** 2);
   const eyeMaterial = new THREE.MeshStandardMaterial({ color: EYES, roughness: 0.3 });
-  for (const side of [-1, 1]) {
-    part(head, new THREE.SphereGeometry(EYE.radius, 10, 8), eyeMaterial, [side * EYE.x, EYE.up, onFace(EYE.x, EYE.up) - EYE.radius * 0.4]);
-  }
+  const eyes = [-1, 1].map((side) => part(head, new THREE.SphereGeometry(EYE.radius, 10, 8), eyeMaterial, [side * EYE.x, EYE.up, onFace(EYE.x, EYE.up) - EYE.radius * 0.4]));
   const mouth = part(head, new THREE.TorusGeometry(MOUTH_SHAPE.radius, MOUTH_SHAPE.tube, 6, 14, Math.PI), new THREE.MeshStandardMaterial({ color: MOUTH }), [0, -MOUTH_SHAPE.down + MOUTH_SHAPE.radius, onFace(0, -MOUTH_SHAPE.down) - 0.004]);
   mouth.rotation.z = Math.PI;
+  // The open mouth for a yawn: a small dark oval, hidden until it is needed.
+  const openMouth = part(head, new THREE.SphereGeometry(1, 14, 10), new THREE.MeshStandardMaterial({ color: OPEN_MOUTH, roughness: 0.8 }), [0, -MOUTH_SHAPE.down, onFace(0, -MOUTH_SHAPE.down) - 0.006], [OPEN_MOUTH_SIZE.x, OPEN_MOUTH_SIZE.y, OPEN_MOUTH_SIZE.z]);
+  openMouth.visible = false;
 
   // Arms: a short sleeve, the arm and a hand, hanging from a shoulder that turns.
   const arms = [-1, 1].map((side) => {
@@ -83,7 +86,7 @@ export function makeChild() {
 
   const root = new THREE.Group();
   root.add(body);
-  return { root, body, arms, legs, lower, torso, head, belly };
+  return { root, body, arms, legs, lower, torso, head, belly, eyes, mouth, openMouth };
 }
 
 const BELLY_BASE = [1, 0.9, 0.95];
