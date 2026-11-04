@@ -60,12 +60,6 @@
             <span class="icon" style="--icon: url(../assets/icons/undo-2.svg)"></span><span class="tool-label">元に戻す</span>
           </button>
           <label class="tool tool-check"><input id="show-trail" type="checkbox" checked><span class="tool-label">歩いた跡</span></label>
-          <div class="speed-choice" role="group" aria-label="再生の速さ">
-            <button type="button" class="speed" data-speed="1" aria-pressed="false">1×</button>
-            <button type="button" class="speed" data-speed="2" aria-pressed="false">2×</button>
-            <button type="button" class="speed" data-speed="4" aria-pressed="false">4×</button>
-            <button type="button" class="speed" data-speed="8" aria-pressed="false">8×</button>
-          </div>
         </div>
       </div>
       <button id="show-hint" type="button" class="tool tool-help" data-tip="操作のしかたを出します" aria-pressed="false" aria-controls="tool-hint">
@@ -74,12 +68,24 @@
     </nav>
 
     <section id="canvas-area" aria-label="部屋の3D表示">
-      <div id="stage"></div>
-      <button id="delete-selected" type="button" class="delete-chip" aria-label="選んだ物を取り除く" hidden>
-        <span class="icon" style="--icon: url(../assets/icons/x.svg)"></span>
-      </button>
-      <p id="tool-hint" class="canvas-hint" hidden>家具はドラッグで動かせます。右ドラッグで向きを変え、ホイールで拡大します。</p>
-      <p id="canvas-message" class="canvas-message" role="status" hidden></p>
+      <div id="stage-area">
+        <div id="stage"></div>
+        <button id="delete-selected" type="button" class="delete-chip" aria-label="選んだ物を取り除く" hidden>
+          <span class="icon" style="--icon: url(../assets/icons/x.svg)"></span>
+        </button>
+        <p id="tool-hint" class="canvas-hint" hidden>家具はドラッグで動かせます。右ドラッグで向きを変え、ホイールで拡大します。</p>
+        <p id="canvas-message" class="canvas-message" role="status" hidden></p>
+        <p id="moment-flash" class="moment-flash" aria-live="polite" hidden></p>
+      </div>
+      <section id="playbar" class="playbar" aria-label="場面の再生">
+        <div class="playbar-row">
+          <button id="scene-play" type="button" class="scene-play" aria-label="再生"><span class="icon" style="--icon: url(../assets/icons/play.svg)"></span></button>
+          <div id="scene-progress" class="scene-progress" role="progressbar" aria-label="場面の進み具合" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="scene-progress-fill"></span></div>
+          <button id="watch-touches" type="button" class="watch-button" aria-pressed="false">危険な物に触れた子を見る</button>
+          <button id="watch-falls" type="button" class="watch-button" aria-pressed="false">落ちた子を見る</button>
+        </div>
+        <p id="scene-info" class="scene-info"></p>
+      </section>
     </section>
 
     <aside id="results" aria-label="結果">

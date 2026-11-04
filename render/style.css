@@ -228,7 +228,9 @@ button, input, select { font: inherit; color: inherit; }
 
 /* ---- Canvas ---- */
 
-#canvas-area { position: relative; min-width: 0; min-height: 0; background: var(--canvas); }
+#canvas-area { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--canvas); }
+
+#stage-area { position: relative; flex: 1; min-height: 0; }
 
 #stage { position: absolute; inset: 0; }
 
@@ -451,9 +453,6 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 
 /* ---- Moments, the second toolbar menu, and rows in words ---- */
 
-.speed-choice { display: grid; grid-template-columns: repeat(2, 30px); }
-
-.speed { width: 30px; }
 
 
 .more-menu {
@@ -495,11 +494,11 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 
 .result-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
 
-.result-table .col-name { width: 37%; }
+.result-table .col-name { width: 36%; }
 
-.result-table .col-count { width: 24%; }
+.result-table .col-count { width: 25%; }
 
-.result-table .col-diff { width: 15%; }
+.result-table .col-diff { width: 14%; }
 
 .result-table thead th { padding: 0 4px 4px; color: var(--muted); font-size: 12px; font-weight: 600; text-align: right; border-bottom: 1px solid var(--line); }
 
@@ -536,7 +535,7 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 
 .count { display: block; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.3; }
 
-.climbed { display: block; color: var(--muted); font-size: 11px; line-height: 1.2; }
+.climbed { display: block; color: var(--muted); font-size: 11px; line-height: 1.2; white-space: nowrap; }
 
 .bar { display: block; height: 4px; margin-top: 2px; border-radius: 2px; background: var(--line); overflow: hidden; }
 
@@ -563,3 +562,82 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 .conditions { color: var(--muted); font-size: 12px; line-height: 1.5; }
 
 .reach-list dd { font-size: 13px; }
+
+/* Numbers that play their scenes when pressed. */
+.playable { cursor: pointer; border-radius: 4px; }
+
+.playable:hover, .playable:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); outline: none; }
+
+.playable[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); background: rgb(47 93 138 / 8%); }
+
+.playable-name { cursor: pointer; font-weight: 700; }
+
+/* ---- The strip under the 3D view ---- */
+
+.playbar { padding: 8px 16px 10px; border-top: 1px solid var(--line); background: var(--surface); }
+
+.playbar-row { display: flex; align-items: center; gap: 12px; }
+
+.scene-play {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.scene-play .icon { width: 20px; height: 20px; }
+
+.scene-progress { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+
+.scene-progress-fill { display: block; width: 0; height: 100%; background: var(--accent); }
+
+.watch-button {
+  flex: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.watch-button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+.watch-button:disabled { opacity: 0.5; cursor: default; }
+
+.scene-info { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+
+.moment-flash {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  max-width: 85%;
+  margin: 0;
+  padding: 10px 22px;
+  border-radius: 12px;
+  background: rgb(31 41 51 / 88%);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.moment-flash[hidden] { display: none; }
+
+.moment-flash-in { animation: moment-in 0.25s ease-out; }
+
+@keyframes moment-in {
+  from { opacity: 0; transform: translateX(-50%) scale(0.85); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}

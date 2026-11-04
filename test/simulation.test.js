@@ -95,7 +95,9 @@ test('playing happens only with things within reach, and adds the play time', ()
 test('the trail follows the walked route and starts from where the child was', () => {
   const simulation = run(3);
   assert.ok(simulation.trail.length > 1);
-  assert.deepEqual(simulation.trail[0][0], roomLayout.start);
+  const { x, y } = simulation.trail[0][0];
+  assert.deepEqual({ x, y }, { x: roomLayout.start.x, y: roomLayout.start.y });
+  assert.equal(simulation.trail[0][0].time, 0);
   for (const leg of simulation.trail) assert.ok(leg.length >= 1);
   const insideFurniture = ({ x, y }) => roomLayout.landmarks.some((l) => x > l.x + 1 && x < l.x + l.w - 1 && y > l.y + 1 && y < l.y + l.d - 1);
   for (const leg of simulation.trail) for (const point of leg) assert.ok(!insideFurniture(point), JSON.stringify(point));

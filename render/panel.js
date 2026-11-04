@@ -1,6 +1,7 @@
 import {
   compareResults, conclusion, differenceText, SECTION_COUNTS, SECTION_HAZARDS, toneOf,
 } from '../sim/compare.js';
+import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
@@ -66,6 +67,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   // The room the right-hand result was last calculated for: "before" once the room is moved.
   let judgedRoom = null;
   let beforeRoom = null;
+  // What each condition can play, from the last calculation.
+  let plays = null;
 
   function showChild() {
     monthsLabel.textContent = formatAge(getChild().months);
@@ -79,11 +82,37 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     ]);
   }
 
-  /** Marks the row whose runs are playing, if one was pressed. */
+  /** Marks the cell whose scenes are playing, if one was pressed. */
   function showPressed() {
-    for (const row of table.querySelectorAll('.result-row')) {
-      row.setAttribute('aria-current', String(row.dataset.id === autoplay.row()));
+    for (const cell of table.querySelectorAll('[data-play]')) {
+      cell.setAttribute('aria-pressed', String(cell.dataset.play === autoplay.key()));
     }
+  }
+
+  /** The scenes of one row in one condition: a dangerous thing's touches, or one kind of fall. */
+  function scenesOfRow(side, id) {
+    const plan = plays?.[side];
+    if (!plan) return [];
+    if (id.startsWith('fall-')) return plan.byFallKind.get(id.slice('fall-'.length)) ?? [];
+    return plan.byThing.get(id) ?? [];
+  }
+
+  /** Pressing a row's name or right-hand number plays the right condition; the left number, the left. */
+  function playable(cell, side, id) {
+    cell.dataset.play = `${side}:${id}`;
+    cell.classList.add('playable');
+    cell.tabIndex = 0;
+    const press = () => {
+      autoplay.useList(cell.dataset.play, scenesOfRow(side, id));
+      showPressed();
+    };
+    cell.addEventListener('click', press);
+    cell.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        press();
+      }
+    });
   }
 
   /** A count with a thin bar for its share of the hundred, and the climbers for a place. */
@@ -103,29 +132,21 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const tr = element('tr', 'result-row');
     tr.dataset.id = row.id;
     if (row.level) tr.dataset.level = row.level;
-    const name = element('td');
-    if (row.seeds) {
-      // Pressing the name plays only the runs of the right-hand result that are in this row.
-      const button = element('button', 'row-play', row.label);
-      button.type = 'button';
-      button.disabled = row.seeds.length === 0;
-      button.addEventListener('click', () => {
-        autoplay.useRow(row.id, row.seeds);
-        showPressed();
-      });
-      name.append(button);
-    } else {
-      name.textContent = row.label;
-    }
+    const name = element('td', 'row-name', row.label);
     const withClimbed = sectionId === SECTION_HAZARDS;
+    const leftCell = countCell(row.left, withClimbed ? row.leftClimbed : undefined);
+    const rightCell = countCell(row.right, withClimbed ? row.rightClimbed : undefined);
     const diff = element('td', 'diff', differenceText(row.left, row.right));
     diff.dataset.tone = toneOf(row.left, row.right);
-    tr.append(
-      name,
-      countCell(row.left, withClimbed ? row.leftClimbed : undefined),
-      countCell(row.right, withClimbed ? row.rightClimbed : undefined),
-      diff,
-    );
+    if (row.seeds) {
+      if (row.left > 0) playable(leftCell, 'left', row.id);
+      if (row.right > 0) {
+        playable(rightCell, 'right', row.id);
+        name.addEventListener('click', () => rightCell.click());
+        name.classList.add('playable-name');
+      }
+    }
+    tr.append(name, leftCell, rightCell, diff);
     return tr;
   }
 
@@ -177,7 +198,13 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       ? judgeRoom({ ledger, settings, room: beforeRoom, ...child })
       : judgeRoom({ ledger, settings, room, months: baseMonths, sex: child.sex });
     const names = mode === MODE_ROOM ? ['動かす前', '動かした後'] : [formatAge(baseMonths), formatAge(child.months)];
+    const leftCondition = mode === MODE_ROOM ? { ...child, room: beforeRoom } : { months: baseMonths, sex: child.sex, room };
     judgedRoom = room;
+    const span = { before: settings.scene_before_seconds, after: settings.scene_after_seconds, trialSeconds: settings.trial_seconds };
+    plays = {
+      left: buildPlaylists({ verdict: left, condition: leftCondition, ...span }),
+      right: buildPlaylists({ verdict: right, condition: { ...child, room }, ...span }),
+    };
 
     const sections = compareResults(left, right);
     const said = conclusion(sections, { leftName: names[0], rightName: names[1], kind: mode });
@@ -200,7 +227,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     retry.dataset.pending = 'false';
     document.querySelector('#results').classList.remove('stale');
     view?.setTags(lastTags);
-    autoplay.useEventful(right.eventful);
+    autoplay.useAuto(plays.right.auto);
     showPressed();
     return right;
   }
@@ -231,10 +258,15 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   for (const radio of document.querySelectorAll('input[name="sex"]')) {
     radio.addEventListener('change', () => judge());
   }
+  // A whole run by number, of the right-hand condition: from the start to the end of the trial.
   seedInput.addEventListener('change', () => {
-    autoplay.useSeed(Number.parseInt(seedInput.value, 10) || 1);
+    const seed = Number.parseInt(seedInput.value, 10) || 1;
+    autoplay.useRun({
+      ...getChild(), seed, room: session.getRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: `${seed}番の子`,
+    });
     showPressed();
   });
+  autoplay.onChange(showPressed);
   session.on('restart', () => {
     showChild();
     seedInput.value = String(session.getSeed());
@@ -244,6 +276,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   return {
     judge,
     markChanged,
+    /** The scenes of the right-hand condition, for the buttons under the 3D view. */
+    plays: () => plays?.right ?? null,
     attachView(next) {
       view = next;
       if (lastTags) view.setTags(lastTags);

@@ -101,7 +101,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   const position = { ...room.start };
   const visits = [];
   const events = [];
-  // Walked legs, each a list of floor points, for drawing the trail.
+  // Walked legs, each a list of floor points with the time the child was there, for drawing the trail.
   const trail = [];
   let route = [];
   let time = 0;
@@ -155,7 +155,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   function chooseTarget() {
     target = pickWeighted(streams.route, landmarks.filter((landmark) => landmark !== current), interestOf);
     route = routeBetween(position, target.approach);
-    trail.push([{ ...position }]);
+    trail.push([{ ...position, time }]);
     tripLeft = waitingTime(streams.trip, tripPerCm);
   }
 
@@ -332,7 +332,7 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
     wait(settings.after_fall_seconds, chooseTarget);
   }
 
-  const markTrail = () => trail[trail.length - 1].push({ ...position });
+  const markTrail = () => trail[trail.length - 1].push({ ...position, time });
 
   /** Walks the route for up to `seconds`; returns the time left over if something happened. */
   function walk(seconds) {

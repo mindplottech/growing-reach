@@ -127,7 +127,8 @@ export function createPoseTracker(seconds) {
       drawn = { x, z, feet };
       motion = null;
       gesture = null;
-      seen = 0;
+      // A scene starts partway through the run: what happened before it is not acted out.
+      seen = events.length;
     }
     for (const event of events.slice(seen)) {
       const kind = motionForEvent(event);

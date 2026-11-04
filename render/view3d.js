@@ -173,7 +173,10 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   function drawTrail(simulation, pose) {
     trailGroup.visible = trailToggle.checked;
     if (!trailGroup.visible) return;
-    const legs = simulation.trail;
+    // Only the part walked since the scene began.
+    const from = session.getScene()?.start ?? 0;
+    // Each leg keeps the last point before the scene began, so the line starts where the child was.
+    const legs = simulation.trail.map((leg) => leg.filter((point, i) => point.time >= from || (leg[i + 1]?.time ?? Infinity) >= from));
     const count = legs.reduce((sum, leg) => sum + leg.length, 0);
     const last = legs[legs.length - 1];
     if (count !== trailPoints) {
@@ -320,7 +323,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
 
   function rebuild() {
     const simulation = session.getSimulation();
-    const room = session.getRoom();
+    const room = session.getRunRoom();
     const boxIds = new Set(room.landmarks.filter(({ temporary }) => temporary).map(({ id }) => id));
     const firstBuild = model === null;
     model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds, hazards: simulation.hazards });

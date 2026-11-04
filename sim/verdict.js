@@ -2,6 +2,7 @@ import { EVENT } from './events.js';
 import {
   fallRows, hazardRows, lockRow, METHOD_CLIMBED, METHOD_TIPTOE, somethingHappened, summarizeChild,
 } from './hazardReport.js';
+import { scenesOf } from './scenes.js';
 import { footprintDistance } from './scaffold.js';
 import { createSimulation } from './simulation.js';
 
@@ -83,6 +84,7 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
   let landmarks = [];
   let hazards = [];
   const summaries = [];
+  const scenes = [];
   let heightSum = 0;
   let climbSum = 0;
 
@@ -94,6 +96,7 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
     landmarks = simulation.landmarks;
     hazards = simulation.hazards;
     summaries.push({ seed, summary: summarizeChild(simulation.events) });
+    scenes.push({ seed, height: simulation.body.height.value, ...scenesOf(simulation.events) });
     // The lock is part of the window, so being beside either counts as near the window.
     const windowParts = landmarks.filter(({ role }) => role === 'window' || role === 'window_lock');
     const nearWindow = (id) => {
@@ -179,5 +182,7 @@ export function judgeRoom({ ledger, settings, room, months, sex }) {
     children: Object.fromEntries(Object.entries(children).map(([kind, seeds]) => [kind, seeds.size])),
     // The mean of the hundred children's bodies, for the line of conditions under the table.
     averages: { height: heightSum / total, climb: climbSum / total },
+    // Per child, the moments worth watching: the first reach of each thing as counted, and falls.
+    scenes,
   };
 }

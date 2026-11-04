@@ -11,8 +11,7 @@ function momentKey(event) {
 
 /**
  * The whole record of the child on screen, in fixed sentences with the time since the start,
- * kept under "くわしく見る". `onMoment` hears each moment worth marking, for the 3D view to make
- * the tag of that thing stand out; nothing is written over the 3D view.
+ * kept under "くわしく見る". `onMoment` hears each moment worth marking.
  */
 export function mountEventLog({ list, session, onMoment = () => {} }) {
   let simulation = null;

@@ -5,6 +5,7 @@ import { renderEvidence } from './evidence.js';
 import { mountGuide } from './guide.js';
 import { mountEventLog } from './eventLog.js';
 import { mountPanel } from './panel.js';
+import { mountPlaybar } from './playbar.js';
 import { furnitureCatalog, settings } from '../sim/params.js';
 import { selectLayout } from '../sim/room.js';
 import { createAutoplay } from './autoplay.js';
@@ -135,7 +136,7 @@ function mountEditing({ session, history, startRoom, catalog, say, results }) {
       setTool({ type: 'select' });
     }
   });
-  // 「その他」 holds the tools that are used less: placing the child, the window, undo, the trail and the speed.
+  // 「その他」 holds the tools that are used less: placing the child, the window, undo and the trail.
   const moreButton = document.querySelector('#more-tools');
   const moreMenu = document.querySelector('#more-menu');
   const closeMore = () => {
@@ -162,15 +163,6 @@ function mountEditing({ session, history, startRoom, catalog, say, results }) {
     play.dataset.tip = playing ? '子どもを止めます' : '子どもを動かします';
   };
   play.addEventListener('click', () => session.setPlaying(!session.isPlaying()));
-  const speedButtons = [...document.querySelectorAll('.speed[data-speed]')];
-  for (const button of speedButtons) {
-    button.addEventListener('click', () => session.setSpeed(Number(button.dataset.speed)));
-  }
-  const showSpeed = () => {
-    for (const button of speedButtons) button.setAttribute('aria-pressed', String(Number(button.dataset.speed) === session.getSpeed()));
-  };
-  session.on('speed', showSpeed);
-  showSpeed();
   session.on('play', showPlaying);
   showPlaying();
 
@@ -250,12 +242,11 @@ async function start() {
     session, history, startRoom, catalog: furnitureCatalog, say: messenger(), results,
   });
   const panel = mountPanel({ ledger, settings, session, getChild, autoplay });
-  // The 3D view loads later; until then a moment is only written in the record.
+  // The 3D view loads later; until then a moment is only shown in words.
   let view = null;
-  mountEventLog({
-    list: document.querySelector('#event-log'),
-    session,
-    onMoment: (event) => view?.pulse(event.hazardId ?? event.targetId, settings.event_flash_seconds),
+  mountEventLog({ list: document.querySelector('#event-log'), session });
+  mountPlaybar({
+    session, autoplay, getPlays: () => panel.plays(), flashSeconds: settings.event_flash_seconds, getView: () => view,
   });
   // The hundred children are run at once, and the first child starts moving without a click.
   panel.judge();
