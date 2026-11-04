@@ -51,8 +51,7 @@ export function mountPlaybar({ session, autoplay, getPlays, flashSeconds, getVie
       info.textContent = '危険な物に触れた子も、落ちた子もいませんでした';
       return;
     }
-    const unit = scene.individual ? '回' : '人';
-    const who = scene.count ? `${scene.position}${unit}目／${scene.count}${unit}` : '';
+    const who = scene.count ? `${scene.position}／${scene.count}` : '';
     const body = scene.height ? `・身長${Math.round(scene.height)}cm` : '';
     info.textContent = `${scene.heading}${who ? `：${who}` : ''}（${formatAge(scene.months)}${body}）`;
   }

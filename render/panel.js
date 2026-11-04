@@ -1,5 +1,5 @@
 import {
-  compareResults, conclusion, differenceText, SECTION_COUNTS, SECTION_HAZARDS, TONE_SAME, toneOf,
+  compareResults, conclusion, differenceText, SECTION_COUNTS, SECTION_HAZARDS, summaryLine, TONE_SAME, toneOf,
 } from '../sim/compare.js';
 import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
@@ -144,11 +144,10 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     });
   }
 
-  /** A count with a thin bar for its share of the hundred, and the climbers for a place. */
-  function countCell(count, climbed, unit) {
+  /** A share of the hundred (children, or runs of one child) with a thin bar. */
+  function countCell(count) {
     const cell = element('td');
-    cell.append(element('span', 'count', `${count}${unit}`));
-    if (climbed !== undefined) cell.append(element('span', 'climbed', `（登って${climbed}${unit}）`));
+    cell.append(element('span', 'count', `${Math.round((count / total) * 100)}%`));
     const bar = element('span', 'bar');
     const fill = element('span', 'bar-fill');
     fill.style.width = `${(count / total) * 100}%`;
@@ -157,15 +156,14 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     return cell;
   }
 
-  function rowElement(row, sectionId, unit) {
+  function rowElement(row, sectionId) {
     const tr = element('tr', 'result-row');
     tr.dataset.id = row.id;
     if (row.level) tr.dataset.level = row.level;
     const name = element('td', 'row-name', row.label);
-    const withClimbed = sectionId === SECTION_HAZARDS;
-    const leftCell = countCell(row.left, withClimbed ? row.leftClimbed : undefined, unit);
-    const rightCell = countCell(row.right, withClimbed ? row.rightClimbed : undefined, unit);
-    const diff = element('td', 'diff', differenceText(row.left, row.right, unit));
+    const leftCell = countCell(row.left);
+    const rightCell = countCell(row.right);
+    const diff = element('td', 'diff', differenceText(row.left, row.right));
     diff.dataset.tone = toneOf(row.left, row.right);
     if (row.seeds) {
       if (row.left > 0) playable(leftCell, 'left', row.id);
@@ -179,7 +177,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     return tr;
   }
 
-  function showTable(sections, unit) {
+  function showTable(sections) {
     for (const body of table.querySelectorAll('tbody')) body.remove();
     for (const section of sections) {
       const body = element('tbody', section.id === SECTION_COUNTS ? 'small' : '');
@@ -188,7 +186,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       th.colSpan = 4;
       th.scope = 'colgroup';
       title.append(th);
-      body.append(title, ...section.rows.map((row) => rowElement(row, section.id, unit)));
+      body.append(title, ...section.rows.map((row) => rowElement(row, section.id)));
       table.append(body);
     }
   }
@@ -201,8 +199,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   /** The conditions both results were run under, in one line. */
   function conditionLine(names, left, right, child) {
     const shared = child.individual
-      ? `この子の体（${sexWord[child.sex]}${measured(child.measurements)}）で${total}回・各${minutes(settings.trial_seconds)}。行動だけが毎回違う`
-      : `${total}人・各${minutes(settings.trial_seconds)}・${sexWord[child.sex]}`;
+      ? `%はこの子の体（${sexWord[child.sex]}${measured(child.measurements)}）で${total}回試したうちの割合・各${minutes(settings.trial_seconds)}。行動だけが毎回違う`
+      : `%は${total}人（${sexWord[child.sex]}）のうちの割合・各${minutes(settings.trial_seconds)}`;
     if (mode === MODE_ROOM) return `${shared}・${formatAge(child.months)}（${averages(right)}）`;
     return `${shared}｜${names[0]}：${averages(left)}｜${names[1]}：${averages(right)}`;
   }
@@ -250,15 +248,20 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     };
 
     const sections = compareResults(left, right);
-    const said = mode === MODE_MONTHS && child.months === baseMonths
+    const sameCondition = mode === MODE_MONTHS && child.months === baseMonths;
+    const said = sameCondition
       ? { tone: TONE_SAME, text: child.individual
-        ? 'スライダーで月齢を上げると、この子がこの部屋で何に届くようになるかが右の列に出ます。'
-        : 'スライダーで月齢を上げると、この部屋で何に届くようになるかが右の列に出ます。' }
-      : conclusion(sections, { leftName: names[0], rightName: names[1], kind: mode, unit: right.unit });
+        ? 'スライダーで月齢を上げると、この子がこの部屋で何に届くようになるかが分かります。'
+        : 'スライダーで月齢を上げると、この部屋で何に届くようになるかが分かります。' }
+      : conclusion(sections, { leftName: names[0], rightName: names[1], kind: mode, unit: right.unit, noiseBand: settings.noise_band });
     conclusionBox.dataset.tone = said.tone;
-    conclusionBox.replaceChildren(element('p', 'conclusion-text', said.text));
+    conclusionBox.replaceChildren(
+      element('p', 'summary-line', summaryLine(sections, { name: names[1], unit: right.unit })),
+      element('p', 'conclusion-text', said.text),
+    );
     [leftHead.textContent, rightHead.textContent] = names;
-    showTable(sections, right.unit);
+    table.classList.toggle('same-condition', sameCondition);
+    showTable(sections);
     myChildNote.textContent = child.measurements?.notes?.join('。') ?? '';
     showPosition(child);
     conditions.textContent = `使った条件：${conditionLine(names, left, right, child)}`;

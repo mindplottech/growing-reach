@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SEX_ANY, getBodyValues, individualFromMeasurements } from '../sim/body.js';
+import { SEX_ANY, climbFromHeight, getBodyValues, individualFromMeasurements } from '../sim/body.js';
 import { createSimulation } from '../sim/simulation.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { compareResults, conclusion, differenceText } from '../sim/compare.js';
@@ -26,18 +26,20 @@ test('a measured height puts the child at the z that gives that height back', ()
   }
 });
 
-test('with height alone the climb height comes from the ledger height formula; a typed climb wins', () => {
+test('with height alone the child keeps the same rank for climbing, so taller climbs higher; a typed climb wins', () => {
   const heightOnly = individualFromMeasurements(ledger, { months: 24, sex: 'female', heightCm: 90 });
-  const expected = 1.0516 * 90 - 36.563;
-  close(getBodyValues(ledger, { months: 24, sex: 'female', z: heightOnly.z }).climb.value, expected);
+  assert.equal(heightOnly.z.climb, heightOnly.z.height);
+  const taller = individualFromMeasurements(ledger, { months: 24, sex: 'female', heightCm: 92 });
+  const climbOf = (z) => getBodyValues(ledger, { months: 24, sex: 'female', z }).climb.value;
+  assert.ok(climbOf(taller.z) > climbOf(heightOnly.z));
+  assert.ok(climbOf(heightOnly.z) > climbOf({}));
   const both = individualFromMeasurements(ledger, { months: 24, sex: 'female', heightCm: 90, climbCm: 60 });
-  close(getBodyValues(ledger, { months: 24, sex: 'female', z: both.z }).climb.value, 60);
+  close(climbOf(both.z), 60);
+  assert.deepEqual(heightOnly.notes, []);
 });
 
-test('a height outside the climb formula range is clamped and said so', () => {
-  const { notes } = individualFromMeasurements(ledger, { months: 15, sex: SEX_ANY, heightCm: 70 });
-  assert.equal(notes.length, 1);
-  assert.match(notes[0], /75\.2/);
+test('the ledger height formula is still readable as a reference', () => {
+  close(climbFromHeight(ledger, 90), 1.0516 * 90 - 36.563);
 });
 
 test('a fixed individual keeps its height in every run, while the rest still varies by seed', () => {
@@ -56,9 +58,9 @@ test('the verdict of one child counts runs, not children, and the words follow',
   assert.match(one.hazards.lock.text, /100回中\d+回が届く/);
   const sections = compareResults(general, one);
   assert.equal(sections[2].title, '100回の内訳');
-  assert.equal(differenceText(1, 3, '回'), '+2回');
+  assert.equal(differenceText(1, 3), '+2');
   const said = conclusion(sections, { leftName: 'a', rightName: 'b', kind: 'months', unit: '回' });
-  assert.ok(said.text.includes('回') || said.text.includes('ほとんど変わりません'));
+  assert.ok(said.text.includes('この子は') || said.text.includes('届き方は変わりませんでした'));
 });
 
 test('the median individual gives the same counts whichever seed draws the rest', () => {

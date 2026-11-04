@@ -101,9 +101,8 @@
             <label><input type="radio" name="sex" value="female"> 女の子</label>
             <label><input type="radio" name="sex" value="male"> 男の子</label>
           </fieldset>
-          <p class="hint">スライダーの月齢（<output id="my-child-age"></output>）のときの身長を入れてください。入れたあとにスライダーを動かすと、その先の月齢を描きます。登れる高さは身長から推測します。</p>
-          <label class="measure-label">身長 <input id="child-height" type="number" min="60" max="130" step="0.1" inputmode="decimal" placeholder="例 85"> cm</label>
-          <p class="hint">入れた値はこの端末の外に送られず、保存もされません。閉じると一般の子に戻ります。</p>
+          <label class="measure-label">いまの身長（<output id="my-child-age"></output>）<input id="child-height" type="number" min="60" max="130" step="0.1" inputmode="decimal" placeholder="例 85"> cm</label>
+          <p class="hint">入れたあとスライダーを動かすと、その先のこの子を描きます。値は端末の外に送らず、保存もしません。</p>
           <p id="my-child-position" class="my-child-position"></p>
           <p id="my-child-note" class="hint my-child-note"></p>
         </details>

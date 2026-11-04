@@ -1,5 +1,8 @@
 import { EVENT, EVENT_LABELS } from './events.js';
 import { reachWords } from './wording.js';
+import { ROW_CAUTION, ROW_DANGER, ROW_PLAIN } from './hazardReport.js';
+
+const LEVEL_RANK = { [ROW_PLAIN]: 0, [ROW_CAUTION]: 1, [ROW_DANGER]: 2 };
 
 export const SECTION_HAZARDS = 'hazards';
 export const SECTION_FALLS = 'falls';
@@ -40,6 +43,9 @@ export function compareResults(left, right) {
       leftClimbed: climbedOf(before),
       rightClimbed: climbedOf(row),
       level: reachWords(row).level,
+      leftLevel: before ? reachWords(before).level : ROW_PLAIN,
+      words: reachWords(row).text,
+      leftWords: before ? reachWords(before).text : '届かない',
       seeds: row.children.map(({ seed }) => seed),
     };
   });
@@ -65,11 +71,11 @@ export function compareResults(left, right) {
   ];
 }
 
-/** The difference as it is written in the table: +62人, ±0, -5人. */
-export function differenceText(left, right, unit = '人') {
+/** The difference as it is written in the table, in points of a hundred: +62, ±0, -5. */
+export function differenceText(left, right) {
   const change = right - left;
   if (change === 0) return '±0';
-  return `${change > 0 ? '+' : '-'}${Math.abs(change)}${unit}`;
+  return `${change > 0 ? '+' : '-'}${Math.abs(change)}`;
 }
 
 export function toneOf(left, right) {
@@ -83,20 +89,53 @@ export function toneOf(left, right) {
  * most among the dangerous things and the falls (the first in the table on a tie); with none
  * grown, the one that shrank the most; with no change at all, it says so.
  */
-export function conclusion(sections, { leftName, rightName, kind, unit = '人' }) {
+export function conclusion(sections, { leftName, rightName, kind, unit = '人', noiseBand = 0 }) {
+  const hazards = sections.find(({ id }) => id === SECTION_HAZARDS)?.rows ?? [];
   const rows = sections.filter(({ id }) => id !== SECTION_COUNTS).flatMap(({ rows: each }) => each);
-  const pick = (better) => rows.reduce((best, row) => (better(row, best) ? row : best), null);
-  const grown = pick((row, best) => row.right - row.left > 0 && (!best || row.right - row.left > best.right - best.left));
-  const shrunk = pick((row, best) => row.right - row.left < 0 && (!best || row.right - row.left < best.right - best.left));
-  const row = grown ?? shrunk;
-  if (!row) return { tone: TONE_SAME, text: `${leftName}と${rightName}では、ほとんど変わりませんでした。` };
   const lead = kind === 'room' ? '配置を動かすと、' : `${leftName}から${rightName}になると、`;
-  const verb = row === grown ? '増えました' : '減りました';
+  const subject = unit === '人' ? '' : 'この子は';
+  // First, a change of colour (how a thing is reached): the worst rise, else the biggest fall.
+  const shift = (row) => LEVEL_RANK[row.level] - LEVEL_RANK[row.leftLevel];
+  const rose = hazards.filter((row) => shift(row) > 0).sort((a, b) => LEVEL_RANK[b.level] - LEVEL_RANK[a.level])[0];
+  const fell = hazards.filter((row) => shift(row) < 0).sort((a, b) => LEVEL_RANK[b.leftLevel] - LEVEL_RANK[a.leftLevel])[0];
+  if (rose) {
+    return { tone: TONE_UP, rowId: rose.id, text: `${lead}${subject}『${rose.label}』に${rose.words}ようになりました（${rose.left}%→${rose.right}%）。` };
+  }
+  if (fell) {
+    const to = fell.words === '届かない' ? '届かなくなりました' : `${fell.words}だけになりました`;
+    return { tone: TONE_DOWN, rowId: fell.id, text: `${lead}${subject}『${fell.label}』に${to}（${fell.left}%→${fell.right}%）。` };
+  }
+  // No colour changed: say so when every difference is within the band of chance.
+  const largest = rows.reduce((best, row) => Math.max(best, Math.abs(row.right - row.left)), 0);
+  if (largest <= noiseBand) {
+    const spread = largest === 0 ? '' : `回数の違い（最大${largest}）は偶然の範囲です。`;
+    return { tone: TONE_SAME, text: `${leftName}と${rightName}で、届き方は変わりませんでした。${spread}` };
+  }
+  // Otherwise the biggest change in count, a rise before a fall of the same size.
+  const size = (row) => Math.abs(row.right - row.left);
+  const row = rows.reduce((best, each) => (size(each) > size(best) || (size(each) === size(best) && each.right > each.left && best.right < best.left) ? each : best));
+  const grown = row.right > row.left;
+  const verb = grown ? '増えました' : '減りました';
   return {
-    tone: row === grown ? TONE_UP : TONE_DOWN,
+    tone: grown ? TONE_UP : TONE_DOWN,
     rowId: row.id,
-    text: unit === '人'
-      ? `${lead}『${row.phrase}』子が${row.left}人から${row.right}人に${verb}。`
-      : `${lead}この子が『${row.phrase}』回が${row.left}回から${row.right}回に${verb}。`,
+    text: `${lead}${subject}『${row.phrase}』のが${row.left}%から${row.right}%に${verb}。`,
   };
+}
+
+/**
+ * The result in one line, worst first: what is reached by climbing, on tiptoe, from the floor,
+ * and what is not reached. Built from the colours only; it never advises.
+ */
+export function summaryLine(sections, { name, unit = '人' }) {
+  const hazards = sections.find(({ id }) => id === SECTION_HAZARDS)?.rows ?? [];
+  const named = (level) => hazards.filter((row) => row.level === level && row.right > 0).map((row) => row.label);
+  const notReached = hazards.filter((row) => row.right === 0).map((row) => row.label);
+  const parts = [];
+  if (named(ROW_DANGER).length) parts.push(`${named(ROW_DANGER).join('・')}に登って届く`);
+  if (named(ROW_CAUTION).length) parts.push(`${named(ROW_CAUTION).join('・')}に背伸びで届く`);
+  if (named(ROW_PLAIN).length) parts.push(`${named(ROW_PLAIN).join('・')}に床から届く`);
+  if (notReached.length) parts.push(`${notReached.join('・')}には届かない`);
+  const who = unit === '人' ? '' : 'この子は';
+  return `${name}：${who}${parts.join('。')}。`;
 }

@@ -175,6 +175,12 @@ export function getTiptoeReference(ledger, months) {
   return { ageYears, height: measuredHeight, value, category: entry.category };
 }
 
+/** The climb height the ledger's height formula gives for a height; a reference, not used for z. */
+export function climbFromHeight(ledger, heightCm) {
+  const { slope, intercept } = climbFromHeightCoefficients(ledger);
+  return heightCm * slope + intercept;
+}
+
 /**
  * The position (z, in SD units) of one child from what a parent can measure: height in cm and,
  * if known, the highest thing the child climbs onto in cm. With height alone, the climb height
@@ -194,11 +200,10 @@ export function individualFromMeasurements(ledger, { months, sex, heightCm = nul
   if (climbCm !== null) {
     z.climb = (climbCm - climbMedian(ledger, months)) / climbSd;
   } else if (heightCm !== null) {
-    const { slope, intercept } = climbFromHeightCoefficients(ledger);
-    const [low, high] = climbEntry.formula_from_height_valid_height_cm;
-    const used = Math.min(Math.max(heightCm, low), high);
-    if (used !== heightCm) notes.push(`身長${heightCm}cmは登れる高さの式の範囲（${low}〜${high}cm）の外なので、${used}cmとして計算`);
-    z.climb = (used * slope + intercept - climbMedian(ledger, months)) / climbSd;
+    // Decision 2026-11-04: with height alone, the child keeps the same rank for climbing as for
+    // height, so a taller child always climbs higher. The ledger's height formula stays as a
+    // reference only (climbFromHeight).
+    z.climb = z.height;
   }
   return { z, notes };
 }
