@@ -13,7 +13,7 @@ const furniture = roomLayout.landmarks.map((landmark) => ({
 }));
 const spec = roomLayout.cardboard_box;
 const lock = furniture.find((object) => object.id === 'window_lock');
-const FREE_SPOT = { x: 400, y: 120 };
+const FREE_SPOT = { x: 300, y: 70 };
 
 /** A spot on the floor beside the window lock, clear of the furniture. */
 const NEAR_LOCK = { x: lock.x - spec.w, y: lock.y - spec.d };

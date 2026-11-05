@@ -67,6 +67,10 @@ const HELP_ADULT_SIDE_ANGLE = 1.35;
 // the child's room (not behind a wall) is it used.
 const HELP_ACROSS_ANGLE = 0.45;
 const HELP_ACROSS_NEARER = [1, 0.85, 0.7];
+// From the side (KO 2026-11-06): for a thing against a wall, the child is seen side-on, from
+// the side toward the open front of the house; the camera may stand out past the front edge
+// (nothing is drawn there), but not past the room's other walls.
+const HELP_PROFILE_ANGLE = Math.PI / 2;
 const HELP_LOOK_SHARE = 0.55;
 const HELP_FORWARD_LEAN = 0.18;
 const HELP_FORWARD_ARMS = 0.5;
@@ -95,6 +99,9 @@ const ROOM_FLOORS = { washroom: 0xe3e7ea, toilet: 0xdfe8ee, entrance: 0xd6d0c6, 
 const ROOM_FLOOR_OPACITY = 0.85;
 const ROOM_FLOOR_LIFT_CM = 0.4;
 const PARTITION_OPACITY = 0.9;
+// A partition between the camera and the child in a scene is faded to this (KO 2026-11-06: the
+// toilet's wall hid the child's legs and the stool).
+const PARTITION_FADED_OPACITY = 0.12;
 const ROOM_LABEL_SHARE = 0.7;
 const ROOM_LABEL_LIFT_CM = 2;
 const ROOM_LABEL_OPACITY = 0.75;
@@ -345,6 +352,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   // The help scene being shown, if any: the figure stands where the scene says instead of
   // following the run, a stool may be drawn, and the thing may be moved. Display only.
   let help = null;
+  // The partition walls, to fade the ones in front of the child in a scene.
+  const partitions = [];
   // The shoe scene: the loose shoe, and the clock of its round.
   let looseShoe = null;
   let dressClock = 0;
@@ -552,6 +561,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     trailPoints = -1;
 
     disposeGroup(roomGroup);
+    partitions.length = 0;
     disposeGroup(planeGroup);
     objectMeshes = new Map();
     tags = new Map();
@@ -578,6 +588,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.raycast = noRaycast;
+      mesh.userData.wall = wall;
+      partitions.push(mesh);
       roomGroup.add(mesh);
     }
     // Each room's floor in its own tone, so the rooms read without their names.
@@ -848,6 +860,37 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   }
 
   /** Glides the camera to a close three-quarter view of the child at the thing, until turned by hand. */
+  /** True if the straight line from a to b (x, z) crosses the box. */
+  function crosses(a, b, box) {
+    let low = 0;
+    let high = 1;
+    for (const [from, to, min, max] of [[a.x, b.x, box.x, box.x + box.w], [a.z, b.z, box.z, box.z + box.d]]) {
+      const step = to - from;
+      if (Math.abs(step) < 1e-9) {
+        if (from < min || from > max) return false;
+        continue;
+      }
+      let t0 = (min - from) / step;
+      let t1 = (max - from) / step;
+      if (t0 > t1) [t0, t1] = [t1, t0];
+      low = Math.max(low, t0);
+      high = Math.min(high, t1);
+      if (low > high) return false;
+    }
+    return true;
+  }
+
+  /** In a scene, fades the partitions between the camera and the child; otherwise all as usual. */
+  function fadePartitions() {
+    const childAt = help ? { x: child.root.position.x, z: child.root.position.z } : null;
+    for (const mesh of partitions) {
+      const faded = childAt !== null && crosses({ x: camera.position.x, z: camera.position.z }, childAt, mesh.userData.wall);
+      mesh.material.opacity = faded ? PARTITION_FADED_OPACITY : PARTITION_OPACITY;
+      mesh.material.depthWrite = !faded;
+      mesh.castShadow = !faded;
+    }
+  }
+
   function lookAtHelp() {
     if (!help || help.cameraFree || !model) return;
     const { stand, thing, facing } = help.scene;
@@ -891,9 +934,16 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       candidate(Math.PI + HELP_ACROSS_ANGLE, nearer), candidate(Math.PI - HELP_ACROSS_ANGLE, nearer), candidate(Math.PI, nearer),
     ]);
     const options = [candidate(side), candidate(-side), candidate(HELP_SIDE_ANGLE), candidate(-HELP_SIDE_ANGLE), candidate(0)];
-    const wanted = across.find(inArea) ?? options.find(inside) ?? options[0];
+    // From the side: within the room's width, and not past its back wall (the front is open).
+    const sideOn = (p) => area && p.x >= area.x + HELP_CAMERA_MARGIN_CM && p.x <= area.x + area.w - HELP_CAMERA_MARGIN_CM
+      && p.z <= area.y + area.d - HELP_CAMERA_MARGIN_CM && (p.z >= area.y + HELP_CAMERA_MARGIN_CM || p.z < area.y);
+    const profile = HELP_ACROSS_NEARER.flatMap((nearer) => [candidate(HELP_PROFILE_ANGLE, nearer), candidate(-HELP_PROFILE_ANGLE, nearer)])
+      .filter(sideOn)
+      .sort((a, b) => a.z - b.z);
+    const wanted = across.find(inArea) ?? profile[0] ?? options.find(inside) ?? options[0];
     wanted.x = Math.min(Math.max(wanted.x, HELP_CAMERA_MARGIN_CM), model.width - HELP_CAMERA_MARGIN_CM);
-    wanted.z = Math.min(Math.max(wanted.z, HELP_CAMERA_MARGIN_CM), model.depth - HELP_CAMERA_MARGIN_CM);
+    // The side view may stand out past the open front; everything else stays inside.
+    if (wanted !== profile[0]) wanted.z = Math.min(Math.max(wanted.z, HELP_CAMERA_MARGIN_CM), model.depth - HELP_CAMERA_MARGIN_CM);
     controls.target.lerp(target, FOLLOW_EASE);
     camera.position.lerp(wanted, FOLLOW_EASE);
   }
@@ -1000,6 +1050,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const idle = updateIdle({ still: !pose.busy && idleClock >= busyUntil, time: simulation.time, hazardMoments }, realSeconds);
     applyIdle(child, idle, shownPose, gait);
     if (help) lookAtHelp(); else followChild(pose);
+    fadePartitions();
     // The head turns toward whoever is watching (the camera), within a natural range.
     child.root.updateMatrixWorld(true);
     child.head.parent.worldToLocal(toViewer.copy(camera.position)).sub(child.head.position);

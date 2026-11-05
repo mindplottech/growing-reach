@@ -41,8 +41,9 @@ test('a clear straight line is walked straight', () => {
 
 test('a partition wall is not walked through: the way into the washroom goes round by its door', () => {
   const wall = roomLayout.walls[0];
-  const from = { x: wall.x - 20, y: 100 };
-  const to = { x: wall.x + wall.w + 20, y: 100 };
+  // In front of the vanity (which is against this wall since 2026-11-06).
+  const from = { x: wall.x - 20, y: 30 };
+  const to = { x: wall.x + wall.w + 20, y: 30 };
   assert.ok(!lineIsClear(grid, from, to));
   const route = findPath(grid, from, to);
   assert.ok(route.length > 1, 'goes round');

@@ -110,9 +110,13 @@ test('toilet (KO 2026-11-06): the child sits on the seat facing out, the stool i
   assert.equal(sit.prop.kind, HELP_STEP);
   assert.equal(sit.withHelp.seated, sit.thing.height);
   const bowl = room.landmarks.find(({ id }) => id === 'toilet_bowl');
-  // The stool reaches out of the bowl's front, on the side the child faces.
-  assert.ok(sit.prop.y < bowl.y && sit.prop.y + sit.prop.d > bowl.y);
-  assert.ok(sit.withHelp.y > bowl.y && sit.withHelp.y < bowl.y + bowl.d / 2);
+  // The stool reaches out of the bowl's front, on the side the child faces (the bowl is against
+  // the side wall since 2026-11-06, its front toward the door).
+  const front = sit.facing.x < 0 ? bowl.x : sit.facing.x > 0 ? bowl.x + bowl.w : sit.facing.y < 0 ? bowl.y : bowl.y + bowl.d;
+  const [low, size, at, depth] = sit.facing.x !== 0 ? [sit.prop.x, sit.prop.w, sit.withHelp.x, bowl.w] : [sit.prop.y, sit.prop.d, sit.withHelp.y, bowl.d];
+  assert.ok(low < front && low + size > front);
+  // Seated on the front half of the bowl.
+  assert.ok(Math.abs(at - front) < depth / 2);
 });
 
 test('shoes (KO 2026-11-06): sitting on the entrance step; the adult puts them on (1歳代), helps (2歳代), or is not there (3歳から)', () => {
