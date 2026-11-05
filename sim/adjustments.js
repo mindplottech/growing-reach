@@ -143,14 +143,16 @@ export function applyPractice(ledger, months, result, goal = {}) {
   if (crawling && goal.help === HELP_STEP && result.status !== STATUS_CAN) {
     return {
       status: STATUS_WITH_ADULT, help: HELP_ADULT, how: practice.before_words, gapCm: result.gapCm,
-      neededStepCm: result.stepCm ?? null, stepFromMonths: practice.step_from_months,
+      neededStepCm: result.stepCm ?? null, stepFromMonths: practice.step_from_by_goal?.[goal.id] ?? practice.step_from_months,
     };
   }
   if (result.status !== STATUS_HELP || result.help !== HELP_STEP) return result;
-  if (months < practice.step_from_months) {
+  // The age the step begins: KO's age for this goal when given (手洗い 24か月), else the general one.
+  const stepFrom = practice.step_from_by_goal?.[goal.id] ?? practice.step_from_months;
+  if (months < stepFrom) {
     return {
       status: STATUS_WITH_ADULT, help: HELP_ADULT, how: practice.before_words, gapCm: result.gapCm,
-      neededStepCm: result.stepCm, stepFromMonths: practice.step_from_months,
+      neededStepCm: result.stepCm, stepFromMonths: stepFrom,
     };
   }
   return { ...result, accompany: practice.from_words };

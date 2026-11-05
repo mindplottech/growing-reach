@@ -115,7 +115,8 @@ test('practice (KO): before 30 months no step stool is offered; the adult holds 
   assert.equal(practice.source, 'KO_PRACTICE');
   for (let months = minMonths; months < practice.step_from_months; months += 1) {
     for (const goal of adjustmentsAt({ ...base, months }).goals) {
-      assert.ok(!(goal.status === STATUS_HELP && goal.help === HELP_STEP), `${goal.id} at ${months}`);
+      const from = practice.step_from_by_goal?.[goal.id] ?? practice.step_from_months;
+      if (months < from) assert.ok(!(goal.status === STATUS_HELP && goal.help === HELP_STEP), `${goal.id} at ${months}`);
       if (goal.status === STATUS_WITH_ADULT) {
         assert.equal(goal.help, HELP_ADULT);
         assert.equal(goal.how, practice.before_words);
@@ -167,4 +168,15 @@ test('practice (KO): each goal is shown only in its 年ごろ, and the 遊びと
   assert.ok(activitiesAt(ledger, 16).play.includes('いないいないばあ'));
   assert.equal(activitiesAt(ledger, 48).label, '4歳');
   assert.equal(byId('practice_age_activities').source, 'KO_PRACTICE');
+});
+
+test('practice (KO): hand washing starts on a step at 2 years, the others at 2½', () => {
+  const at = (months, id) => adjustmentsAt({ ...base, months }).goals.find((goal) => goal.id === id);
+  assert.equal(at(21, 'wash').status, STATUS_WITH_ADULT);
+  assert.equal(at(24, 'wash').status, STATUS_HELP);
+  assert.equal(at(24, 'wash').help, HELP_STEP);
+  assert.equal(at(24, 'wash').stepFromMonths, undefined);
+  assert.equal(at(21, 'wash').stepFromMonths, 24);
+  assert.equal(at(24, 'switch').status, STATUS_WITH_ADULT);
+  assert.equal(at(24, 'switch').stepFromMonths, 30);
 });

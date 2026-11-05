@@ -37,7 +37,7 @@ const SHOE = { w: 8, h: 4, d: 20 };
 const SINK = { w: 50, d: 36 };
 const BURNER_CM = 9;
 const PLATE_CM = 9;
-const STEP_TILE_CM = 30;
+const STEP_TILE_CM = 40;
 const PASTELS = [0xf2d4cc, 0xcfe5d9, 0xd2ddef, 0xf1e4bf, 0xe0d6ee, 0xf1d6e2, 0xd0e8eb];
 
 const TABLE_TOP_CM = 3;
@@ -321,7 +321,8 @@ export function buildFurniture(object, model, index) {
       break;
     }
     case 'step': {
-      // The raised floor of the hall (上がり框): a wooden step with a darker earthen floor in front.
+      // The step up from the earthen floor by the door (土間) into the house (玄関の段差、上がり框):
+      // a wooden step, with the 土間 in front of it, on the door side.
       box(W, H, D, 0, H / 2, 0, material(WOOD_DARK), 1);
       box(W, 0.6, STEP_TILE_CM, 0, 0.3, -D / 2 - STEP_TILE_CM / 2, material(TILE));
       break;

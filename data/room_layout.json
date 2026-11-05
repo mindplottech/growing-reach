@@ -288,19 +288,19 @@
         },
         {
           "id": "entry_step",
-          "label": "上がり框",
+          "label": "玄関の段差",
           "heightOf": [
             "room_fixtures",
             "entry_step"
           ],
           "scaffold": true,
           "x": 540,
-          "y": 0,
-          "w": 180,
-          "d": 40,
+          "y": 40,
+          "w": 140,
+          "d": 20,
           "approach": {
-            "x": 630,
-            "y": 60
+            "x": 610,
+            "y": 85
           },
           "room": "entrance"
         },
@@ -577,13 +577,13 @@
         },
         {
           "id": "step_up",
-          "label": "自分で上がり框を上がる",
-          "short": "框",
+          "label": "玄関の段差を上がる",
+          "short": "段差",
           "kind": "climb",
           "on": "entry_step",
           "help": "step",
-          "dx": 80,
-          "dy": 10,
+          "dx": 60,
+          "dy": 0,
           "w": 20,
           "d": 20,
           "room": "entrance",
@@ -1082,19 +1082,19 @@
         },
         {
           "id": "entry_step",
-          "label": "上がり框",
+          "label": "玄関の段差",
           "heightOf": [
             "room_fixtures",
             "entry_step"
           ],
           "scaffold": true,
           "x": 540,
-          "y": 0,
-          "w": 180,
-          "d": 40,
+          "y": 40,
+          "w": 140,
+          "d": 20,
           "approach": {
-            "x": 630,
-            "y": 60
+            "x": 610,
+            "y": 85
           },
           "room": "entrance"
         },
@@ -1377,13 +1377,13 @@
         },
         {
           "id": "step_up",
-          "label": "自分で上がり框を上がる",
-          "short": "框",
+          "label": "玄関の段差を上がる",
+          "short": "段差",
           "kind": "climb",
           "on": "entry_step",
           "help": "step",
-          "dx": 80,
-          "dy": 10,
+          "dx": 60,
+          "dy": 0,
           "w": 20,
           "d": 20,
           "room": "entrance"

@@ -52,6 +52,7 @@ shot ".preview.html?months=15" app-15.png 1400 860 15000
 shot ".preview.html?months=60" app-60.png 1400 860 15000
 shot ".preview.html?months=15&area=washroom" app-15-washroom.png 1400 860 15000
 shot ".preview.html?months=36&area=kitchen" app-36-kitchen.png 1400 860 15000
+shot ".preview.html?months=24&area=entrance" app-24-entrance.png 1400 860 15000
 echo "助けの場面（電気をつける）："
 shot ".preview.html?months=15&goal=switch" help-switch-15.png 1400 860 16000
 shot ".preview.html?months=30&goal=switch" help-switch-30.png 1400 860 16000
