@@ -1,5 +1,5 @@
 // Display only: the pictures that let the panel be read at a glance. Each goal and each of KO's
-// 遊び・生活 gets an emoji and a short name; the full words stay in the tooltip, the print and
+// 遊び・生活 gets an emoji and a short name; the full words stay in the tooltip and
 // 「根拠を見る」. Nothing here is computed with.
 
 export const GOAL_ICONS = {

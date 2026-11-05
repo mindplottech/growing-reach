@@ -481,11 +481,6 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   caption.without.addEventListener('click', () => { shownWithHelp = false; if (shownGoalId) openHelp(shownGoalId); });
   caption.close.addEventListener('click', closeHelp);
 
-  document.querySelector('#print-adjustments').addEventListener('click', () => {
-    document.querySelector('#print-date').textContent = new Date().toLocaleDateString('ja-JP');
-    window.print();
-  });
-
   /** Marks the cell whose scenes are playing, if one was pressed. */
   function showPressed() {
     for (const cell of table.querySelectorAll('[data-play]')) {

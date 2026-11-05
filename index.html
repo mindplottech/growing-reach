@@ -104,6 +104,7 @@
         <label class="months-label" for="months">月齢 <output id="months-label" for="months"></output></label>
         <input id="months" type="range" step="1">
         <p class="months-range">0歳9か月〜5歳（9〜60か月）</p>
+        <p class="months-note">できるようになる順序の見通しです。時期の予言ではありません（育ちには個人差があります）。</p>
         <details id="my-child" class="my-child is-removed">
           <summary><span class="my-child-summary-icon" aria-hidden="true"></span><span>うちの子に合わせる</span><span class="my-child-summary-hint">開いて性別と身長を入力</span></summary>
           <fieldset class="sex-choice">
@@ -120,7 +121,6 @@
 
       <section id="adjustments" class="adjustments" aria-live="polite" aria-labelledby="adjustments-title">
         <h2 id="adjustments-title" class="adjustments-title">この月齢の環境調整</h2>
-        <p class="adjust-lead print-only">大人がこれをすると、この子は自分でできる。</p>
         <section id="adjust-activities" class="adjust-activities" aria-label="この年ごろの遊びと生活" hidden>
           <p class="adjust-activities-title">この時期の遊び・生活</p>
           <p class="adjust-activities-line"><span class="adjust-activities-kind">遊び</span><span id="adjust-play" class="activity-chips"></span></p>
@@ -159,8 +159,6 @@
           <summary>助けの期間（いつからいつまで）</summary>
           <ul id="adjust-spans" class="adjust-list"></ul>
         </details>
-        <p class="adjust-actions"><button id="print-adjustments" type="button" class="secondary-button">この月齢の環境調整を印刷する</button></p>
-        <p class="print-only adjust-footnote">あーちゃんが やる！（Growing Reach・<span id="print-date"></span>）。体の値はこども家庭庁「令和5年乳幼児身体発育調査」、東京都「令和5年度セーフティ・レビュー事業」ほかの公開資料から。設備の高さには設計者の仮値を含みます（画面の「根拠を見る」）。「できる」は体が届く・登れるという意味で、上手にやれるという意味ではありません。順序の見通しであって、時期の予言ではありません。入力した値は端末の外に送られず、保存もされません。</p>
       </section>
 
       <details id="runs" class="runs is-removed">
