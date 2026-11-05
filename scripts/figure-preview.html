@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>あーちゃんの図形の確認</title>
+<!-- Used by scripts/render-check.sh: three.js is read from .cache/three (fetched by the script),
+     not from the CDN, so the figure can be drawn where the CDN is out of reach. -->
+<script type="importmap">{"imports":{"three":"../.cache/three/build/three.module.js","three/addons/":"../.cache/three/examples/jsm/"}}</script>
+<style>body { margin: 0; background: #f4efe6; }</style>
+</head>
+<body>
+<script type="module">
+// あーちゃん at three ages, side by side, built exactly as the app builds it: the ledger's median
+// height (getBodyValues) and the age's body shares (gaitFor). URL options:
+//   months=15,30,48   the ages          arms=2.98   arms raised (radians)
+//   turns=0,1.4,-1    each body's turn  look=1      heads turn toward the viewer (render/look.js)
+//   close=1           a closer camera on the first child
+import * as THREE from 'three';
+import { makeChild, applyProportions } from '../render/childFigure3d.js';
+import { gaitFor } from '../render/gait.js';
+import { lookAngles } from '../render/look.js';
+import { getBodyValues, SEX_ANY } from '../sim/body.js';
+import { settings } from '../sim/params.js';
+
+const query = new URLSearchParams(location.search);
+const list = (name, fallback) => (query.get(name) ?? fallback).split(',').filter(Boolean).map(Number);
+const months = list('months', '15,30,48');
+const turns = list('turns', '');
+const ledger = await (await fetch('../data/values_ledger.json')).json();
+
+const width = 1200;
+const height = 520;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(width, height);
+document.body.append(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf4efe6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8cbb5, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(200, 400, 300);
+scene.add(sun);
+
+const close = query.has('close');
+const camera = new THREE.PerspectiveCamera(close ? 18 : 28, width / height, 1, 5000);
+const gap = 75;
+if (close) { camera.position.set(-gap, 72, 260); camera.lookAt(-gap, 62, 0); } else { camera.position.set(0, 100, 320); camera.lookAt(0, 50, 0); }
+
+months.forEach((month, i) => {
+  const child = makeChild();
+  const { unitHeight } = applyProportions(child, gaitFor(ledger, settings, month));
+  const heightCm = getBodyValues(ledger, { months: month, sex: SEX_ANY }).height.value;
+  child.root.scale.setScalar(heightCm / unitHeight);
+  child.root.position.x = (i - (months.length - 1) / 2) * gap;
+  child.root.rotation.y = turns[i] ?? 0;
+  if (query.has('arms')) {
+    child.arms.forEach((arm, side) => {
+      arm.rotation.x = -Number(query.get('arms'));
+      arm.rotation.z = (side === 0 ? -1 : 1) * 0.4;
+    });
+  }
+  scene.add(child.root);
+  if (query.has('look')) {
+    child.head.rotation.order = 'YXZ';
+    child.root.updateMatrixWorld(true);
+    const toViewer = child.head.parent.worldToLocal(camera.position.clone()).sub(child.head.position);
+    const { yaw, pitch } = lookAngles(toViewer, 0);
+    child.head.rotation.y = yaw;
+    child.head.rotation.x = pitch;
+  }
+});
+renderer.render(scene, camera);
+document.title = 'ready';
+</script>
+</body>
+</html>

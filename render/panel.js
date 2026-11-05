@@ -509,9 +509,12 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     view?.setTags(lastTags);
     // On its own, あーちゃん just walks about the house: whole runs, one after another. The scenes
     // of touching dangerous things are no longer played (KO, 2026-11-05).
+    // あーちゃん is the child the panel computes for: the median body (z = 0 for height and
+    // climb), or 「うちの子」 when given. Only what the child does differs from run to run.
     const height = lastAll?.body.height;
+    const individual = child.individual ?? { height: 0, climb: 0 };
     autoplay.useAuto(Array.from({ length: WANDER_RUNS }, (_, i) => ({
-      ...child, seed: i + 1, room: session.getRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: 'あーちゃん', height,
+      ...child, individual, seed: i + 1, room: session.getRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: 'あーちゃん', height,
     })));
     showPressed();
     return right;
