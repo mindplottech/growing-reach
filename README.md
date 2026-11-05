@@ -1,13 +1,16 @@
-# Growing Reach
+# あーちゃんが やる！ — Growing Reach
 
-**「大人がこの助けをしてくれたら、ぼくはこれができる」**
+**「大人がこの助けをしてくれたら、あーちゃんは自分でできる」**
+
+2〜3歳の子は、自分を名前で呼んで「あーちゃんが やる！」と言います。この作品は、その「やりたい」に大人が環境で応えるための道具です。画面で家の中を歩き回る子が、あーちゃんです（男の子にも女の子にも読める名前にしました。計算は一般的な子の体の値です）。
+
 1歳3か月〜5歳の子どもの体（身長・手が届く高さ・登れる高さ）を公的調査と研究の値から計算し、家の中で「いま自分でできること」「踏み台などの助けがあればできること」「まだのこと」を、3D の家の中で見せるツールです。
 
 - デモ: https://mindplottech.github.io/growing-reach/ （PC ブラウザ、幅 1280px 以上）
 - デモ動画（3分）: （提出時に追記）
 - Built with Claude Japan 2026 — テーマ1「あなたにしかない深さを。」
 
-> English summary: Growing Reach computes what a 15–60-month-old child can reach and climb at home, using only values from Japanese public surveys and published studies, and shows in 3D which small changes by an adult (a step stool of a given height, a lower shelf, moving a cup closer to the edge) let the child do things by themselves. No AI or API is used inside the app; no input leaves the browser.
+> English summary: "あーちゃんが やる!" ("Let me do it!", in a toddler's voice) / Growing Reach computes what a 15–60-month-old child can reach and climb at home, using only values from Japanese public surveys and published studies, and shows in 3D which small changes by an adult (a step stool of a given height, a lower shelf, moving a cup closer to the edge) let the child do things by themselves. No AI or API is used inside the app; no input leaves the browser.
 
 ---
 

@@ -30,6 +30,8 @@ const SHADOW_RADIUS_CM = 22;
 const SHADOW_OPACITY = 0.3;
 const STRETCH_SHARE = 0.06;
 const ARM_RAISE = Math.PI * 0.95;
+// Raised arms open a little outward (a banzai), so the hands rise beside the big head, not over the face.
+const ARM_REACH_SPREAD = 0.4;
 const MS_PER_SECOND = 1000;
 const FIELD_OF_VIEW = 40;
 const PLANK_COUNT = 9;
@@ -192,7 +194,8 @@ function applyPose(figure, pose, gait) {
     const armSwing = (i === 0 ? -1 : 1) * swing * legSwing * ARM_SWING_SHARE * (1 - guard);
     const raise = Math.max(pose.arms * ARM_RAISE, guard * ARM_GUARD_RAISE * (0.6 + 0.4 * moving));
     arm.rotation.x = -raise + armSwing;
-    arm.rotation.z = (i === 0 ? 1 : -1) * guard * ARM_GUARD_SPREAD;
+    // Both open outward: the guard of the youngest (arms up and out) and the banzai of a reach.
+    arm.rotation.z = (i === 0 ? -1 : 1) * (guard * ARM_GUARD_SPREAD + pose.arms * ARM_REACH_SPREAD);
   });
 }
 
