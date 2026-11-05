@@ -31,7 +31,8 @@ test('every goal has a scene: the child stands outside the thing and faces it', 
 });
 
 test('a step puts the stool under the feet and the hand gets there; without it the hand falls short', () => {
-  const stepped = scenesAt(21).filter(({ goal }) => goal.status === STATUS_HELP && goal.help === HELP_STEP);
+  // From 30 months: before that, the practice offers no step (the adult holds the child up).
+  const stepped = scenesAt(33).filter(({ goal }) => goal.status === STATUS_HELP && goal.help === HELP_STEP);
   assert.ok(stepped.length > 0);
   for (const { goal, scene } of stepped) {
     assert.equal(scene.prop.kind, HELP_STEP);

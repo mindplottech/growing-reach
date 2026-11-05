@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjustmentsAt, adjustmentTimeline, goalStatus, placeGoals, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, HELP_STEP, HELP_LOWER } from '../sim/adjustments.js';
+import { adjustmentsAt, adjustmentTimeline, goalStatus, placeGoals, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT, HELP_STEP, HELP_LOWER, HELP_ADULT } from '../sim/adjustments.js';
 import { createSimulation } from '../sim/simulation.js';
 import { getBodyValues, SEX_ANY } from '../sim/body.js';
 import * as helpersAll from './helpers.js';
@@ -40,7 +40,9 @@ test('putting a thing lower names the highest shelf level within standing reach'
 });
 
 test('with age, help gets smaller and then is no longer needed; nothing ever gets harder', () => {
-  const rank = { [STATUS_NOT_YET]: 0, [STATUS_HELP]: 1, [STATUS_CAN]: 2 };
+  // 「大人と一緒に」 comes before a step: the step is offered only from the practice's age.
+  const rank = { [STATUS_NOT_YET]: 0, [STATUS_WITH_ADULT]: 1, [STATUS_HELP]: 2, [STATUS_CAN]: 3 };
+  const stepFrom = byId('practice_step_stool').step_from_months;
   let previous = null;
   for (let months = minMonths; months <= maxMonths; months += 1) {
     const now = adjustmentsAt({ ...base, months });
@@ -50,7 +52,7 @@ test('with age, help gets smaller and then is no longer needed; nothing ever get
         assert.ok(rank[goal.status] >= rank[before.status], `${goal.id} at ${months}`);
         if (goal.stepCm !== undefined && before.stepCm !== undefined) assert.ok(goal.stepCm <= before.stepCm);
       }
-      assert.ok(now.stepCm <= previous.stepCm);
+      if (months > stepFrom) assert.ok(now.stepCm <= previous.stepCm);
     }
     previous = now;
   }
@@ -101,4 +103,38 @@ test('every room has goals with heights, and the hundred runs still work there',
     const now = adjustmentsAt({ ledger, room, landmarks: simulation.landmarks, hazards: simulation.hazards, months: 24, sex: SEX_ANY });
     assert.equal(now.goals.length, room.goals.length);
   }
+});
+
+test('practice (KO): before 30 months no step stool is offered; the adult holds the child up instead', () => {
+  const practice = byId('practice_step_stool');
+  assert.equal(practice.category, 'provisional');
+  assert.equal(practice.source, 'KO_PRACTICE');
+  for (let months = minMonths; months < practice.step_from_months; months += 1) {
+    for (const goal of adjustmentsAt({ ...base, months }).goals) {
+      assert.ok(!(goal.status === STATUS_HELP && goal.help === HELP_STEP), `${goal.id} at ${months}`);
+      if (goal.status === STATUS_WITH_ADULT) {
+        assert.equal(goal.help, HELP_ADULT);
+        assert.equal(goal.how, practice.before_words);
+        assert.ok(goal.neededStepCm > 0);
+      }
+    }
+  }
+  // 1歳3か月 and the switch: with an adult, not a 35 cm step.
+  const switch15 = adjustmentsAt({ ...base, months: 15 }).goals.find(({ id }) => id === 'switch');
+  assert.equal(switch15.status, STATUS_WITH_ADULT);
+  assert.equal(switch15.neededStepCm, 35);
+  assert.equal(adjustmentsAt({ ...base, months: 15 }).stepCm, 0);
+});
+
+test('practice (KO): from 30 months the step comes, with an adult beside at first', () => {
+  const practice = byId('practice_step_stool');
+  const now = adjustmentsAt({ ...base, months: practice.step_from_months });
+  const stepped = now.goals.filter(({ help, status }) => help === HELP_STEP && status === STATUS_HELP);
+  assert.ok(stepped.length > 0);
+  for (const goal of stepped) {
+    assert.equal(goal.accompany, practice.from_words);
+  }
+  assert.equal(now.goals.find(({ id }) => id === 'switch').stepCm, 15);
+  // Putting a thing lower is not a step: it is offered at any age.
+  assert.ok(adjustmentsAt({ ...base, months: 15 }).goals.some(({ help, status }) => help === HELP_LOWER && status === STATUS_HELP));
 });

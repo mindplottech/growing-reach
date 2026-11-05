@@ -5,7 +5,7 @@ import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
-import { adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET } from '../sim/adjustments.js';
+import { adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
 import { helpScene } from '../sim/helpScene.js';
 import { normalCdf } from '../sim/random.js';
@@ -72,6 +72,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   const adjustLists = {
     can: document.querySelector('#adjust-can'),
     help: document.querySelector('#adjust-help'),
+    adult: document.querySelector('#adjust-adult'),
     notyet: document.querySelector('#adjust-notyet'),
     next: document.querySelector('#adjust-next'),
     adults: document.querySelector('#adjust-adults'),
@@ -84,6 +85,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   let lastChild = null;
   // The goal being shown in 3D with its help placed (「助けを置いて見せる」), and which side.
   let shownGoalId = null;
+  // KO's practice for the step stool, in the ledger's words (「最初は付き添って」).
+  const practiceWords = ledger.items.find(({ id }) => id === 'practice_step_stool')?.from_words ?? '';
   // How many whole runs (seeds 1..n) あーちゃん walks through on its own, in turn. Display only.
   const WANDER_RUNS = 5;
   let shownWithHelp = true;
@@ -217,7 +220,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // One row per goal, so each can be pressed to see it; the step's height is the one that covers all.
     for (const goal of stepGoals) {
       const li = item('');
-      li.append(bold(`踏み台 ${goal.stepCm}cm`), ` → ${named(goal)}${gap(goal)}`);
+      li.append(bold(`踏み台 ${goal.stepCm}cm`), ` → ${named(goal)}${gap(goal)}${goal.accompany ? `（${goal.accompany}）` : ''}`);
       helpItems.push(showable(li, goal));
     }
     if (stepGoals.length > 1 && stepGoals.some((goal) => goal.stepCm !== now.stepCm)) {
@@ -229,6 +232,12 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       helpItems.push(showable(li, goal));
     }
     adjustLists.help.replaceChildren(...helpItems);
+    // Together with an adult (KO's practice): before the step's age, the adult holds the child up.
+    adjustLists.adult.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_WITH_ADULT).map((goal) => {
+      const li = item('');
+      li.append(bold(goal.how), ` → ${named(goal)}（踏み台は${formatAge(goal.stepFromMonths)}から）`);
+      return showable(li, goal);
+    }));
     adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => showable(item(`${named(goal)}（${goal.how}${goal.gapCm ? `・あと${goal.gapCm}cm` : ''}）`, true), goal)));
     // The span of each help: from when to when a step is needed, and when the goal is theirs.
     adjustLists.spans.replaceChildren(...helpSpans(rows, ledger._meta.age_range_months).map((span) => {
@@ -253,7 +262,11 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       .map((row) => {
         const goal = all.goals.find(({ id }) => id === row.goalId);
         const name = goal ? named(goal) : row.label;
-        const said = row.status === STATUS_CAN ? `${name}（${row.how}・助けを卒業）` : `${name}：${row.how}で足りる`;
+        // The first step after 「大人と一緒に」 is a beginning, not a smaller step.
+        const before = rows.filter((other) => other.goalId === row.goalId && other.months < row.months).at(-1);
+        const firstStep = before?.status === STATUS_WITH_ADULT && row.stepCm !== null;
+        const said = row.status === STATUS_CAN ? `${name}（${row.how}・助けを卒業）`
+          : firstStep ? `${name}：${row.how}で（${practiceWords}）` : `${name}：${row.how}で足りる`;
         return item(`${formatAge(row.months)}：${who}${said}`);
       });
     adjustLists.next.replaceChildren(...coming);
@@ -265,7 +278,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // The first screen opens no scene: the child moves about the whole house (KO, 2026-11-05).
     if (shownGoalId) openHelp(shownGoalId);
 
-    const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_NOT_YET]: 'plain' };
+    const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_WITH_ADULT]: 'caution', [STATUS_NOT_YET]: 'plain' };
     return new Map(all.goals.map((goal) => [`goal-${goal.id}`, { level: level[goal.status], text: goal.how }]));
   }
 
@@ -276,6 +289,9 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const gap = scene.gapCm > 0 ? `あと${scene.gapCm}cm` : '';
     if (scene.status === STATUS_CAN) {
       return { main: `${age}：${scene.label}`, sub: `${scene.how}。助けはいらない`, toggles: false };
+    }
+    if (scene.status === STATUS_WITH_ADULT) {
+      return { main: `${age}：${scene.how} → ${scene.label}`, sub: `踏み台は${formatAge(scene.stepFromMonths)}から（${practiceWords}）`, toggles: false };
     }
     if (scene.status === STATUS_NOT_YET) {
       return { main: `${age}：${scene.label} は、まだ`, sub: [scene.how, gap].filter(Boolean).join('・'), toggles: false };

@@ -11,10 +11,13 @@ import { horizontalReach, REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
 export const STATUS_CAN = 'can';
 export const STATUS_HELP = 'help';
 export const STATUS_NOT_YET = 'not_yet';
+// Not by themselves yet, but together with an adult: held up in the adult's arms (KO's practice).
+export const STATUS_WITH_ADULT = 'with_adult';
 
 export const HELP_STEP = 'step';
 export const HELP_LOWER = 'lower';
 export const HELP_CLOSER = 'closer';
+export const HELP_ADULT = 'adult';
 
 const STEP_ROUND_CM = 5;
 const roundUp = (value) => Math.ceil(value / STEP_ROUND_CM) * STEP_ROUND_CM;
@@ -119,6 +122,25 @@ export function goalStatus(ledger, body, goal) {
   return { status: STATUS_NOT_YET, how: 'まだ届かない', gapCm };
 }
 
+/**
+ * The practice of the field (ledger: practice_step_stool, KO's judgment): before the age the
+ * ledger gives, a step stool is not offered even with an adult beside the child; the adult holds
+ * the child up instead (「大人と一緒に」). From that age the step comes with an adult beside at
+ * first. The body says what is possible; this says what is done.
+ */
+export function applyPractice(ledger, months, result) {
+  if (result.status !== STATUS_HELP || result.help !== HELP_STEP) return result;
+  const practice = ledger.items.find(({ id }) => id === 'practice_step_stool');
+  if (!practice || !Number.isFinite(practice.step_from_months)) throw new Error('ledger item not found or malformed: practice_step_stool');
+  if (months < practice.step_from_months) {
+    return {
+      status: STATUS_WITH_ADULT, help: HELP_ADULT, how: practice.before_words, gapCm: result.gapCm,
+      neededStepCm: result.stepCm, stepFromMonths: practice.step_from_months,
+    };
+  }
+  return { ...result, accompany: practice.from_words };
+}
+
 /** The body of the child in general, or of 「うちの子」 (a fixed z), at an age. */
 function bodyAt(ledger, { months, sex = SEX_ANY, individual = null }) {
   return getBodyValues(ledger, { months, sex, z: individual ?? undefined });
@@ -134,7 +156,7 @@ export function adjustmentsAt({ ledger, room, landmarks, hazards = [], months, s
   // The window lock counts among the dangerous things a step could bring into reach.
   const lock = landmarks.find(({ role }) => role === 'window_lock');
   const dangerous = [...hazards, ...(lock ? [{ id: lock.id, label: lock.mapLabel ?? lock.label, height: lock.height }] : [])];
-  const goals = placeGoals(ledger, room, landmarks).map((goal) => ({ ...goal, ...goalStatus(ledger, body, goal) }));
+  const goals = placeGoals(ledger, room, landmarks).map((goal) => ({ ...goal, ...applyPractice(ledger, months, goalStatus(ledger, body, goal)) }));
   const stepCm = Math.max(0, ...goals.filter((goal) => goal.help === HELP_STEP && goal.status === STATUS_HELP).map((goal) => goal.stepCm));
   const reach = body.reach.value;
   const withStep = stepCm > 0 ? dangerous

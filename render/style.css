@@ -544,6 +544,7 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 .adjust-heading.can::before { background: #2e8b57; }
 .adjust-heading.help::before { background: #e0a000; }
 .adjust-heading.notyet::before { background: #8a9299; }
+.adjust-heading.adult::before { background: #d9779b; }
 .adjust-heading.next::before { background: var(--accent); }
 .adjust-heading.adults::before { background: var(--danger); }
 .adjust-list { margin: 0 0 4px; padding-left: 18px; font-size: 13px; line-height: 1.55; }

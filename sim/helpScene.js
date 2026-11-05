@@ -98,6 +98,7 @@ export function helpScene({ ledger, room, goal, body, sizes }) {
     kind: goal.kind,
     how: goal.how,
     gapCm: goal.gapCm ?? 0,
+    stepFromMonths: goal.stepFromMonths ?? null,
     // Says 「背伸びで届く」 only when the status came from the tiptoe reading.
     tiptoe: goal.status === STATUS_CAN && goal.how === TIPTOE_WORD,
     stand,
