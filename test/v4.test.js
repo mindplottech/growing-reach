@@ -8,7 +8,7 @@ const at = (months) => getBodyValues(ledger, { months, sex: 'female' });
 const rounded = (value) => Number(value.toFixed(1));
 
 test('ledger v5: the climb height is 60.6 cm at 36 months and 74.3 cm at 47 months', () => {
-  assert.equal(String(ledger._meta.version), '5');
+  assert.ok(Number(ledger._meta.version) >= 5);
   assert.equal(rounded(at(36).climb.value), 60.6);
   assert.equal(rounded(at(47).climb.value), 74.3);
 });

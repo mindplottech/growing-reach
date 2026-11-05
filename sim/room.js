@@ -16,6 +16,7 @@ export function landmarkHeight(ledger, [itemId, key]) {
   const item = ledger.items.find((entry) => entry.id === itemId);
   const entry = item?.values?.[key];
   if (typeof entry === 'number') return entry;
+  if (typeof entry?.value === 'number') return entry.value;
   if (entry?.median !== undefined) return entry.median;
   if (entry?.values) {
     const sorted = [...entry.values].sort((a, b) => a - b);

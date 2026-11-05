@@ -1,9 +1,9 @@
 {
   "_meta": {
-    "title": "値の台帳（1歳3か月〜5歳0か月の身体の値と家庭の家具の高さ）",
+    "title": "値の台帳（1歳3か月〜5歳0か月の身体の値と、家庭の家具・設備の高さ）",
     "notice": "このファイルは外部の公開資料から持ち込んだ入力データです。ハッカソン期間中に作ったコードではありません。category が measured・formula・converted の値は、下の出典から転記したもの、または出典の値に明記した式を当てたものです。category が provisional（仮値）の値は、出典がないか、出典が二次引用・未確認・式の延長のため根拠として扱えない値で、設計者の判断で置いています。",
     "created": "2026-11-03",
-    "version": "5",
+    "version": "6",
     "decisions": [
       {
         "date": "2026-11-03",
@@ -108,6 +108,12 @@
         "item": "結論の一文と偶然の幅",
         "decision": "結論は色（届き方）が変わった行を優先して言う。色が変わらず、回数の差がすべて noise_band（params.js、仮値10）以内なら「偶然の範囲」と言う",
         "reason": "箱を動かしただけで経路が変わり、無関係な物の回数が±5〜10動く（100回の二項ばらつき SD≈5）。親が偶然の差を家具のせいと受け取らないため"
+      },
+      {
+        "date": "2026-11-05",
+        "item": "環境調整（adjustments）",
+        "decision": "主役を「危険な物に届くか」から「大人のこの環境調整で、この月齢の子は何が自分でできるか」に変える。やりたいこと（席に着く・コップ・絵本・おもちゃ・スイッチ・上着のフック）を部屋に置き、月齢の体（中央値またはうちの子）で「できる／踏み台○cm・物を○cm以下に、があればできる／まだ」を乱数なしで計算する。危険な物は「だから大人がすること」として段を下げて残す",
+        "reason": "発達支援の「環境調整による自立支援」をそのまま可視化する。年齢によって必要な調整が変わることをスライダーで見せる（KO 決定 2026-11-05）。100人の試行と再生は残す"
       }
     ],
     "age_range_months": [
@@ -136,9 +142,15 @@
       "SNYDER1977": "Snyder RG ほか（1977）Anthropometry of Infants, Children, and Youths to Age 18 for Product Safety Design. UM-HSRI-77-17, U.S. CPSC（ERIC ED153998） https://eric.ed.gov/?id=ED153998",
       "WARREN1984": "Warren WH（1984）Perceiving affordances: Visual guidance of stair climbing. J Exp Psychol Hum Percept Perform 10(5):683-703",
       "DUSING2007": "Dusing SC, Thorpe DE (2007) A normative sample of temporal and spatial gait parameters in children using the GAITRite electronic walkway. Gait & Posture 25:135-139 https://doi.org/10.1016/j.gaitpost.2006.06.003（要旨と Table 1・2 を確認、群別の絶対速度は Appendix A で未確認）",
-      "SUTHERLAND1980": "Sutherland DH, Olshen R, Cooper L, Woo SL (1980) The development of mature gait. J Bone Joint Surg Am 62(3):336-353（二次引用：1歳児の腕の high guard、2歳頃までの消失。数値は未取得）"
+      "SUTHERLAND1980": "Sutherland DH, Olshen R, Cooper L, Woo SL (1980) The development of mature gait. J Bone Joint Surg Am 62(3):336-353（二次引用：1歳児の腕の high guard、2歳頃までの消失。数値は未取得）",
+      "JEWA2016": "一般社団法人 日本配線システム工業会（2016）「スイッチ・コンセントの設置について」パネル https://www.jewa.or.jp/topics/den/28/panel02.pdf（スイッチは床上約120cmが標準、子どもや車椅子の方には少し低く）",
+      "PANASONIC_FAQ": "パナソニック 配線器具 FAQ「スイッチ・コンセントの設置高さの目安」 https://www2.panasonic.biz/jp/densetsu/haisen/keikaku/re-swt/faq.html（スイッチは床上110〜120cm程度が標準）",
+      "TOKYO_KOSODATE_DRAFT": "東京都 住宅政策本部「子育てに配慮した住宅のガイドライン（素案）」資料3-3 https://www.juutakuseisaku.metro.tokyo.lg.jp/documents/d/juutakuseisaku/5-03-3（子どもでも手が届く床上900mm程度にスイッチを設置）",
+      "NILIM2025": "国土技術政策総合研究所（2025年3月）『子育てに配慮した住宅と居住環境に関するガイドライン（改訂版）』 https://www.nilim.go.jp/lab/hbg/kosodate/kosodate_zenpen.pdf（テーマ(23) 子どもの自主性を育てる収納や設備の工夫：電気スイッチは子どもの手の届く高さに設置しワイドスイッチ等とする。補助錠は床上1,500mm程度以上）",
+      "REHADAT_COATRACK": "REHADAT/EASTIN 製品データ（幼稚園用コート掛け 高さ130cm、小学校155cm、大人180cm） https://www.eastin.eu/en-gb/searches/products/detail/database-rehadat/id-tec_1A627DD8-B8D1-7342-8460-66BA58F47B0F（海外の製品例、二次資料）",
+      "STEP_STOOL_MARKET": "子ども用踏み台の市販品の天板高さ（14・20・22〜25・30cm が多い。my-best 2026年10月ランキング、楽天市場の商品表示）— 規格ではなく市場の目安"
     },
-    "updated": "2026-11-04",
+    "updated": "2026-11-05",
     "data_age_range_months": [
       15,
       66
@@ -1300,6 +1312,69 @@
       "source": "RYGELOVA2023",
       "table_page": "Table 2（非正規化の step length・cycle time・stride width、各群の平均。Table 1 の平均年齢 2.4・3.5・6.4歳を 29・42・77か月に置く）",
       "note": "子どもの図形の歩幅・脚の振りの速さ・足の開きにだけ使う。歩く速さは walk_speed（計算側）のまま。29か月より下は端の値。腕を肩の高さに上げる構え（high guard）が1歳台で見られ2歳頃までに消えること、よちよち歩きの左右の揺れは Sutherland ほか（1980）J Bone Joint Surg 62A:336-353 の観察所見（二次引用、数値なし）で、揺れ幅と腕の高さの数値は params.js の仮値。"
+    },
+    {
+      "id": "goal_heights",
+      "label": "子どもがやりたいことの高さ（設備・収納）",
+      "unit": "cm",
+      "category": "measured",
+      "values": {
+        "switch_standard": {
+          "value": 120,
+          "category": "measured",
+          "source": "JEWA2016・PANASONIC_FAQ",
+          "note": "住宅の照明スイッチの標準の取り付け高さ（床から芯まで）。JIS や法令の規定ではなく業界の標準"
+        },
+        "switch_child": {
+          "value": 90,
+          "category": "measured",
+          "source": "TOKYO_KOSODATE_DRAFT・NILIM2025",
+          "note": "子どもでも手が届く高さとしてガイドラインが示す目安（900mm程度）"
+        },
+        "coat_hook_adult": {
+          "value": 155,
+          "category": "provisional",
+          "source": "海外の設置ガイド（152〜165cm）と REHADAT の大人用コート掛け180cm",
+          "note": "日本の住宅の玄関フックの実測は見つからず。大人用の一般的な高さとして仮に置く"
+        },
+        "coat_hook_kindergarten": {
+          "value": 130,
+          "category": "provisional",
+          "source": "REHADAT_COATRACK",
+          "note": "幼稚園用コート掛けの製品高さ（海外の一例、二次資料）"
+        },
+        "bookshelf_levels": {
+          "values": [
+            15,
+            45,
+            75,
+            105
+          ],
+          "category": "provisional",
+          "source": null,
+          "note": "家庭の本棚の段の高さの実測は見つからず。設計者が置いた仮値（30cm間隔）"
+        },
+        "toy_shelf": {
+          "value": 75,
+          "category": "provisional",
+          "source": null,
+          "note": "おもちゃを置く棚の上面。設計者が置いた仮値"
+        },
+        "step_stool_typical": {
+          "values": [
+            14,
+            20,
+            25,
+            30
+          ],
+          "category": "provisional",
+          "source": "STEP_STOOL_MARKET",
+          "note": "市販の子ども用踏み台の天板高さ。規格ではない。計算で出した踏み台の高さは5cm刻みに切り上げて示す"
+        }
+      },
+      "source": "上の各値の source を参照",
+      "table_page": "—",
+      "note": "【v6】「環境調整」の計算で使う。各値の区分は values の中に持つ（項目全体の category は便宜上 measured だが、仮値の値は画面で仮値と出す）。"
     }
   ]
 }
