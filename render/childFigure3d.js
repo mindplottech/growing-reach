@@ -163,6 +163,9 @@ export function applyProportions(figure, { headShare, bellyShare, legShare }) {
   return { unitHeight: HEAD.y + HEAD.radius * 0.97 * headShare - HIP_Y * (1 - legShare) };
 }
 
+/** The hip joint and the thigh's thickness, in figure units: for sitting on a seat. */
+export const SEATED = { hipY: HIP_Y, thighRadius: 0.058 };
+
 /** The top of the head of the base figure, in figure units. */
 export const BASE_UNIT_HEIGHT = HEAD.y + HEAD.radius * 0.97;
 

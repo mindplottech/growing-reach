@@ -350,11 +350,9 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
         );
         return next;
       }));
-    document.querySelector('#adjust-warn').replaceChildren(...all.hazardsWithStep.map((hazard) => {
-      const chip = element('span', 'warn-chip', `⚠️ ${hazard.label}は${hazard.putAbove}cmより上へ`);
-      chip.title = `踏み台${all.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く`;
-      return chip;
-    }));
+    // The ⚠️ of things a step brings into reach (the window lock) is no longer shown: it did not
+    // read (KO 2026-11-06). The calculation (hazardsWithStep) stays.
+    document.querySelector('#adjust-warn').replaceChildren();
 
     // The scene being shown follows the age: the stool gets lower, and when it is no longer
     // needed the scene closes and the view goes back to the house (openHelp closes it).
@@ -420,6 +418,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     if (kind === HELP_STEP) {
       const where = shownWithHelp ? '踏み台の上なら' : '床からは';
       if (figure.forward) sub = shownWithHelp ? `${where}、肘の高さで使える` : `${where}、天板が肘より高い`;
+      else if (scene.feetStep) sub = shownWithHelp ? '踏み台に足をのせて座る' : '踏み台がないと、座ったとき足が床に届かない';
       else if (scene.kind === 'climb') sub = shownWithHelp ? `${where}、登れる` : `${where}、${gap ? `${gap} ` : ''}登れない`;
       else sub = shownWithHelp ? `${where}、手が届く` : `${where}、${gap ? `${gap} ` : ''}届かない`;
     } else if (kind === HELP_LOWER) {
@@ -436,7 +435,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // Not of this age (the slider moved on): back to the house.
     if (!goal) { if (shownGoalId) closeHelp(); return; }
     shownGoalId = goalId;
-    const scene = helpScene({ ledger, room: session.getRoom(), goal, body: lastAll.body, sizes: settings.help_scene });
+    const scene = helpScene({ ledger, room: session.getRoom(), goal, body: lastAll.body, sizes: settings.help_scene, adultSizes: settings.adult_figure });
     // No help is needed any more (the slider moved on): nothing to show, back to the house.
     if (scene.status === STATUS_CAN) { closeHelp(); return; }
     if (scene.status !== STATUS_HELP) shownWithHelp = true;

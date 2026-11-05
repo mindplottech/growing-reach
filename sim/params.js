@@ -70,6 +70,12 @@ const SETTINGS = {
     step_width_cm: 40,
     step_depth_cm: 30,
   }, '表示のみ・計算に使わない。子どもが物の縁から立つ距離は、踏み台の奥行き30cmの半分に5cm足した。踏み台は市販の子ども用（幅40cm前後・奥行き30cm前後）に合わせた仮値で、高さは adjustments.js が月齢ごとに計算する', 'cm'),
+  toilet_feet_step_cm: provisional('トイレで足をのせる踏み台の高さ', 20, '台帳 practice_step_stool.feet_step_goals（KO 2026-11-06：トイレは踏み台を使って座る）の踏み台。市販の子ども用トイレ踏み台によくある高さ（20cm前後）に合わせた設計者の仮値。実測の根拠はない', 'cm'),
+  adult_figure: provisional('大人の姿（表示だけ）', {
+    height_cm: 160,
+    hold_behind_cm: 22,
+    beside_cm: 35,
+  }, '表示のみ・計算に使わない。KO 2026-11-06：抱っこの場面に大人を描き、それ以外は大人はソファに座る。背丈は見た目のための仮値（統計値ではない）。抱っこは子どもの後ろ22cmに立って脇の下を支え、「一緒に」は子どもの横35cmに立つ', 'cm'),
 };
 
 /** Sizes and distances of the room that are not measurements. */

@@ -465,7 +465,7 @@
         },
         {
           "id": "toothbrush",
-          "label": "歯ブラシを自分で取る",
+          "label": "歯ブラシを取って、歯をみがく",
           "short": "歯ブラシ",
           "kind": "reach",
           "on": "vanity",
@@ -590,7 +590,7 @@
         },
         {
           "id": "shoes",
-          "label": "自分の靴を取る",
+          "label": "靴を出して、自分で履く",
           "short": "靴",
           "kind": "reach",
           "heightOf": [
@@ -677,7 +677,7 @@
         },
         {
           "id": "clothes",
-          "label": "靴下や服を自分で出す",
+          "label": "服を出して、自分で着る",
           "short": "服",
           "kind": "reach",
           "heightOf": [
@@ -1270,7 +1270,7 @@
         },
         {
           "id": "toothbrush",
-          "label": "歯ブラシを自分で取る",
+          "label": "歯ブラシを取って、歯をみがく",
           "short": "歯ブラシ",
           "kind": "reach",
           "on": "vanity",
@@ -1388,7 +1388,7 @@
         },
         {
           "id": "shoes",
-          "label": "自分の靴を取る",
+          "label": "靴を出して、自分で履く",
           "short": "靴",
           "kind": "reach",
           "heightOf": [

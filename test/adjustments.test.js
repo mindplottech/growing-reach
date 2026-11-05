@@ -117,7 +117,8 @@ test('practice (KO): before 30 months no step stool is offered; the adult holds 
     for (const goal of adjustmentsAt({ ...base, months }).goals) {
       const from = practice.step_from_by_goal?.[goal.id] ?? practice.step_from_months;
       if (months < from) assert.ok(!(goal.status === STATUS_HELP && goal.help === HELP_STEP), `${goal.id} at ${months}`);
-      if (goal.status === STATUS_WITH_ADULT) {
+      // The toothbrush, clothes and shoes have KO's own words for each stage (practice_self_care).
+      if (goal.status === STATUS_WITH_ADULT && !goal.selfCare) {
         assert.equal(goal.help, HELP_ADULT);
         assert.equal(goal.how, practice.before_words);
         assert.ok(goal.neededStepCm === null || goal.neededStepCm > 0); // null: つかまり立ちのころ, no step at all
@@ -195,4 +196,32 @@ test('practice (KO): a light switch is never reached from a step, and the cookin
   assert.equal(at(18, 'switch').how, byId('practice_step_stool').before_words);
   assert.equal(at(36, 'switch').how, byId('practice_step_stool').together_words);
   assert.equal(at(48, 'switch').status, STATUS_CAN);
+});
+
+test('practice (KO 2026-11-06): the toothbrush with an adult until 2, then 「練習から」; clothes and shoes with an adult until 3', () => {
+  const care = byId('practice_self_care');
+  assert.equal(care.category, 'provisional');
+  assert.equal(care.source, 'KO_PRACTICE');
+  const at = (months, id) => adjustmentsAt({ ...base, months }).goals.find((goal) => goal.id === id);
+  // At 1歳6か月 the hand gets to all three, but none is 「自分で」 yet.
+  for (const id of ['toothbrush', 'clothes', 'shoes']) assert.equal(at(18, id).status, STATUS_WITH_ADULT, id);
+  assert.equal(at(18, 'toothbrush').how, '大人が磨く');
+  assert.equal(at(24, 'toothbrush').status, STATUS_CAN);
+  assert.equal(at(24, 'toothbrush').accompany, '練習から');
+  assert.equal(at(30, 'clothes').how, '着ようとする・大人が手伝う');
+  assert.equal(at(30, 'shoes').how, '履こうとする・大人が手伝う');
+  assert.equal(at(36, 'clothes').status, STATUS_CAN);
+  assert.equal(at(36, 'shoes').status, STATUS_CAN);
+});
+
+test('practice (KO 2026-11-06): at the toilet a step is put for the feet, even when the child can climb the seat', () => {
+  const practice = byId('practice_step_stool');
+  assert.deepEqual(practice.feet_step_goals, ['sit']);
+  for (const months of [48, 54, 60]) {
+    const sit = adjustmentsAt({ ...base, months }).goals.find(({ id }) => id === 'sit');
+    assert.equal(sit.status, STATUS_HELP, `${months}`);
+    assert.equal(sit.help, HELP_STEP);
+    assert.equal(sit.stepCm, settings.toilet_feet_step_cm);
+    assert.equal(sit.feetStep, true);
+  }
 });

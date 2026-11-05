@@ -1,4 +1,4 @@
-import { HELP_CLOSER, HELP_LOWER, HELP_STEP, STATUS_CAN, STATUS_HELP } from './adjustments.js';
+import { HELP_CLOSER, HELP_LOWER, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_WITH_ADULT } from './adjustments.js';
 
 // One goal, tried in front of the thing (「助けを置いて、使うところを見せる」): where the child
 // stands, what help is put there (a step stool, the thing lower or closer), and where the hand
@@ -6,6 +6,16 @@ import { HELP_CLOSER, HELP_LOWER, HELP_STEP, STATUS_CAN, STATUS_HELP } from './a
 // the goal's status comes from adjustments.js, the sizes from params.js (provisional).
 
 const TIPTOE_WORD = '背伸びで届く';
+// Display only. The toilet seat's middle lies this share of the bowl's depth in from its front;
+// the stool tucks this far under the front of the seat.
+const SEAT_CENTRE_SHARE = 0.25;
+const STOOL_UNDER_SEAT_CM = 8;
+// The adult holds the child at this share of the child's height (under the arms), lifts in steps
+// of this, and stands this far back of the child's line when beside.
+const HOLD_AT_SHARE = 0.55;
+const LIFT_ROUND_CM = 5;
+const BESIDE_BACK_CM = 10;
+const HOLD_SIDE_SHARE = 0.8;
 
 /** The side of a footprint that faces a point, as a unit step along x or y (y is the floor's depth). */
 function sideToward(object, point) {
@@ -19,9 +29,10 @@ const clamp = (value, low, high) => Math.min(Math.max(value, low), high);
 /**
  * `goal` is one of adjustmentsAt(...).goals (with status, help and sizes), `body` its body
  * (height, reach, climb in cm), `room` the layout (for the room areas), `sizes` the
- * help_scene settings. Returns null for a goal that cannot be drawn.
+ * help_scene settings, `adultSizes` the adult_figure settings (both display only). Returns null
+ * for a goal that cannot be drawn.
  */
-export function helpScene({ ledger, room, goal, body, sizes }) {
+export function helpScene({ ledger, room, goal, body, sizes, adultSizes = null }) {
   const tiptoeGain = ledger.items.find(({ id }) => id === 'tiptoe_gain').range[0];
   const area = (room.rooms ?? []).find(({ id }) => id === goal.room);
   const areaCentre = area ? { x: area.x + area.w / 2, y: area.y + area.d / 2 } : { x: room.width / 2, y: room.depth / 2 };
@@ -71,11 +82,51 @@ export function helpScene({ ledger, room, goal, body, sizes }) {
   let prop = null;
   let withHelp = without;
   let thingAfter = { ...thing, height: goal.height };
-  if (goal.status === STATUS_HELP && goal.help === HELP_STEP) {
+  let adult = null;
+  if (goal.status === STATUS_HELP && goal.help === HELP_STEP && goal.feetStep) {
+    // At the toilet (KO): the child sits on the seat facing out, the feet resting on the stool in
+    // front of it. The seat's middle is a little toward the front of the bowl (the tank is behind).
+    const [w, d] = facing.y !== 0 ? [stepW, stepD] : [stepD, stepW];
+    const front = { x: edge.x, y: edge.y };
+    const seatCentre = {
+      x: facing.x !== 0 ? front.x - facing.x * holder.w * SEAT_CENTRE_SHARE : centre.x,
+      y: facing.y !== 0 ? front.y - facing.y * holder.d * SEAT_CENTRE_SHARE : centre.y,
+    };
+    // [w, d] are the stool's extents along x and y; its depth along the facing is stepD.
+    const out = stepD / 2 - STOOL_UNDER_SEAT_CM;
+    const stoolCentre = facing.x !== 0 ? { x: front.x + facing.x * out, y: seatCentre.y } : { x: seatCentre.x, y: front.y + facing.y * out };
+    prop = { kind: HELP_STEP, heightCm: goal.stepCm, x: stoolCentre.x - w / 2, y: stoolCentre.y - d / 2, w, d };
+    withHelp = {
+      x: seatCentre.x, y: seatCentre.y, feet: goal.height, yaw: Math.atan2(facing.x, facing.y), arms: 0, stretch: 0, forward: false,
+      handHeight: goal.height + reach, reaches: true, seated: goal.height,
+    };
+  } else if (goal.status === STATUS_HELP && goal.help === HELP_STEP) {
     // The stool's long side runs along the holder's edge, under the child's feet.
     const [w, d] = facing.y !== 0 ? [stepW, stepD] : [stepD, stepW];
     prop = { kind: HELP_STEP, heightCm: goal.stepCm, x: stand.x - w / 2, y: stand.y - d / 2, w, d };
     withHelp = figure(goal.stepCm, goal.height);
+  } else if (goal.status === STATUS_WITH_ADULT && adultSizes) {
+    // Together with an adult (KO): where a step would be needed, the adult stands behind and holds
+    // the child up by that much (抱っこ); otherwise (clothes, shoes, the toothbrush) the adult stands
+    // beside the child and helps.
+    const lift = goal.selfCare ? 0 : (goal.neededStepCm ?? (goal.gapCm > 0 ? Math.ceil(goal.gapCm / LIFT_ROUND_CM) * LIFT_ROUND_CM : 0));
+    if (lift > 0) {
+      withHelp = { ...figure(lift, goal.height), reaches: true };
+      // Behind and a little to one side (the child stays in view from behind), turned to the child.
+      const side = { x: -facing.y, y: facing.x };
+      const at = {
+        x: stand.x + facing.x * adultSizes.hold_behind_cm + side.x * adultSizes.hold_behind_cm * HOLD_SIDE_SHARE,
+        y: stand.y + facing.y * adultSizes.hold_behind_cm + side.y * adultSizes.hold_behind_cm * HOLD_SIDE_SHARE,
+      };
+      adult = {
+        mode: 'hold', x: at.x, y: at.y, yaw: Math.atan2(stand.x - at.x, stand.y - at.y),
+        holdHeight: lift + body.height * HOLD_AT_SHARE, holdForward: Math.hypot(stand.x - at.x, stand.y - at.y),
+      };
+    } else {
+      const side = { x: -facing.y, y: facing.x };
+      const at = { x: stand.x + side.x * adultSizes.beside_cm + facing.x * BESIDE_BACK_CM, y: stand.y + side.y * adultSizes.beside_cm + facing.y * BESIDE_BACK_CM };
+      adult = { mode: 'beside', x: at.x, y: at.y, yaw: Math.atan2(stand.x - at.x, stand.y - at.y), holdHeight: body.height * HOLD_AT_SHARE };
+    }
   } else if (goal.status === STATUS_HELP && goal.help === HELP_LOWER) {
     prop = { kind: HELP_LOWER, heightCm: goal.maxHeightCm };
     thingAfter = { ...thing, height: goal.maxHeightCm };
@@ -99,6 +150,7 @@ export function helpScene({ ledger, room, goal, body, sizes }) {
     how: goal.how,
     gapCm: goal.gapCm ?? 0,
     stepFromMonths: goal.stepFromMonths ?? null,
+    feetStep: Boolean(goal.feetStep),
     // Says 「背伸びで届く」 only when the status came from the tiptoe reading.
     tiptoe: goal.status === STATUS_CAN && goal.how === TIPTOE_WORD,
     stand,
@@ -108,5 +160,6 @@ export function helpScene({ ledger, room, goal, body, sizes }) {
     prop,
     without,
     withHelp,
+    adult,
   };
 }

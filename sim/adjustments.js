@@ -2,6 +2,7 @@ import { getBodyValues, isCrawlingAge, SEX_ANY } from './body.js';
 import { landmarkHeight } from './room.js';
 import { floorHazardLevel } from './hazards.js';
 import { horizontalReach, REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
+import { settings } from './params.js';
 
 // Environment adjustments (環境調整): for a child of an age, what they can do by themselves in
 // this room, what one adjustment (a step stool, or putting a thing lower) would let them do,
@@ -140,6 +141,20 @@ export function applyPractice(ledger, months, result, goal = {}) {
   };
   // KO: the cooking counter is always together with an adult, at any age.
   if ((practice.always_with_adult_goals ?? []).includes(goal.id)) return { ...together, how: practice.together_words ?? '大人と一緒に', always: true };
+  // KO (practice_self_care): the toothbrush, clothes and shoes are not 「自分で」 as soon as the hand
+  // gets there. Until each stage's age they are done with an adult, in KO's words for the stage.
+  const care = ledger.items.find(({ id }) => id === 'practice_self_care');
+  if (care && (typeof care.stages_by_goal !== 'object' || care.stages_by_goal === null)) throw new Error('ledger item malformed: practice_self_care');
+  const stages = care?.stages_by_goal[goal.id];
+  if (stages) {
+    const stage = stages.find(({ until_months: until }) => {
+      if (!Number.isFinite(until)) throw new Error(`ledger item malformed: practice_self_care.${goal.id}`);
+      return months < until;
+    });
+    if (stage) return { ...together, how: stage.words, selfCare: true, untilMonths: stage.until_months };
+    const from = care.from_words_by_goal?.[goal.id];
+    if (from && result.status !== STATUS_NOT_YET) return { ...result, accompany: from };
+  }
   // KO: a light switch is never reached from a step; until the hand gets there from the floor,
   // it is done with an adult.
   if ((practice.no_step_goals ?? []).includes(goal.id) && result.status !== STATUS_CAN) {
@@ -155,6 +170,12 @@ export function applyPractice(ledger, months, result, goal = {}) {
       status: STATUS_WITH_ADULT, help: HELP_ADULT, how: practice.before_words, gapCm: result.gapCm,
       neededStepCm: result.stepCm ?? null, stepFromMonths: practice.step_from_by_goal?.[goal.id] ?? practice.step_from_months,
     };
+  }
+  // KO: at the toilet a step is put even when the child can climb the seat, and the feet rest on
+  // it while sitting (feet_step_goals). Its height is a provisional value of params.js.
+  if ((practice.feet_step_goals ?? []).includes(goal.id) && result.status === STATUS_CAN) {
+    const stepCm = settings.toilet_feet_step_cm;
+    return { ...result, status: STATUS_HELP, help: HELP_STEP, stepCm, how: `踏み台${stepCm}cm`, accompany: '足をのせて座る', feetStep: true };
   }
   if (result.status !== STATUS_HELP || result.help !== HELP_STEP) return result;
   // The age the step begins: KO's age for this goal when given (手洗い 24か月), else the general one.

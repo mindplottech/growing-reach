@@ -82,3 +82,35 @@ test('the scene is the same for the same inputs (nothing random)', () => {
   const [b] = scenesAt(27);
   assert.deepEqual(a.scene, b.scene);
 });
+
+function scenesWithAdult(months) {
+  const simulation = createSimulation({ ledger, settings, months, sex: SEX_ANY, seed: 1, room });
+  const all = adjustmentsAt({ ledger, room, landmarks: simulation.landmarks, hazards: simulation.hazards, months });
+  return new Map(all.goals.map((goal) => [goal.id, helpScene({ ledger, room, goal, body: all.body, sizes: settings.help_scene, adultSizes: settings.adult_figure })]));
+}
+
+test('抱っこ (KO 2026-11-06): the adult stands behind the child and holds them up by the step that would be needed', () => {
+  const wash = scenesWithAdult(18).get('wash');
+  assert.equal(wash.adult.mode, 'hold');
+  assert.ok(wash.withHelp.feet > 0);
+  // Behind: farther from the vanity than the child.
+  const vanity = wash.thing;
+  const toThing = (p) => Math.hypot(p.x - (vanity.x + vanity.w / 2), p.y - (vanity.y + vanity.d / 2));
+  assert.ok(toThing(wash.adult) > toThing(wash.stand));
+  // Clothes with an adult: beside, the child on the floor.
+  const clothes = scenesWithAdult(30).get('clothes');
+  assert.equal(clothes.adult.mode, 'beside');
+  assert.equal(clothes.withHelp.feet, 0);
+  // A goal the child does alone has no adult.
+  assert.equal(scenesWithAdult(48).get('towel')?.adult ?? null, null);
+});
+
+test('toilet (KO 2026-11-06): the child sits on the seat facing out, the stool in front under the feet', () => {
+  const sit = scenesWithAdult(48).get('sit');
+  assert.equal(sit.prop.kind, HELP_STEP);
+  assert.equal(sit.withHelp.seated, sit.thing.height);
+  const bowl = room.landmarks.find(({ id }) => id === 'toilet_bowl');
+  // The stool reaches out of the bowl's front, on the side the child faces.
+  assert.ok(sit.prop.y < bowl.y && sit.prop.y + sit.prop.d > bowl.y);
+  assert.ok(sit.withHelp.y > bowl.y && sit.withHelp.y < bowl.y + bowl.d / 2);
+});

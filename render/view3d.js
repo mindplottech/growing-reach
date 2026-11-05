@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { applyOutfit, applyProportions, makeChild } from './childFigure3d.js';
+import { applyOutfit, applyProportions, makeChild, SEATED } from './childFigure3d.js';
+import { makeAdult, poseAdult } from './adultFigure3d.js';
 import { easeLook, lookAngles } from './look.js';
 import { applyCrawl, easeCrawl, liftHead } from './crawl.js';
 import { gaitFor } from './gait.js';
@@ -59,11 +60,15 @@ const AREA_TARGET_HEIGHT_CM = 30;
 const AREA_MIN_SPAN_CM = 260;
 const HELP_PITCH = 0.42;
 const HELP_SIDE_ANGLE = 0.6;
+const HELP_ADULT_SIDE_ANGLE = 1.35;
 const HELP_LOOK_SHARE = 0.55;
 const HELP_FORWARD_LEAN = 0.18;
 const HELP_FORWARD_ARMS = 0.5;
 // The camera stays this far inside the outer walls, so a thing in a corner is seen from the room.
 const HELP_CAMERA_MARGIN_CM = 30;
+// Where the adult sits on the sofa: the hips this far in from the front edge, toward one end.
+const ADULT_SOFA_FROM_FRONT_CM = 28;
+const ADULT_SOFA_SIDE_SHARE = 0.22;
 // Floor tones by room (display only): tiles in the wet rooms, earth at the entrance.
 const ROOM_FLOORS = { washroom: 0xe3e7ea, toilet: 0xdfe8ee, entrance: 0xd6d0c6, kitchen: 0xece4d6 };
 const ROOM_FLOOR_OPACITY = 0.85;
@@ -266,6 +271,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let crawlBlend = 0;
   const toViewer = new THREE.Vector3();
   scene.add(child.root);
+  // The adult (KO 2026-11-06): on the sofa, and at the child in a scene 「大人と一緒に」.
+  const adult = makeAdult(settings.adult_figure.height_cm);
+  scene.add(adult.root);
   const blob = new THREE.Mesh(
     new THREE.CircleGeometry(SHADOW_RADIUS_CM, 24),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthTest: false, depthWrite: false }),
@@ -699,12 +707,42 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   function helpPose() {
     const figure = help.withHelp ? help.scene.withHelp : help.scene.without;
     return {
-      x: figure.x, z: figure.y, feet: figure.feet, yaw: figure.yaw, kind: null, turned: false, pitch: 0, sit: 0,
+      x: figure.x, z: figure.y, feet: figure.feet, yaw: figure.yaw, kind: null, turned: false, pitch: 0, sit: 0, seated: figure.seated ?? null,
       lean: figure.forward ? HELP_FORWARD_LEAN : 0,
       arms: figure.forward ? HELP_FORWARD_ARMS : figure.arms,
       stretch: figure.stretch,
       walk: { phase: 0, moving: 0 },
       busy: false,
+    };
+  }
+
+  /** Sits the child on a seat `seatCm` high: the thighs along the seat, the shins hanging down. */
+  function seatChild(seatCm) {
+    const scale = child.root.scale.y;
+    const hipCm = SEATED.hipY * child.lower.scale.y * scale;
+    child.root.position.y = seatCm - hipCm + SEATED.thighRadius * scale;
+    child.body.position.y = 0;
+    child.legs.forEach((hip) => { hip.rotation.x = -Math.PI / 2; });
+    child.knees.forEach((knee) => { knee.rotation.x = Math.PI / 2; });
+  }
+
+  /** Where the adult is: at the child in a scene with an adult, otherwise sitting on the sofa. */
+  function adultTarget() {
+    const at = help?.scene.adult;
+    if (at) return { ...at, z: at.y };
+    const sofa = model?.objects.find(({ shape }) => shape === 'sofa');
+    if (!sofa) return { mode: 'beside', x: -500, z: -500, yaw: 0, holdHeight: 0 };
+    const f = sofa.facing;
+    const depth = f.x !== 0 ? sofa.w : sofa.d;
+    const across = f.x !== 0 ? sofa.d : sofa.w;
+    const inward = depth / 2 - ADULT_SOFA_FROM_FRONT_CM;
+    // Toward one end of the sofa, so the child's way to the rest of the seat stays open.
+    const side = { x: -f.z, z: f.x };
+    const shift = across * ADULT_SOFA_SIDE_SHARE;
+    return {
+      mode: 'sit', seat: sofa.top, yaw: Math.atan2(f.x, f.z),
+      x: sofa.x + sofa.w / 2 + f.x * inward + side.x * shift,
+      z: sofa.z + sofa.d / 2 + f.z * inward + side.z * shift,
     };
   }
 
@@ -725,8 +763,10 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const candidate = (angle) => target.clone()
       .add(new THREE.Vector3(facing.x, 0, facing.y).applyAxisAngle(up, angle).multiplyScalar(distance * Math.cos(HELP_PITCH)))
       .add(new THREE.Vector3(0, distance * Math.sin(HELP_PITCH), 0));
-    const options = [candidate(HELP_SIDE_ANGLE), candidate(-HELP_SIDE_ANGLE), candidate(0)];
-    const wanted = options.find(inside) ?? options[2];
+    // With an adult behind the child, from further round to the side, so the adult does not hide the child.
+    const side = help.scene.adult ? HELP_ADULT_SIDE_ANGLE : HELP_SIDE_ANGLE;
+    const options = [candidate(side), candidate(-side), candidate(HELP_SIDE_ANGLE), candidate(-HELP_SIDE_ANGLE), candidate(0)];
+    const wanted = options.find(inside) ?? options[0];
     wanted.x = Math.min(Math.max(wanted.x, HELP_CAMERA_MARGIN_CM), model.width - HELP_CAMERA_MARGIN_CM);
     wanted.z = Math.min(Math.max(wanted.z, HELP_CAMERA_MARGIN_CM), model.depth - HELP_CAMERA_MARGIN_CM);
     controls.target.lerp(target, FOLLOW_EASE);
@@ -808,6 +848,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     // KO's つかまり立ちのころ: crawl while moving, stand up at the furniture when stopped.
     crawlBlend = easeCrawl(crawlBlend, { crawlingAge: gait?.crawling, moving: shownPose.walk?.moving ?? 0, helped: Boolean(help) }, realSeconds);
     applyCrawl(child, crawlBlend, shownPose.walk?.phase ?? 0);
+    if (shownPose.seated !== null && shownPose.seated !== undefined) seatChild(shownPose.seated);
+    poseAdult(adult, adultTarget(), realSeconds);
     // Still means: nothing going on now, and nothing for a moment before. The moments of
     // touching something dangerous come from the record so far and the scene's known moment.
     // Blinks, breaths and yawns take real time, whatever the playback speed.
