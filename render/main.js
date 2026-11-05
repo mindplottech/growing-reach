@@ -278,15 +278,7 @@ async function start() {
     session, history, startRoom, catalog: furnitureCatalog, say: messenger(), results,
   });
   const panel = mountPanel({ ledger, settings, session, getChild, autoplay });
-  // The rooms: each layout of the file, in its order. Changing it resets the room and runs again.
-  const roomSelect = document.querySelector('#room-select');
-  for (const layout of roomFile.layouts) {
-    const option = document.createElement('option');
-    option.value = layout.id;
-    option.textContent = layout.name;
-    roomSelect.append(option);
-  }
-  roomSelect.addEventListener('change', () => toolbar.editing.setStartRoom(selectLayout(roomFile, roomSelect.value)));
+
   // The 3D view loads later; until then a moment is only shown in words.
   let view = null;
   mountEventLog({ list: document.querySelector('#event-log'), session });

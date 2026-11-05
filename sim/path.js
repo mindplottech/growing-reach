@@ -18,7 +18,10 @@ export function createGrid(room, landmarks, { cell, clearance }) {
       const x = (col + 0.5) * cell;
       const y = (row + 0.5) * cell;
       const covered = landmarks.some((item) => x > item.x - clearance && x < item.x + item.w + clearance
-        && y > item.y - clearance && y < item.y + item.d + clearance);
+        && y > item.y - clearance && y < item.y + item.d + clearance)
+        // Partition walls block too, with half the clearance so a door's gap stays open.
+        || (room.walls ?? []).some((wall) => x > wall.x - clearance / 2 && x < wall.x + wall.w + clearance / 2
+          && y > wall.y - clearance / 2 && y < wall.y + wall.d + clearance / 2);
       if (covered) blocked[row * cols + col] = 1;
     }
   }

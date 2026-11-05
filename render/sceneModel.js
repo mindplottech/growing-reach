@@ -233,6 +233,9 @@ export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Se
   return {
     width: room.width,
     depth: room.depth,
+    // Partition walls and the rooms' areas, drawn for the look (the walls also block paths).
+    walls: (room.walls ?? []).map(({ x, y, w, d }) => ({ x, z: y, w, d })),
+    rooms: (room.rooms ?? []).map(({ id, label, x, y, w, d }) => ({ id, label, x, z: y, w, d })),
     wallHeight: room.wall_height.value,
     contentHeight: Math.max(pane?.top ?? 0, ...objects.map(({ visualTop }) => visualTop)),
     objects,

@@ -23,10 +23,10 @@ function run({ seed = 1, months = 48, used = QUIET, room = roomLayout, boxes = [
 const kinds = (simulation, kind) => simulation.events.filter((event) => event.kind === kind);
 const withHeights = (room) => room.landmarks.map((l) => ({ ...l, height: landmarkHeight(ledger, l.heightOf) }));
 
-test('the hazards are medicine, scissors and a cord, each on a piece of furniture at its top height', () => {
+test('the hazards start with medicine, scissors and a cord in the living room, each on a piece of furniture at its top height', () => {
   const landmarks = withHeights(roomLayout);
   const placed = placeHazards(roomLayout, landmarks);
-  assert.deepEqual(placed.map(({ label }) => label), ['薬', 'はさみ', 'コード']);
+  assert.deepEqual(placed.slice(0, 3).map(({ label }) => label), ['薬', 'はさみ', 'コード']);
   for (const hazard of placed) {
     const under = landmarks.find(({ id }) => id === hazard.on);
     assert.equal(hazard.height, under.height);

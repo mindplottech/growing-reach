@@ -36,6 +36,11 @@ const CHIP_LIFT_CM = 10;
 const HAZARD_COLOUR = 0xb5534a;
 const HAZARD_THICK_CM = 3;
 const GOAL_WALL_THICK_CM = 2;
+const PARTITION_HEIGHT_CM = 100;
+const PARTITION_OPACITY = 0.9;
+const ROOM_LABEL_SHARE = 0.7;
+const ROOM_LABEL_LIFT_CM = 2;
+const ROOM_LABEL_OPACITY = 0.75;
 const GOAL_WALL_SIZE_CM = 8;
 const HAZARD_LABEL_SHARE = 0.8;
 const SIT_DROP = 0.14;
@@ -265,6 +270,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   // The dangerous things and the lock's tag show only while the hundred runs are being looked at.
   let hazardsShown = false;
   const hazardNodes = [];
+  const roomLabels = [];
   let gait = null;
   let updatePose = createPoseTracker(settings.display_seconds, gait);
   let updateIdle = createIdle(settings.idle_figure);
@@ -453,7 +459,29 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     addWall(model.depth, 0, model.depth / 2, Math.PI / 2);
 
     roomGroup.add(buildSkirting(model));
+    // Partitions between the rooms: waist high so the whole house stays in view.
+    for (const wall of model.walls) {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(wall.w, PARTITION_HEIGHT_CM, wall.d),
+        new THREE.MeshStandardMaterial({ color: WALL_COLOUR, roughness: 1, transparent: true, opacity: PARTITION_OPACITY }),
+      );
+      mesh.position.set(wall.x + wall.w / 2, PARTITION_HEIGHT_CM / 2, wall.z + wall.d / 2);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.raycast = noRaycast;
+      roomGroup.add(mesh);
+    }
+    // The name of each room, flat on its floor near the front edge.
+    for (const area of model.rooms) {
+      const label = labelSprite(area.label, { share: ROOM_LABEL_SHARE });
+      label.position.set(area.x + area.w / 2, ROOM_LABEL_LIFT_CM, area.z + Math.min(area.d - 20, 30));
+      label.raycast = noRaycast;
+      label.material.opacity = ROOM_LABEL_OPACITY;
+      roomGroup.add(label);
+      roomLabels.push(label);
+    }
     hazardNodes.length = 0;
+    roomLabels.length = 0;
     model.objects.forEach(addObject);
     showLabels();
     // Dangerous things lie flat on their furniture; they are drawn but not picked or dragged.

@@ -92,7 +92,6 @@
     <aside id="results" aria-label="結果">
       <section class="child-settings" aria-labelledby="child-title">
         <h2 id="child-title">子ども</h2>
-        <label class="room-label" for="room-select">部屋 <select id="room-select"></select></label>
         <label class="months-label" for="months">月齢 <output id="months-label" for="months"></output></label>
         <input id="months" type="range" step="1">
         <p class="months-range">1歳3か月〜5歳（15〜60か月）</p>
@@ -113,6 +112,7 @@
       <section id="adjustments" class="adjustments" aria-live="polite" aria-labelledby="adjustments-title">
         <h2 id="adjustments-title" class="adjustments-title">この月齢の環境調整</h2>
         <p class="adjust-lead">大人がこれをすると、この子は自分でできる。</p>
+        <div id="adjust-rooms" class="adjust-rooms" role="group" aria-label="部屋"></div>
         <div class="adjust-block">
           <h3 class="adjust-heading can">自分でできる</h3>
           <ul id="adjust-can" class="adjust-list"></ul>

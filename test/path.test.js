@@ -33,10 +33,20 @@ test('the grid uses the cell size and clearance from params', () => {
 });
 
 test('a clear straight line is walked straight', () => {
-  const from = { x: 300, y: 120 };
-  const to = { x: 400, y: 150 };
+  const from = { x: 100, y: 160 };
+  const to = { x: 300, y: 170 };
   assert.ok(lineIsClear(grid, from, to));
   assert.deepEqual(findPath(grid, from, to), [to]);
+});
+
+test('a partition wall is not walked through: the way into the washroom goes round by its door', () => {
+  const wall = roomLayout.walls[0];
+  const from = { x: wall.x - 20, y: 100 };
+  const to = { x: wall.x + wall.w + 20, y: 100 };
+  assert.ok(!lineIsClear(grid, from, to));
+  const route = findPath(grid, from, to);
+  assert.ok(route.length > 1, 'goes round');
+  assert.ok(route.some(({ y }) => y > wall.y + wall.d), 'through the gap below the wall');
 });
 
 test('routes between every pair of approach points stay out of the furniture', () => {

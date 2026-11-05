@@ -77,6 +77,10 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     spans: document.querySelector('#adjust-spans'),
   };
   const adjustTitle = document.querySelector('#adjustments-title');
+  const adjustRooms = document.querySelector('#adjust-rooms');
+  // The room the adjustments are shown for: 'all' or one of the layout's rooms.
+  let adjustRoom = 'living';
+  let lastChild = null;
   const total = settings.trial_count;
   let view = null;
   let lastTags = null;
@@ -129,11 +133,30 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
    * Deterministic, from the ledger; the hundred runs are not involved. Returns the tag levels.
    */
   function showAdjustments(child) {
+    lastChild = child;
     const simulation = session.getSimulation();
     const room = session.getRoom();
     const shared = { ledger, room, landmarks: simulation.landmarks, hazards: simulation.hazards, sex: child.sex, individual: child.individual };
-    const now = adjustmentsAt({ ...shared, months: child.months });
-    const rows = adjustmentTimeline(shared);
+    const all = adjustmentsAt({ ...shared, months: child.months });
+    const allRows = adjustmentTimeline(shared);
+    // The room chips: all, then each room of the layout; the lists below show the chosen one.
+    const areas = room.rooms ?? [];
+    if (adjustRooms.childElementCount !== areas.length + 1) {
+      adjustRooms.replaceChildren(...[{ id: 'all', label: 'すべて' }, ...areas].map((area) => {
+        const button = element('button', '', area.label);
+        button.type = 'button';
+        button.dataset.room = area.id;
+        button.addEventListener('click', () => { adjustRoom = area.id; showAdjustments(lastChild); });
+        return button;
+      }));
+    }
+    for (const button of adjustRooms.children) button.setAttribute('aria-pressed', String(button.dataset.room === adjustRoom));
+    const inRoom = (goal) => adjustRoom === 'all' || goal.room === adjustRoom;
+    const roomName = new Map(areas.map((area) => [area.id, area.label]));
+    const now = { ...all, goals: all.goals.filter(inRoom) };
+    now.stepCm = Math.max(0, ...now.goals.filter((goal) => goal.help === HELP_STEP && goal.status === STATUS_HELP).map((goal) => goal.stepCm));
+    const rows = allRows.filter((row) => adjustRoom === 'all' || all.goals.find(({ id }) => id === row.goalId)?.room === adjustRoom);
+    const named = (goal) => (adjustRoom === 'all' && roomName.has(goal.room) ? `${roomName.get(goal.room)}：${goal.label}` : goal.label);
     const who = child.individual ? 'この子は' : '';
     adjustTitle.textContent = `${formatAge(child.months)}の環境調整`;
     const firstCan = (goalId) => rows.find((row) => row.goalId === goalId && row.status === STATUS_CAN)?.months ?? null;
@@ -143,7 +166,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // By themselves, with the age it became so when that is later than the start.
     adjustLists.can.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_CAN).map((goal) => {
       const since = firstCan(goal.id);
-      const li = item(`${goal.label}`);
+      const li = item(named(goal));
       li.append(`（${goal.how}${since && since > ledger._meta.age_range_months[0] ? `・${formatAge(since)}から` : ''}）`);
       return li;
     }));
@@ -155,18 +178,20 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const gap = (goal) => (goal.gapCm > 0 && goal.gapCm <= NEAR_GAP_CM ? `（あと${goal.gapCm}cm）` : '');
     if (stepGoals.length) {
       const li = item('');
-      li.append(bold(`踏み台 ${now.stepCm}cm`), ` → ${stepGoals.map((goal) => `${goal.label}${gap(goal)}`).join('・')}`);
+      li.append(bold(`踏み台 ${now.stepCm}cm`), ` → ${stepGoals.map((goal) => `${named(goal)}${gap(goal)}`).join('・')}`);
       helpItems.push(li);
     }
     for (const goal of helped.filter(({ help }) => help !== HELP_STEP)) {
       const li = item('');
-      li.append(bold(goal.how), ` → ${goal.label}${gap(goal)}`);
+      li.append(bold(goal.how), ` → ${named(goal)}${gap(goal)}`);
       helpItems.push(li);
     }
     adjustLists.help.replaceChildren(...helpItems);
-    adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => item(`${goal.label}（${goal.how}${goal.gapCm ? `・あと${goal.gapCm}cm` : ''}）`, true)));
+    adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => item(`${named(goal)}（${goal.how}${goal.gapCm ? `・あと${goal.gapCm}cm` : ''}）`, true)));
     // The span of each help: from when to when a step is needed, and when the goal is theirs.
     adjustLists.spans.replaceChildren(...helpSpans(rows, ledger._meta.age_range_months).map((span) => {
+      const goal = all.goals.find(({ id }) => id === span.goalId);
+      span = { ...span, label: goal ? named(goal) : span.label };
       const parts = [];
       if (span.stepFrom !== null) {
         const until = span.canFrom !== null ? formatAge(span.canFrom - 1) : `${formatAge(span.to)}以降`;
@@ -184,15 +209,17 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       .filter((row) => row.months > child.months && (row.status === STATUS_CAN || row.stepCm !== null))
       .slice(0, 3)
       .map((row) => {
-        const said = row.status === STATUS_CAN ? `${row.label}（${row.how}・助けを卒業）` : `${row.label}：${row.how}で足りる`;
+        const goal = all.goals.find(({ id }) => id === row.goalId);
+        const name = goal ? named(goal) : row.label;
+        const said = row.status === STATUS_CAN ? `${name}（${row.how}・助けを卒業）` : `${name}：${row.how}で足りる`;
         return item(`${formatAge(row.months)}：${who}${said}`);
       });
     adjustLists.next.replaceChildren(...coming);
     // What the step also brings into reach: the adults' side, kept below.
-    adjustLists.adults.replaceChildren(...now.hazardsWithStep.map((hazard) => item(`踏み台${now.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く → ${hazard.putAbove}cmより上へ`)));
+    adjustLists.adults.replaceChildren(...all.hazardsWithStep.map((hazard) => item(`踏み台${all.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く → ${hazard.putAbove}cmより上へ`)));
 
     const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_NOT_YET]: 'plain' };
-    return new Map(now.goals.map((goal) => [`goal-${goal.id}`, { level: level[goal.status], text: goal.how }]));
+    return new Map(all.goals.map((goal) => [`goal-${goal.id}`, { level: level[goal.status], text: goal.how }]));
   }
 
   document.querySelector('#print-adjustments').addEventListener('click', () => {

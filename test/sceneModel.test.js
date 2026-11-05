@@ -135,10 +135,10 @@ test('the first camera fills about 80% of the width, with everything drawn in fr
 
 test('each piece is drawn by the shape of the ledger height it points to', () => {
   const shapes = Object.fromEntries(model(48).objects.map(({ id, shape }) => [id, shape]));
-  assert.deepEqual(shapes, {
-    sofa: 'sofa', low_table: 'low_table', low_shelf: 'shelf', dining_chair: 'chair',
-    dining_table: 'table', window: 'window', window_lock: 'window_lock',
-  });
+  const living = { sofa: 'sofa', low_table: 'low_table', low_shelf: 'shelf', dining_chair: 'chair', dining_table: 'table', window: 'window', window_lock: 'window_lock' };
+  for (const [id, shape] of Object.entries(living)) assert.equal(shapes[id], shape, id);
+  // The fixtures of the other rooms have no ledger shape yet and draw as plain blocks.
+  for (const id of ['vanity', 'toilet_bowl', 'shoe_shelf', 'counter', 'cupboard', 'entry_step']) assert.equal(shapes[id], 'block', id);
 });
 
 test('display-only parts take ledger heights and never change the heights the simulation uses', () => {
