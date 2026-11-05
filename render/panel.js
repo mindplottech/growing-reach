@@ -83,7 +83,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   const adjustTitle = document.querySelector('#adjustments-title');
   const adjustRooms = document.querySelector('#adjust-rooms');
   // The room the adjustments are shown for: 'all' or one of the layout's rooms.
-  let adjustRoom = 'living';
+  let adjustRoom = 'all';
   let lastChild = null;
   // The goal being shown in 3D with its help placed (「助けを置いて見せる」), and which side.
   let shownGoalId = null;
@@ -376,6 +376,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const individual = child.individual ?? { height: 0, climb: 0 };
     return Array.from({ length: WANDER_RUNS }, (_, i) => ({
       ...child, individual, seed: i + 1, room: focusedRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: 'あーちゃん', height,
+      // あーちゃん does not climb the furniture on the walk (it read as being shown how to; KO's test).
+      settings: { climb_probability: 0, chain_probability: 0 },
     }));
   }
 

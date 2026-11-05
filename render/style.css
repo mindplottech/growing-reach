@@ -835,3 +835,4 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 .goal-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 4px; border-radius: 12px; background: #f3faf5; border: 1px solid #b9dcc6; font-size: 12px; white-space: nowrap; }
 .adjust-next-kind { flex: none; padding: 0 6px; border-radius: 8px; background: #dde7f3; font-size: 11px; }
 .next-chip { white-space: nowrap; }
+.guide-emoji { font-size: 22px; line-height: 1; }

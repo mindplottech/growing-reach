@@ -51,6 +51,12 @@ const HELP_DISTANCE_HEIGHTS = 2.6;
 // The close views frame a child of this height (display only), whatever the age, so the child is
 // seen to grow as the slider moves: the camera does not move back as the child gets taller.
 const CLOSE_VIEW_HEIGHT_CM = 95;
+// A chosen room is seen from high above (display only): the pitch, the room's share of the frame
+// (more than 1 leaves a margin) and the height the camera aims at.
+const AREA_PITCH = (65 * Math.PI) / 180;
+const AREA_FRAME_MARGIN = 1.25;
+const AREA_TARGET_HEIGHT_CM = 30;
+const AREA_MIN_SPAN_CM = 260;
 const HELP_PITCH = 0.42;
 const HELP_SIDE_ANGLE = 0.6;
 const HELP_LOOK_SHARE = 0.55;
@@ -342,11 +348,22 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     controls.update();
   }
 
-  /** The camera framing one area: the same fit as the whole house, on the area's floor and walls. */
+  /**
+   * The camera framing one area from high above (about 65°), so the partition walls of the rooms
+   * in front do not hide it; turned the same way round as the view of the whole house.
+   */
   function areaPlacement(area) {
-    const local = cameraPlacement({ width: area.w, depth: area.d, wallHeight: model.wallHeight }, camera.aspect, FIELD_OF_VIEW);
-    const shift = ({ x, y, z }) => ({ x: x + area.x, y, z: z + area.y });
-    return { position: shift(local.position), target: shift(local.target) };
+    const whole = cameraPlacement(model, camera.aspect, FIELD_OF_VIEW);
+    const across = new THREE.Vector3(whole.position.x - whole.target.x, 0, whole.position.z - whole.target.z).normalize();
+    const target = new THREE.Vector3(area.x + area.w / 2, AREA_TARGET_HEIGHT_CM, area.y + area.d / 2);
+    const tanHalf = Math.tan((FIELD_OF_VIEW * Math.PI) / 180 / 2);
+    // A small room (the entrance) is not blown up: at least AREA_MIN_SPAN_CM is in the frame.
+    const fit = Math.max(area.w / camera.aspect, area.d, AREA_MIN_SPAN_CM) / 2 / tanHalf;
+    const distance = fit * AREA_FRAME_MARGIN;
+    const position = target.clone()
+      .add(across.multiplyScalar(distance * Math.cos(AREA_PITCH)))
+      .add(new THREE.Vector3(0, distance * Math.sin(AREA_PITCH), 0));
+    return { position, target };
   }
 
   // Following: the camera glides to a close view of the child and keeps it while on; turning
@@ -545,10 +562,11 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       sheet.raycast = noRaycast;
       roomGroup.add(sheet);
     }
-    // The name of each room, flat on its floor near the front edge.
+    // The name of each room, over the middle of its floor (at the near edge it sat over the next
+    // room's things, seen from the camera).
     for (const area of model.rooms) {
       const label = labelSprite(area.label, { share: ROOM_LABEL_SHARE });
-      label.position.set(area.x + area.w / 2, ROOM_LABEL_LIFT_CM, area.z + Math.min(area.d - 20, 30));
+      label.position.set(area.x + area.w / 2, ROOM_LABEL_LIFT_CM, area.z + area.d / 2);
       label.raycast = noRaycast;
       label.material.opacity = ROOM_LABEL_OPACITY;
       roomGroup.add(label);

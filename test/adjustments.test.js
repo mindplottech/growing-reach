@@ -159,7 +159,8 @@ test('practice (KO): each goal is shown only in its 年ごろ, and the 遊びと
   assert.ok(activitiesAt(ledger, 9).play.includes('手遊び'));
   // 2歳: tidying and the laundry basket come; 3歳: the crayons and the touch toys go, the hook comes.
   assert.ok(ids(24).includes('tidy') && ids(24).includes('laundry'));
-  assert.ok(!ids(36).includes('crayons') && !ids(36).includes('toys') && ids(36).includes('hook'));
+  // 3歳: the crayons and the toys stay (the drawing and the toys go on); the hook comes.
+  assert.ok(ids(36).includes('crayons') && ids(36).includes('toys') && ids(36).includes('hook'));
   // 4歳: the toilet; 5歳: the paper too (KO: 自分でトイレの処理ができる).
   assert.ok(ids(48).includes('sit') && !ids(48).includes('paper') && ids(60).includes('paper'));
   // The window is no longer something to want (it invites climbing to the window).

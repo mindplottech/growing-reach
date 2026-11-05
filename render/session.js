@@ -32,7 +32,9 @@ export function createSession({ ledger, settings, room: startRoom, getChild, sta
 
   function begin() {
     const child = scene ? { months: scene.months, sex: scene.sex, individual: scene.individual ?? null } : getChild();
-    simulation = createSimulation({ ledger, settings, ...child, seed, room: runRoom() });
+    // A scene may bring its own settings over the shared ones (the walk: no climbing).
+    const runSettings = scene?.settings ? { ...settings, ...scene.settings } : settings;
+    simulation = createSimulation({ ledger, settings: runSettings, ...child, seed, room: runRoom() });
     // Computing up to the start in one go gives the same record as stepping there frame by frame.
     if (scene?.start > 0) simulation.step(scene.start);
     playback.reset();

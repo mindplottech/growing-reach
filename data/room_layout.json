@@ -324,19 +324,19 @@
         },
         {
           "id": "counter",
-          "label": "調理台",
+          "label": "対面キッチンの調理台",
           "heightOf": [
             "room_fixtures",
             "kitchen_counter"
           ],
           "scaffold": false,
-          "x": 420,
-          "y": 340,
-          "w": 300,
-          "d": 60,
+          "x": 430,
+          "y": 290,
+          "w": 60,
+          "d": 110,
           "approach": {
-            "x": 570,
-            "y": 320
+            "x": 510,
+            "y": 345
           },
           "room": "kitchen"
         },
@@ -377,7 +377,7 @@
         {
           "id": "cup",
           "label": "テーブルの自分のコップを取る",
-          "short": "コップ",
+          "short": "テーブルのコップ",
           "kind": "reach",
           "on": "dining_table",
           "help": "closer",
@@ -423,8 +423,7 @@
             "w": 30,
             "d": 12
           },
-          "room": "living",
-          "until_months": 36
+          "room": "living"
         },
         {
           "id": "switch",
@@ -635,17 +634,17 @@
           "kind": "work",
           "on": "counter",
           "help": "step",
-          "dx": 140,
-          "dy": 5,
-          "w": 20,
-          "d": 12,
+          "dx": 20,
+          "dy": 45,
+          "w": 12,
+          "d": 20,
           "room": "kitchen",
           "from_months": 36
         },
         {
           "id": "own_cup",
           "label": "食器棚から自分のコップを取る",
-          "short": "コップ",
+          "short": "食器棚のコップ",
           "kind": "reach",
           "heightOf": [
             "room_fixtures",
@@ -674,7 +673,6 @@
           "w": 10,
           "d": 8,
           "room": "living",
-          "until_months": 36,
           "from_months": 16
         },
         {
@@ -782,10 +780,10 @@
           "kind": "scissors",
           "label": "包丁",
           "on": "counter",
-          "dx": 30,
-          "dy": 35,
-          "w": 20,
-          "d": 5
+          "dx": 35,
+          "dy": 70,
+          "w": 5,
+          "d": 20
         }
       ]
     },
@@ -1118,19 +1116,19 @@
         },
         {
           "id": "counter",
-          "label": "調理台",
+          "label": "対面キッチンの調理台",
           "heightOf": [
             "room_fixtures",
             "kitchen_counter"
           ],
           "scaffold": false,
-          "x": 420,
-          "y": 340,
-          "w": 300,
-          "d": 60,
+          "x": 430,
+          "y": 290,
+          "w": 60,
+          "d": 110,
           "approach": {
-            "x": 570,
-            "y": 320
+            "x": 510,
+            "y": 345
           },
           "room": "kitchen"
         },
@@ -1170,7 +1168,7 @@
         {
           "id": "cup",
           "label": "テーブルの自分のコップを取る",
-          "short": "コップ",
+          "short": "テーブルのコップ",
           "kind": "reach",
           "on": "dining_table",
           "help": "closer",
@@ -1432,16 +1430,16 @@
           "kind": "work",
           "on": "counter",
           "help": "step",
-          "dx": 140,
-          "dy": 5,
-          "w": 20,
-          "d": 12,
+          "dx": 20,
+          "dy": 45,
+          "w": 12,
+          "d": 20,
           "room": "kitchen"
         },
         {
           "id": "own_cup",
           "label": "食器棚から自分のコップを取る",
-          "short": "コップ",
+          "short": "食器棚のコップ",
           "kind": "reach",
           "heightOf": [
             "room_fixtures",
@@ -1504,10 +1502,10 @@
           "kind": "scissors",
           "label": "包丁",
           "on": "counter",
-          "dx": 30,
-          "dy": 35,
-          "w": 20,
-          "d": 5
+          "dx": 35,
+          "dy": 70,
+          "w": 5,
+          "d": 20
         }
       ]
     }
