@@ -143,6 +143,12 @@ const SHAPES = {
   sofa_back: 'sofa_back',
   low_shelf_top: 'shelf',
   adult_bed_mattress: 'bed',
+  vanity_counter: 'vanity',
+  toilet_seat: 'toilet',
+  shoe_shelf_top: 'shoe_shelf',
+  kitchen_counter: 'kitchen_counter',
+  cupboard_top: 'cupboard',
+  entry_step: 'step',
 };
 
 // Parts drawn for the look only, at ledger heights. The simulation never reads them: it climbs
@@ -242,7 +248,7 @@ export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Se
     hazards: hazards.map(({ id, label, kind, on, x, y, w, d, height }) => ({ id, label, kind, on, x, z: y, w, d, bottom: height })),
     // The goals (「やりたいこと」): things on furniture lie on its top; things on the wall hang at their height.
     goals: placeGoals(ledger, room, landmarks).map((goal) => ({
-      id: `goal-${goal.id}`, label: goal.short ?? goal.label, x: goal.x, z: goal.y, w: goal.w, d: goal.d, height: goal.height, onWall: Boolean(goal.wall),
+      id: `goal-${goal.id}`, label: goal.short ?? goal.label, room: goal.room ?? null, x: goal.x, z: goal.y, w: goal.w, d: goal.d, height: goal.height, onWall: Boolean(goal.wall),
     })),
     pane,
     curtain,

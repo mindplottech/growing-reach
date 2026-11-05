@@ -18,6 +18,26 @@ const GLASS = 0xbfe2f3;
 const CURTAIN = 0xe7d3b8;
 const METAL = 0x9aa4ad;
 const MATTRESS = 0xf7f4ee;
+const FIXTURE_WHITE = 0xf7f8f6;
+const SEAT_WHITE = 0xeeeeea;
+const CABINET = 0xe6dccb;
+const BOWL = 0xdfe8ea;
+const WORKTOP = 0xd9dcd8;
+const BURNER = 0x3a3f44;
+const TILE = 0xb9b3a8;
+const SHOE_COLOURS = [0x6b7f99, 0xc9736a, 0x7a8f6b, 0xe0b36a];
+const COUNTER_CM = 3;
+const BOWL_SHARE = 0.32;
+const TAP_CM = 14;
+const MIRROR_CM = 60;
+const MIRROR_GAP_CM = 12;
+const SEAT_CM = 3;
+const TANK_CM = 36;
+const SHOE = { w: 8, h: 4, d: 20 };
+const SINK = { w: 50, d: 36 };
+const BURNER_CM = 9;
+const PLATE_CM = 9;
+const STEP_TILE_CM = 30;
 const PASTELS = [0xf2d4cc, 0xcfe5d9, 0xd2ddef, 0xf1e4bf, 0xe0d6ee, 0xf1d6e2, 0xd0e8eb];
 
 const TABLE_TOP_CM = 3;
@@ -235,6 +255,75 @@ export function buildFurniture(object, model, index) {
       const metal = material(METAL, { metalness: 0.6, roughness: 0.35 });
       box(W, H * 2, LOCK_PLATE_CM, 0, object.bottom + H / 2, D / 2 - LOCK_PLATE_CM / 2 - FRAME_DEPTH_CM, metal, 0.5);
       box(W * LOCK_LEVER.w, H * LOCK_LEVER.h, LOCK_LEVER.d, 0, object.bottom + H / 2, D / 2 - FRAME_DEPTH_CM - LOCK_PLATE_CM - LOCK_LEVER.d / 2, metal, 0.6);
+      break;
+    }
+    case 'vanity': {
+      // A cabinet with a counter, a bowl, a tap and a mirror on the wall behind (+z is the wall).
+      const white = material(FIXTURE_WHITE);
+      box(W, H - COUNTER_CM, D, 0, (H - COUNTER_CM) / 2, 0, material(CABINET), 1);
+      box(W, COUNTER_CM, D, 0, H - COUNTER_CM / 2, 0, white, 0.8);
+      const bowl = cylinder(Math.min(W, D) * BOWL_SHARE, 1.5, 0, H + 0.2, -D * 0.05, material(BOWL));
+      bowl.scale.z = 0.8;
+      const metal = material(METAL, { metalness: 0.6, roughness: 0.35 });
+      cylinder(1.5, TAP_CM, 0, H + TAP_CM / 2, D / 2 - 7, metal);
+      const spout = cylinder(1.2, 10, 0, H + TAP_CM, D / 2 - 12, metal);
+      spout.rotation.x = Math.PI / 2;
+      box(W - 10, MIRROR_CM, 1.5, 0, H + MIRROR_GAP_CM + MIRROR_CM / 2, D / 2 - 1, material(GLASS, { roughness: 0.2 }), 0.5);
+      break;
+    }
+    case 'toilet': {
+      const white = material(FIXTURE_WHITE);
+      const bowl = cylinder(W / 2 - 1, H - 2, 0, (H - 2) / 2, -D * 0.1, white);
+      bowl.scale.z = (D * 0.7) / (W - 2);
+      const seat = cylinder(W / 2, SEAT_CM, 0, H - SEAT_CM / 2 + 0.5, -D * 0.1, material(SEAT_WHITE));
+      seat.scale.z = (D * 0.75) / W;
+      box(W * 0.85, TANK_CM, D * 0.22, 0, H + TANK_CM / 2 - 2, D / 2 - D * 0.11, white, 1.5);
+      break;
+    }
+    case 'shoe_shelf': {
+      const panel = material(SHELF);
+      const inside = material(SHELF_INSIDE);
+      const t = SHELF_BOARD_CM;
+      box(W, t, D, 0, H - t / 2, 0, panel, 0.5);
+      for (const sx of [-1, 1]) box(t, H, D, sx * (W / 2 - t / 2), H / 2, 0, panel);
+      box(W - 2 * t, H - t, 1, 0, (H - t) / 2, D / 2 - 0.5, inside);
+      const boards = 3;
+      for (let i = 0; i <= boards; i += 1) {
+        const y = SHELF_KICK_CM + ((H - t - SHELF_KICK_CM) * i) / (boards + 1);
+        box(W - 2 * t, t, D - 1, 0, y, -0.5, inside);
+        // A pair of shoes on each board.
+        for (const sx of [-1, 1]) box(SHOE.w, SHOE.h, SHOE.d, sx * SHOE.w * 0.7, y + t / 2 + SHOE.h / 2, 0, material(SHOE_COLOURS[i % SHOE_COLOURS.length]), 1.5);
+      }
+      break;
+    }
+    case 'kitchen_counter': {
+      // Cabinets, a worktop, a sink on one side and two burners on the other, a tap at the wall.
+      box(W, H - COUNTER_CM, D, 0, (H - COUNTER_CM) / 2, 0, material(CABINET), 1);
+      box(W, COUNTER_CM, D, 0, H - COUNTER_CM / 2, 0, material(WORKTOP), 0.8);
+      const sinkW = Math.min(SINK.w, W * 0.3);
+      box(sinkW, 1.5, Math.min(SINK.d, D * 0.6), -W / 4, H + 0.2, 0, material(METAL, { metalness: 0.5, roughness: 0.4 }), 0.5);
+      const metal = material(METAL, { metalness: 0.6, roughness: 0.35 });
+      cylinder(1.5, TAP_CM, -W / 4, H + TAP_CM / 2, D / 2 - 7, metal);
+      for (const sx of [0.7, 1.3]) cylinder(BURNER_CM, 1, W / 4 * sx - W / 8, H + 0.6, 0, material(BURNER));
+      break;
+    }
+    case 'cupboard': {
+      const panel = material(SHELF);
+      const inside = material(SHELF_INSIDE);
+      const t = SHELF_BOARD_CM;
+      box(W, H, D, 0, H / 2, 0, panel, 1);
+      box(W - 2 * t, H - 2 * t, 1, 0, H / 2, -D / 2 + 0.5, inside);
+      for (let i = 1; i <= 3; i += 1) {
+        const y = (H * i) / 4;
+        box(W - 2 * t, t, D - 2, 0, y, 0, inside);
+        for (const sx of [-1, 1]) cylinder(PLATE_CM, 0.8, sx * W / 4, y + t / 2 + 0.4, 0, material(FIXTURE_WHITE));
+      }
+      break;
+    }
+    case 'step': {
+      // The raised floor of the hall (上がり框): a wooden step with a darker earthen floor in front.
+      box(W, H, D, 0, H / 2, 0, material(WOOD_DARK), 1);
+      box(W, 0.6, STEP_TILE_CM, 0, 0.3, -D / 2 - STEP_TILE_CM / 2, material(TILE));
       break;
     }
     default: {
