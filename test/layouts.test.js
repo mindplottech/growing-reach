@@ -13,13 +13,13 @@ test('layouts are named and selected by id, with shared settings', () => {
   for (const { id, name } of roomFile.layouts) {
     const room = selectLayout(roomFile, id);
     assert.equal(room.name, name);
-    assert.equal(room.width, roomFile.width);
+    assert.equal(room.width, roomFile.layouts.find((layout) => layout.id === id).width ?? roomFile.width);
     assert.equal(room.neighbor_gap, roomParams.neighbor_gap);
   }
   assert.throws(() => selectLayout(roomFile, 'missing'), /layout not found/);
 });
 
-test('every layout fits in the room, nothing overlaps, and it has a window and a lock', () => {
+test('every layout fits in the room, nothing overlaps, and the living rooms have a window and a lock', () => {
   for (const { id } of roomFile.layouts) {
     const room = selectLayout(roomFile, id);
     room.landmarks.forEach((a, i) => {
@@ -27,8 +27,11 @@ test('every layout fits in the room, nothing overlaps, and it has a window and a
       assert.ok(landmarkHeight(ledger, a.heightOf) > 0, a.id);
       for (const b of room.landmarks.slice(i + 1)) assert.ok(!overlap(a, b), `${a.id} ${b.id}`);
     });
-    assert.ok(room.landmarks.some(({ role }) => role === 'window'));
-    assert.ok(room.landmarks.some(({ role }) => role === 'window_lock'));
+    // The living rooms have a window and its lock; the other rooms need not.
+    if (room.room_label === 'リビング') {
+      assert.ok(room.landmarks.some(({ role }) => role === 'window'));
+      assert.ok(room.landmarks.some(({ role }) => role === 'window_lock'));
+    }
   }
 });
 

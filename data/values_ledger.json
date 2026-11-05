@@ -148,7 +148,12 @@
       "TOKYO_KOSODATE_DRAFT": "東京都 住宅政策本部「子育てに配慮した住宅のガイドライン（素案）」資料3-3 https://www.juutakuseisaku.metro.tokyo.lg.jp/documents/d/juutakuseisaku/5-03-3（子どもでも手が届く床上900mm程度にスイッチを設置）",
       "NILIM2025": "国土技術政策総合研究所（2025年3月）『子育てに配慮した住宅と居住環境に関するガイドライン（改訂版）』 https://www.nilim.go.jp/lab/hbg/kosodate/kosodate_zenpen.pdf（テーマ(23) 子どもの自主性を育てる収納や設備の工夫：電気スイッチは子どもの手の届く高さに設置しワイドスイッチ等とする。補助錠は床上1,500mm程度以上）",
       "REHADAT_COATRACK": "REHADAT/EASTIN 製品データ（幼稚園用コート掛け 高さ130cm、小学校155cm、大人180cm） https://www.eastin.eu/en-gb/searches/products/detail/database-rehadat/id-tec_1A627DD8-B8D1-7342-8460-66BA58F47B0F（海外の製品例、二次資料）",
-      "STEP_STOOL_MARKET": "子ども用踏み台の市販品の天板高さ（14・20・22〜25・30cm が多い。my-best 2026年10月ランキング、楽天市場の商品表示）— 規格ではなく市場の目安"
+      "STEP_STOOL_MARKET": "子ども用踏み台の市販品の天板高さ（14・20・22〜25・30cm が多い。my-best 2026年10月ランキング、楽天市場の商品表示）— 規格ではなく市場の目安",
+      "TOTO_VANITY": "TOTO 洗面化粧台 工事寸法図（BL認定 Vシリーズ等、洗面ボウル高さ800mm） https://jp.toto.com/page/products/kosodateecohome/eco_faucet/groom/assets/pdf/BL_groom_20240122.pdf ／ 各社の洗面化粧台はあふれ面 750・800・850mm の3段階で、800mm が標準（交換できるくん スタッフブログ、二次）",
+      "SUNREFRE_TOILET": "交換できるくん スタッフブログ「便器が高い!?そのわけは!」（TOTO ネオレストAH 便座面 380mm、LIXIL アメージュZ 385mm。二次資料） https://www.sunrefre.jp/staff/?p=24830",
+      "MLIT_KOREISHA": "国土交通省「高齢者が居住する住宅の設計に係る指針」（玄関の上がり框の段差は一戸建て 180mm 以下、共同住宅の接地階以外 110mm 以下） https://www.mlit.go.jp/jutakukentiku/house/torikumi/koureishahou-kokuji1150.html",
+      "KITCHEN_JIS": "システムキッチンのワークトップ高さは JIS で 800・850・900・950mm の4種類、85cm が最も一般的（ミツモア 2024 の解説、二次） https://meetsmore.com/services/kitchen-remodel/media/101979",
+      "AIST1992": "河内まき子（2005）『AIST 人体寸法データベース1991-92 解説書』産業技術総合研究所デジタルヒューマン研究センター https://www.airc.aist.go.jp/dhrt/91-92/fig/91-92_anthrop_manual.pdf（成人の肘頭高：男 1042.6mm／身長 1714.0mm、女 964.6mm／身長 1591.3mm）"
     },
     "updated": "2026-11-05",
     "data_age_range_months": [
@@ -1375,6 +1380,121 @@
       "source": "上の各値の source を参照",
       "table_page": "—",
       "note": "【v6】「環境調整」の計算で使う。各値の区分は values の中に持つ（項目全体の category は便宜上 measured だが、仮値の値は画面で仮値と出す）。"
+    },
+    {
+      "id": "room_fixtures",
+      "label": "洗面所・トイレ・玄関・台所の設備の高さ",
+      "unit": "cm",
+      "category": "measured",
+      "values": {
+        "vanity_counter": {
+          "value": 80,
+          "category": "measured",
+          "source": "TOTO_VANITY",
+          "note": "洗面化粧台のあふれ面（洗面ボウル高さ）800mm が標準。750・850 もある"
+        },
+        "faucet_lever": {
+          "value": 90,
+          "category": "provisional",
+          "source": null,
+          "note": "洗面台のレバー水栓の操作部。あふれ面＋10cm と仮に置く（製品により異なる）"
+        },
+        "towel_rail": {
+          "value": 100,
+          "category": "provisional",
+          "source": null,
+          "note": "タオル掛けの高さ。設計者の仮値"
+        },
+        "toilet_seat": {
+          "value": 38,
+          "category": "converted",
+          "source": "SUNREFRE_TOILET",
+          "note": "現行の洋式便器の便座面 380〜385mm（二次資料）。38 で置く"
+        },
+        "flush_lever": {
+          "value": 85,
+          "category": "provisional",
+          "source": null,
+          "note": "タンク式便器の洗浄レバーの高さ。設計者の仮値"
+        },
+        "paper_holder": {
+          "value": 70,
+          "category": "provisional",
+          "source": null,
+          "note": "ペーパーホルダーの高さ。設計者の仮値"
+        },
+        "toilet_switch": {
+          "value": 110,
+          "category": "provisional",
+          "source": "PANASONIC_FAQ",
+          "note": "スイッチ標準 110〜120cm の下限を置く"
+        },
+        "entry_step": {
+          "value": 18,
+          "category": "measured",
+          "source": "MLIT_KOREISHA",
+          "note": "上がり框の段差。一戸建て 180mm 以下の指針値を標準として置く"
+        },
+        "shoe_shelf_levels": {
+          "values": [
+            10,
+            40,
+            70,
+            100
+          ],
+          "category": "provisional",
+          "source": null,
+          "note": "靴箱の段の高さ。設計者の仮値"
+        },
+        "kitchen_counter": {
+          "value": 85,
+          "category": "measured",
+          "source": "KITCHEN_JIS",
+          "note": "JIS の4種類（80・85・90・95）のうち最も一般的な 85"
+        },
+        "cupboard_levels": {
+          "values": [
+            30,
+            60,
+            90,
+            120
+          ],
+          "category": "provisional",
+          "source": null,
+          "note": "食器棚の段の高さ。設計者の仮値"
+        },
+        "shoe_shelf_top": {
+          "value": 100,
+          "category": "provisional",
+          "source": null,
+          "note": "靴箱の天板。設計者の仮値（段は shoe_shelf_levels）"
+        },
+        "cupboard_top": {
+          "value": 120,
+          "category": "provisional",
+          "source": null,
+          "note": "食器棚の高さ。設計者の仮値（段は cupboard_levels）"
+        }
+      },
+      "source": "各値の source を参照",
+      "table_page": "—",
+      "note": "【v6】部屋ごとの環境調整で使う。仮値は画面で仮値と出す。"
+    },
+    {
+      "id": "elbow_height_share",
+      "label": "肘の高さ（身長に対する割合）",
+      "unit": "比",
+      "category": "converted",
+      "value": 0.61,
+      "formula": "肘頭高 ÷ 身長（成人 男 0.608、女 0.606 の平均を丸めた）",
+      "source": "AIST1992",
+      "table_page": "解説書の成人の表（肘頭高・身長）",
+      "work_tolerance_cm": {
+        "value": 10,
+        "category": "provisional",
+        "note": "手を洗う・調理台で手伝うなど「手を使う作業」は、天板が肘より 10cm 高いまでは無理なくできるとみなす。設計者の仮値"
+      },
+      "note": "【v6】「手を使う作業」（kind: work）の判定に使う。天板の高さ ≤ 肘の高さ＋許容 なら自分でできる、そうでなければ差を踏み台で埋める。比率は成人のもので、幼児は体の比率が違う（頭が大きく脚が短い）ため肘はやや高めに出る可能性がある。幼児の実測（HQL 子どもの身体寸法データベースの橈骨点高など）で差し替えるべき値。"
     }
   ]
 }

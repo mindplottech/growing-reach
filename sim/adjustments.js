@@ -68,6 +68,18 @@ export function goalStatus(ledger, body, goal) {
   const climb = body.climb.value;
   const tiptoe = reach + tiptoeMin(ledger);
   const h = goal.height;
+  if (goal.kind === 'work') {
+    // Work with the hands (washing, helping at the counter): the top must be no higher than the
+    // elbow plus a tolerance; a step makes up the difference, and must itself be climbable.
+    const share = ledger.items.find(({ id }) => id === 'elbow_height_share');
+    const elbow = body.height.value * share.value;
+    const limit = elbow + share.work_tolerance_cm.value;
+    if (h <= limit) return { status: STATUS_CAN, how: '肘の高さで使える', gapCm: 0 };
+    const gapCm = Math.ceil(h - limit);
+    const step = roundUp(h - limit);
+    if (step <= climb) return { status: STATUS_HELP, help: HELP_STEP, stepCm: step, how: `踏み台${step}cm`, gapCm };
+    return { status: STATUS_NOT_YET, how: 'まだ高すぎる', gapCm };
+  }
   if (goal.kind === 'climb') {
     if (climb >= h) return { status: STATUS_CAN, how: '自分で登れる', gapCm: 0 };
     const gapCm = Math.ceil(h - climb);

@@ -6,7 +6,8 @@
     "heights": "家具の高さはここに書かず、heightOf で values_ledger.json の項目を指す",
     "moved": "隙間・箱・壁・家具の大きさなどの仮値は sim/params.js にある",
     "hazards": "危険な物は家具の上に置く（on が家具、dx・dy は家具の角からの位置、w・d は大きさ）。高さは置いた家具の天板の高さ。位置と大きさは設計者が置いた仮値",
-    "goals_note": "goals は「やりたいこと」。計算（sim/adjustments.js）と表示だけが読み、100人の試行（simulation.js）は読まない。on は家具の上、wall は壁の位置（仮値）。高さは台帳を指す。"
+    "goals_note": "goals は「やりたいこと」。計算（sim/adjustments.js）と表示だけが読み、100人の試行（simulation.js）は読まない。on は家具の上、wall は壁の位置（仮値）。高さは台帳を指す。",
+    "rooms_note": "部屋ごとに width・depth・start・landmarks・goals・hazards を持つ。寸法と配置は設計者の仮値、高さは台帳を指す。"
   },
   "width": 450,
   "depth": 360,
@@ -14,42 +15,10 @@
     "x": 225,
     "y": 150
   },
-  "hazards": [
-    {
-      "id": "medicine",
-      "kind": "medicine",
-      "label": "薬",
-      "on": "dining_table",
-      "dx": 10,
-      "dy": 60,
-      "w": 8,
-      "d": 8
-    },
-    {
-      "id": "scissors",
-      "kind": "scissors",
-      "label": "はさみ",
-      "on": "dining_table",
-      "dx": 66,
-      "dy": 42,
-      "w": 15,
-      "d": 8
-    },
-    {
-      "id": "cord",
-      "kind": "cord",
-      "label": "コード",
-      "on": "low_table",
-      "dx": 40,
-      "dy": 25,
-      "w": 30,
-      "d": 4
-    }
-  ],
   "layouts": [
     {
       "id": "default",
-      "name": "今の配置",
+      "name": "リビング",
       "landmarks": [
         {
           "id": "sofa",
@@ -173,6 +142,138 @@
             "x": 178,
             "y": 330
           }
+        }
+      ],
+      "room_label": "リビング",
+      "goals": [
+        {
+          "id": "seat",
+          "label": "自分で席に着く",
+          "short": "席",
+          "kind": "climb",
+          "on": "dining_chair",
+          "help": "step",
+          "dx": 10,
+          "dy": 10,
+          "w": 20,
+          "d": 20
+        },
+        {
+          "id": "cup",
+          "label": "テーブルの自分のコップを取る",
+          "short": "コップ",
+          "kind": "reach",
+          "on": "dining_table",
+          "help": "closer",
+          "dx": 66,
+          "dy": 15,
+          "w": 8,
+          "d": 8
+        },
+        {
+          "id": "books",
+          "label": "絵本を自分で取る",
+          "short": "絵本",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "bookshelf_levels"
+          ],
+          "level_index": 3,
+          "help": "lower",
+          "wall": {
+            "x": 345,
+            "y": 348,
+            "w": 60,
+            "d": 12
+          }
+        },
+        {
+          "id": "toys",
+          "label": "おもちゃを自分で出す",
+          "short": "おもちゃ",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "toy_shelf"
+          ],
+          "help": "lower",
+          "wall": {
+            "x": 415,
+            "y": 348,
+            "w": 30,
+            "d": 12
+          }
+        },
+        {
+          "id": "window_view",
+          "label": "窓の外を見る",
+          "short": "窓",
+          "kind": "reach",
+          "on_landmark": "window",
+          "help": "step",
+          "wall": {
+            "x": 60,
+            "y": 348,
+            "w": 30,
+            "d": 10
+          }
+        },
+        {
+          "id": "switch",
+          "label": "電気をつける",
+          "short": "スイッチ",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "switch_standard"
+          ],
+          "help": "step",
+          "alt": {
+            "heightOf": [
+              "goal_heights",
+              "switch_child"
+            ],
+            "text": "スイッチを90cmに付け替える"
+          },
+          "wall": {
+            "x": 200,
+            "y": 352,
+            "w": 7,
+            "d": 4
+          }
+        }
+      ],
+      "hazards": [
+        {
+          "id": "medicine",
+          "kind": "medicine",
+          "label": "薬",
+          "on": "dining_table",
+          "dx": 10,
+          "dy": 60,
+          "w": 8,
+          "d": 8
+        },
+        {
+          "id": "scissors",
+          "kind": "scissors",
+          "label": "はさみ",
+          "on": "dining_table",
+          "dx": 66,
+          "dy": 42,
+          "w": 15,
+          "d": 8
+        },
+        {
+          "id": "cord",
+          "kind": "cord",
+          "label": "コード",
+          "on": "low_table",
+          "dx": 40,
+          "dy": 25,
+          "w": 30,
+          "d": 4
         }
       ]
     },
@@ -325,106 +426,515 @@
             "y": 330
           }
         }
+      ],
+      "room_label": "リビング",
+      "goals": [
+        {
+          "id": "seat",
+          "label": "自分で席に着く",
+          "short": "席",
+          "kind": "climb",
+          "on": "dining_chair",
+          "help": "step",
+          "dx": 10,
+          "dy": 10,
+          "w": 20,
+          "d": 20
+        },
+        {
+          "id": "cup",
+          "label": "テーブルの自分のコップを取る",
+          "short": "コップ",
+          "kind": "reach",
+          "on": "dining_table",
+          "help": "closer",
+          "dx": 66,
+          "dy": 15,
+          "w": 8,
+          "d": 8
+        },
+        {
+          "id": "books",
+          "label": "絵本を自分で取る",
+          "short": "絵本",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "bookshelf_levels"
+          ],
+          "level_index": 3,
+          "help": "lower",
+          "wall": {
+            "x": 345,
+            "y": 348,
+            "w": 60,
+            "d": 12
+          }
+        },
+        {
+          "id": "toys",
+          "label": "おもちゃを自分で出す",
+          "short": "おもちゃ",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "toy_shelf"
+          ],
+          "help": "lower",
+          "wall": {
+            "x": 415,
+            "y": 348,
+            "w": 30,
+            "d": 12
+          }
+        },
+        {
+          "id": "window_view",
+          "label": "窓の外を見る",
+          "short": "窓",
+          "kind": "reach",
+          "on_landmark": "window",
+          "help": "step",
+          "wall": {
+            "x": 60,
+            "y": 348,
+            "w": 30,
+            "d": 10
+          }
+        },
+        {
+          "id": "switch",
+          "label": "電気をつける",
+          "short": "スイッチ",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "switch_standard"
+          ],
+          "help": "step",
+          "alt": {
+            "heightOf": [
+              "goal_heights",
+              "switch_child"
+            ],
+            "text": "スイッチを90cmに付け替える"
+          },
+          "wall": {
+            "x": 200,
+            "y": 352,
+            "w": 7,
+            "d": 4
+          }
+        }
+      ],
+      "hazards": [
+        {
+          "id": "medicine",
+          "kind": "medicine",
+          "label": "薬",
+          "on": "dining_table",
+          "dx": 10,
+          "dy": 60,
+          "w": 8,
+          "d": 8
+        },
+        {
+          "id": "scissors",
+          "kind": "scissors",
+          "label": "はさみ",
+          "on": "dining_table",
+          "dx": 66,
+          "dy": 42,
+          "w": 15,
+          "d": 8
+        },
+        {
+          "id": "cord",
+          "kind": "cord",
+          "label": "コード",
+          "on": "low_table",
+          "dx": 40,
+          "dy": 25,
+          "w": 30,
+          "d": 4
+        }
       ]
-    }
-  ],
-  "goals": [
-    {
-      "id": "seat",
-      "label": "自分で席に着く",
-      "short": "席",
-      "kind": "climb",
-      "on": "dining_chair",
-      "help": "step",
-      "dx": 10,
-      "dy": 10,
-      "w": 20,
-      "d": 20
     },
     {
-      "id": "cup",
-      "label": "テーブルの自分のコップを取る",
-      "short": "コップ",
-      "kind": "reach",
-      "on": "dining_table",
-      "help": "closer",
-      "dx": 66,
-      "dy": 15,
-      "w": 8,
-      "d": 8
-    },
-    {
-      "id": "books",
-      "label": "絵本を自分で取る",
-      "short": "絵本",
-      "kind": "reach",
-      "heightOf": [
-        "goal_heights",
-        "bookshelf_levels"
-      ],
-      "level_index": 3,
-      "help": "lower",
-      "wall": {
-        "x": 370,
-        "y": 348,
-        "w": 60,
-        "d": 12
-      }
-    },
-    {
-      "id": "window_view",
-      "label": "窓の外を見る",
-      "short": "窓",
-      "kind": "reach",
-      "on_landmark": "window",
-      "help": "step",
-      "wall": {
-        "x": 60,
-        "y": 348,
-        "w": 30,
-        "d": 10
-      }
-    },
-    {
-      "id": "switch",
-      "label": "電気をつける",
-      "short": "スイッチ",
-      "kind": "reach",
-      "heightOf": [
-        "goal_heights",
-        "switch_standard"
-      ],
-      "help": "step",
-      "alt": {
-        "heightOf": [
-          "goal_heights",
-          "switch_child"
-        ],
-        "text": "スイッチを90cmに付け替える"
+      "id": "entrance",
+      "name": "玄関",
+      "room_label": "玄関",
+      "width": 200,
+      "depth": 180,
+      "start": {
+        "x": 100,
+        "y": 60
       },
-      "wall": {
-        "x": 200,
-        "y": 352,
-        "w": 7,
-        "d": 4
-      }
+      "landmarks": [
+        {
+          "id": "entry_step",
+          "label": "上がり框",
+          "heightOf": [
+            "room_fixtures",
+            "entry_step"
+          ],
+          "scaffold": true,
+          "x": 0,
+          "y": 120,
+          "w": 200,
+          "d": 60,
+          "approach": {
+            "x": 100,
+            "y": 100
+          }
+        },
+        {
+          "id": "shoe_shelf",
+          "label": "靴箱",
+          "heightOf": [
+            "room_fixtures",
+            "shoe_shelf_top"
+          ],
+          "scaffold": false,
+          "x": 0,
+          "y": 0,
+          "w": 40,
+          "d": 90,
+          "approach": {
+            "x": 60,
+            "y": 45
+          }
+        }
+      ],
+      "goals": [
+        {
+          "id": "step_up",
+          "label": "自分で上がり框を上がる",
+          "short": "框",
+          "kind": "climb",
+          "on": "entry_step",
+          "help": "step",
+          "dx": 90,
+          "dy": 5,
+          "w": 20,
+          "d": 20
+        },
+        {
+          "id": "shoes",
+          "label": "自分の靴を取る",
+          "short": "靴",
+          "kind": "reach",
+          "heightOf": [
+            "room_fixtures",
+            "shoe_shelf_levels"
+          ],
+          "level_index": 3,
+          "help": "lower",
+          "wall": {
+            "x": 40,
+            "y": 20,
+            "w": 12,
+            "d": 30
+          }
+        },
+        {
+          "id": "hook",
+          "label": "上着を自分で掛ける",
+          "short": "フック",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "coat_hook_adult"
+          ],
+          "help": "lower",
+          "wall": {
+            "x": 150,
+            "y": 172,
+            "w": 6,
+            "d": 4
+          }
+        }
+      ],
+      "hazards": []
     },
     {
-      "id": "hook",
-      "label": "上着を自分で掛ける",
-      "short": "フック",
-      "kind": "reach",
-      "heightOf": [
-        "goal_heights",
-        "coat_hook_adult"
+      "id": "washroom",
+      "name": "洗面所",
+      "room_label": "洗面所",
+      "width": 180,
+      "depth": 180,
+      "start": {
+        "x": 90,
+        "y": 40
+      },
+      "landmarks": [
+        {
+          "id": "vanity",
+          "label": "洗面台",
+          "heightOf": [
+            "room_fixtures",
+            "vanity_counter"
+          ],
+          "scaffold": false,
+          "x": 20,
+          "y": 125,
+          "w": 75,
+          "d": 55,
+          "approach": {
+            "x": 57,
+            "y": 105
+          }
+        }
       ],
-      "help": "lower",
-      "wall": {
-        "x": 440,
-        "y": 352,
-        "w": 6,
-        "d": 4
-      }
+      "goals": [
+        {
+          "id": "wash",
+          "label": "自分で手を洗う",
+          "short": "手洗い",
+          "kind": "work",
+          "help": "step",
+          "on": "vanity",
+          "dx": 35,
+          "dy": 10,
+          "w": 20,
+          "d": 20
+        },
+        {
+          "id": "toothbrush",
+          "label": "歯ブラシを自分で取る",
+          "short": "歯ブラシ",
+          "kind": "reach",
+          "on": "vanity",
+          "help": "closer",
+          "dx": 60,
+          "dy": 10,
+          "w": 6,
+          "d": 6
+        },
+        {
+          "id": "towel",
+          "label": "タオルで自分で拭く",
+          "short": "タオル",
+          "kind": "reach",
+          "heightOf": [
+            "room_fixtures",
+            "towel_rail"
+          ],
+          "help": "lower",
+          "wall": {
+            "x": 120,
+            "y": 172,
+            "w": 40,
+            "d": 4
+          }
+        }
+      ],
+      "hazards": [
+        {
+          "id": "detergent",
+          "kind": "medicine",
+          "label": "洗剤",
+          "on": "vanity",
+          "dx": 5,
+          "dy": 40,
+          "w": 8,
+          "d": 8
+        }
+      ]
+    },
+    {
+      "id": "toilet",
+      "name": "トイレ",
+      "room_label": "トイレ",
+      "width": 100,
+      "depth": 170,
+      "start": {
+        "x": 50,
+        "y": 40
+      },
+      "landmarks": [
+        {
+          "id": "toilet_bowl",
+          "label": "便座",
+          "heightOf": [
+            "room_fixtures",
+            "toilet_seat"
+          ],
+          "scaffold": true,
+          "x": 30,
+          "y": 90,
+          "w": 40,
+          "d": 70,
+          "approach": {
+            "x": 50,
+            "y": 70
+          }
+        }
+      ],
+      "goals": [
+        {
+          "id": "sit",
+          "label": "自分で便座に座る",
+          "short": "便座",
+          "kind": "climb",
+          "on": "toilet_bowl",
+          "help": "step",
+          "dx": 10,
+          "dy": 15,
+          "w": 20,
+          "d": 20
+        },
+        {
+          "id": "flush",
+          "label": "自分で流す",
+          "short": "レバー",
+          "kind": "reach",
+          "heightOf": [
+            "room_fixtures",
+            "flush_lever"
+          ],
+          "help": "step",
+          "wall": {
+            "x": 70,
+            "y": 164,
+            "w": 8,
+            "d": 4
+          }
+        },
+        {
+          "id": "paper",
+          "label": "ペーパーを自分で取る",
+          "short": "ペーパー",
+          "kind": "reach",
+          "heightOf": [
+            "room_fixtures",
+            "paper_holder"
+          ],
+          "help": "lower",
+          "wall": {
+            "x": 0,
+            "y": 110,
+            "w": 4,
+            "d": 14
+          }
+        },
+        {
+          "id": "toilet_switch",
+          "label": "電気をつける",
+          "short": "スイッチ",
+          "kind": "reach",
+          "heightOf": [
+            "room_fixtures",
+            "toilet_switch"
+          ],
+          "help": "step",
+          "alt": {
+            "heightOf": [
+              "goal_heights",
+              "switch_child"
+            ],
+            "text": "スイッチを90cmに付け替える"
+          },
+          "wall": {
+            "x": 90,
+            "y": 20,
+            "w": 4,
+            "d": 7
+          }
+        }
+      ],
+      "hazards": []
+    },
+    {
+      "id": "kitchen",
+      "name": "台所",
+      "room_label": "台所",
+      "width": 240,
+      "depth": 200,
+      "start": {
+        "x": 120,
+        "y": 60
+      },
+      "landmarks": [
+        {
+          "id": "counter",
+          "label": "調理台",
+          "heightOf": [
+            "room_fixtures",
+            "kitchen_counter"
+          ],
+          "scaffold": false,
+          "x": 0,
+          "y": 140,
+          "w": 240,
+          "d": 60,
+          "approach": {
+            "x": 120,
+            "y": 120
+          }
+        },
+        {
+          "id": "cupboard",
+          "label": "食器棚",
+          "heightOf": [
+            "room_fixtures",
+            "cupboard_top"
+          ],
+          "scaffold": false,
+          "x": 200,
+          "y": 0,
+          "w": 40,
+          "d": 45,
+          "approach": {
+            "x": 180,
+            "y": 22
+          }
+        }
+      ],
+      "goals": [
+        {
+          "id": "help_cook",
+          "label": "調理台でお手伝いする",
+          "short": "調理台",
+          "kind": "work",
+          "on": "counter",
+          "help": "step",
+          "dx": 110,
+          "dy": 5,
+          "w": 20,
+          "d": 12
+        },
+        {
+          "id": "own_cup",
+          "label": "食器棚から自分のコップを取る",
+          "short": "コップ",
+          "kind": "reach",
+          "heightOf": [
+            "room_fixtures",
+            "cupboard_levels"
+          ],
+          "level_index": 3,
+          "help": "lower",
+          "wall": {
+            "x": 188,
+            "y": 10,
+            "w": 12,
+            "d": 25
+          }
+        }
+      ],
+      "hazards": [
+        {
+          "id": "knife",
+          "kind": "scissors",
+          "label": "包丁",
+          "on": "counter",
+          "dx": 30,
+          "dy": 35,
+          "w": 20,
+          "d": 5
+        }
+      ]
     }
   ]
 }

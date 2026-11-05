@@ -50,7 +50,8 @@ function messenger() {
 }
 
 /** The toolbar and every edit. Each edit is one step in the history, so it can be undone. */
-function mountEditing({ session, history, startRoom, catalog, say, results }) {
+function mountEditing({ session, history, startRoom: firstRoom, catalog, say, results }) {
+  let startRoom = firstRoom;
   const hint = document.querySelector('#tool-hint');
   const toolButtons = [...document.querySelectorAll('.tool[data-tool]')];
   const furnitureButton = document.querySelector('[data-tool="furniture"]');
@@ -180,6 +181,12 @@ function mountEditing({ session, history, startRoom, catalog, say, results }) {
   });
 
   const editing = {
+    /** Switches to another room: it becomes the room 「リセット」 goes back to. */
+    setStartRoom(next) {
+      startRoom = next;
+      apply(next, null, { judgeNow: 'reset' });
+      view?.select(null);
+    },
     canMove: () => true,
     canRemove: (id) => canRemove(session.getRoom(), id),
     tryMove: (id, point) => moveObject(session.getRoom(), id, point),
@@ -271,6 +278,15 @@ async function start() {
     session, history, startRoom, catalog: furnitureCatalog, say: messenger(), results,
   });
   const panel = mountPanel({ ledger, settings, session, getChild, autoplay });
+  // The rooms: each layout of the file, in its order. Changing it resets the room and runs again.
+  const roomSelect = document.querySelector('#room-select');
+  for (const layout of roomFile.layouts) {
+    const option = document.createElement('option');
+    option.value = layout.id;
+    option.textContent = layout.name;
+    roomSelect.append(option);
+  }
+  roomSelect.addEventListener('change', () => toolbar.editing.setStartRoom(selectLayout(roomFile, roomSelect.value)));
   // The 3D view loads later; until then a moment is only shown in words.
   let view = null;
   mountEventLog({ list: document.querySelector('#event-log'), session });

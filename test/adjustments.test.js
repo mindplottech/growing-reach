@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { adjustmentsAt, adjustmentTimeline, goalStatus, placeGoals, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, HELP_STEP, HELP_LOWER } from '../sim/adjustments.js';
 import { createSimulation } from '../sim/simulation.js';
 import { getBodyValues, SEX_ANY } from '../sim/body.js';
-import { ledger, roomLayout, settings, maxMonths, minMonths } from './helpers.js';
+import * as helpersAll from './helpers.js';
+import { byId, ledger, roomLayout, settings, maxMonths, minMonths } from './helpers.js';
+import { selectLayout } from '../sim/room.js';
 
 const sim = createSimulation({ ledger, settings, months: 36, sex: SEX_ANY, seed: 1, room: roomLayout });
 const base = { ledger, room: roomLayout, landmarks: sim.landmarks, hazards: sim.hazards, sex: SEX_ANY };
@@ -73,4 +75,30 @@ test('a typed child shifts the adjustments by their rank, without touching the s
   const fresh = createSimulation({ ledger, settings, months: 36, sex: SEX_ANY, seed: 1, room: roomLayout });
   fresh.step(30);
   assert.deepEqual(again.events, fresh.events);
+});
+
+test('work with the hands needs the top at the elbow plus a tolerance; the step makes up the rest', () => {
+  const body = getBodyValues(ledger, { months: 24, sex: SEX_ANY });
+  const share = byId('elbow_height_share');
+  const limit = body.height.value * share.value + share.work_tolerance_cm.value;
+  const fine = { id: 'w1', kind: 'work', help: HELP_STEP, height: limit - 1 };
+  assert.equal(goalStatus(ledger, body, fine).status, STATUS_CAN);
+  const counter = { id: 'w2', kind: 'work', help: HELP_STEP, height: limit + 12 };
+  const result = goalStatus(ledger, body, counter);
+  assert.equal(result.status, STATUS_HELP);
+  assert.equal(result.stepCm, 15);
+});
+
+test('every room has goals with heights, and the hundred runs still work there', () => {
+  const { roomFile } = helpersAll;
+  for (const { id } of roomFile.layouts) {
+    const room = selectLayout(roomFile, id);
+    const simulation = createSimulation({ ledger, settings, months: 24, sex: SEX_ANY, seed: 1, room });
+    simulation.step(10);
+    const goals = placeGoals(ledger, room, simulation.landmarks);
+    assert.equal(goals.length, room.goals.length, id);
+    for (const goal of goals) assert.ok(goal.height > 0 && goal.x >= 0 && goal.y >= 0 && goal.x + goal.w <= room.width + 1e-9 && goal.y + goal.d <= room.depth + 1e-9, `${id} ${goal.id}`);
+    const now = adjustmentsAt({ ledger, room, landmarks: simulation.landmarks, hazards: simulation.hazards, months: 24, sex: SEX_ANY });
+    assert.equal(now.goals.length, room.goals.length);
+  }
 });

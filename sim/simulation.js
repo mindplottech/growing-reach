@@ -154,7 +154,9 @@ export function createSimulation({ ledger, settings, months, sex, seed, room, bo
   }
 
   function chooseTarget() {
-    target = pickWeighted(streams.route, landmarks.filter((landmark) => landmark !== current), interestOf);
+    // In a room with a single thing, the child goes back to it (the draw is still consumed).
+    const others = landmarks.filter((landmark) => landmark !== current);
+    target = pickWeighted(streams.route, others.length > 0 ? others : landmarks, interestOf);
     route = routeBetween(position, target.approach);
     trail.push([{ ...position, time }]);
     tripLeft = waitingTime(streams.trip, tripPerCm);

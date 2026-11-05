@@ -319,6 +319,8 @@ button, input, select { font: inherit; color: inherit; }
 
 .child-settings h2 { margin-bottom: 8px; font-size: 20px; }
 
+.room-label { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.room-label select { min-height: 36px; padding: 0 8px; font-size: 14px; }
 .months-label { display: block; }
 
 #months-label { margin-left: 8px; font-size: 20px; font-weight: 700; }
