@@ -29,7 +29,7 @@
   </header>
 
   <main class="workspace">
-    <nav id="toolbar" aria-label="道具">
+    <nav id="toolbar" class="is-removed" aria-label="道具">
       <div class="tool-group">
         <button type="button" class="tool" data-tool="furniture" data-tip="置く家具を選びます" aria-pressed="false" aria-haspopup="menu" aria-expanded="false" aria-controls="furniture-menu">
           <span class="icon" style="--icon: url(../assets/icons/sofa.svg)"></span><span class="tool-label">家具</span>
@@ -75,7 +75,7 @@
         </button>
         <p id="tool-hint" class="canvas-hint" hidden>家具はドラッグで動かせます。右ドラッグで向きを変え、ホイールで拡大します。</p>
         <p id="canvas-message" class="canvas-message" role="status" hidden></p>
-        <div id="help-caption" class="help-caption" aria-live="polite">
+        <div id="help-caption" class="help-caption" aria-live="polite" hidden>
           <p id="help-caption-main" class="help-caption-main">右の「この助けがあればできる」の行を押すと、その助けを置いて、子どもが使うところを見せます。</p>
           <p id="help-caption-sub" class="help-caption-sub" hidden></p>
           <div id="help-caption-actions" class="help-caption-actions" hidden>

@@ -101,6 +101,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     close: document.querySelector('#help-close'),
   };
   const CAPTION_IDLE = caption.main.textContent;
+  const captionBox = document.querySelector('#help-caption');
   const total = settings.trial_count;
   let view = null;
   let lastTags = null;
@@ -385,6 +386,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     if (scene.status !== STATUS_HELP) shownWithHelp = true;
     view?.showHelp(scene, shownWithHelp);
     const words = captionFor(scene, lastAll.months);
+    captionBox.hidden = false;
     caption.main.textContent = words.main;
     caption.sub.textContent = words.sub;
     caption.sub.hidden = !words.sub;
@@ -401,6 +403,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     shownGoalId = null;
     view?.clearHelp();
     caption.main.textContent = CAPTION_IDLE;
+    // No scene open: nothing over the 3D (KO).
+    captionBox.hidden = true;
     caption.sub.hidden = true;
     caption.actions.hidden = true;
     for (const li of document.querySelectorAll('li[data-goal]')) li.setAttribute('aria-pressed', 'false');

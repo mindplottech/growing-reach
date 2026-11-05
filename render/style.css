@@ -816,3 +816,8 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 .adjust-warn:empty { display: none; }
 .warn-chip { padding: 2px 8px; border-radius: 12px; background: #fdecea; border: 1px solid #e5a29b; font-size: 12px; font-weight: 700; }
 .adjust-activities-line[hidden] { display: none; }
+
+/* 2026-11-05 (KO): the left toolbar is not used (it served the hundred runs); the 3D gets the room.
+   The caption over the 3D shows only while a help scene is open. */
+.workspace { grid-template-columns: minmax(0, 1fr) var(--panel-width); }
+.help-caption[hidden] { display: none; }
