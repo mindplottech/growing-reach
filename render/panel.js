@@ -5,7 +5,7 @@ import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
-import { adjustmentsAt, adjustmentTimeline, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET } from '../sim/adjustments.js';
+import { adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
 import { normalCdf } from '../sim/random.js';
 
@@ -13,6 +13,8 @@ const MONTHS_PER_YEAR = 12;
 const SECONDS_PER_MINUTE = 60;
 const MODE_MONTHS = 'months';
 const MODE_ROOM = 'room';
+// 「あと○cm」 is said only when the thing is this close (display only).
+const NEAR_GAP_CM = 15;
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -72,6 +74,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     notyet: document.querySelector('#adjust-notyet'),
     next: document.querySelector('#adjust-next'),
     adults: document.querySelector('#adjust-adults'),
+    spans: document.querySelector('#adjust-spans'),
   };
   const adjustTitle = document.querySelector('#adjustments-title');
   const total = settings.trial_count;
@@ -148,18 +151,32 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const helped = now.goals.filter(({ status }) => status === STATUS_HELP);
     const stepGoals = helped.filter(({ help }) => help === HELP_STEP);
     const helpItems = [];
+    // 「あと○cm」: how far the hand or the climb falls short, when it is close.
+    const gap = (goal) => (goal.gapCm > 0 && goal.gapCm <= NEAR_GAP_CM ? `（あと${goal.gapCm}cm）` : '');
     if (stepGoals.length) {
       const li = item('');
-      li.append(bold(`踏み台 ${now.stepCm}cm`), ` → ${stepGoals.map(({ label }) => label).join('・')}`);
+      li.append(bold(`踏み台 ${now.stepCm}cm`), ` → ${stepGoals.map((goal) => `${goal.label}${gap(goal)}`).join('・')}`);
       helpItems.push(li);
     }
     for (const goal of helped.filter(({ help }) => help !== HELP_STEP)) {
       const li = item('');
-      li.append(bold(goal.how), ` → ${goal.label}`);
+      li.append(bold(goal.how), ` → ${goal.label}${gap(goal)}`);
       helpItems.push(li);
     }
     adjustLists.help.replaceChildren(...helpItems);
-    adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => item(`${goal.label}（${goal.how}）`, true)));
+    adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => item(`${goal.label}（${goal.how}${goal.gapCm ? `・あと${goal.gapCm}cm` : ''}）`, true)));
+    // The span of each help: from when to when a step is needed, and when the goal is theirs.
+    adjustLists.spans.replaceChildren(...helpSpans(rows, ledger._meta.age_range_months).map((span) => {
+      const parts = [];
+      if (span.stepFrom !== null) {
+        const until = span.canFrom !== null ? formatAge(span.canFrom - 1) : `${formatAge(span.to)}以降`;
+        parts.push(`踏み台 ${span.stepMax}→${span.stepMin}cm：${formatAge(span.stepFrom)}〜${until}`);
+      }
+      if (span.canFrom !== null) parts.push(span.canFrom > span.from ? `${formatAge(span.canFrom)}から自分で` : '最初から自分で');
+      if (span.stillHelpedAtEnd && span.stepFrom === null) parts.push(`${formatAge(span.to)}でも「${span.stillHelpedAtEnd}」`);
+      if (span.notYetAtEnd) parts.push(`${formatAge(span.to)}でもまだ`);
+      return item(`${span.label}：${parts.join('、')}`);
+    }));
     // The next changes after this age: the first three, in age order.
     // Only the steps getting smaller and the goals becoming possible by themselves; a shelf or
     // hook height creeping up with the child is not a change worth a line.
@@ -177,6 +194,11 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_NOT_YET]: 'plain' };
     return new Map(now.goals.map((goal) => [`goal-${goal.id}`, { level: level[goal.status], text: goal.how }]));
   }
+
+  document.querySelector('#print-adjustments').addEventListener('click', () => {
+    document.querySelector('#print-date').textContent = new Date().toLocaleDateString('ja-JP');
+    window.print();
+  });
 
   /** Marks the cell whose scenes are playing, if one was pressed. */
   function showPressed() {

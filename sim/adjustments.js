@@ -69,39 +69,42 @@ export function goalStatus(ledger, body, goal) {
   const tiptoe = reach + tiptoeMin(ledger);
   const h = goal.height;
   if (goal.kind === 'climb') {
-    if (climb >= h) return { status: STATUS_CAN, how: '自分で登れる' };
+    if (climb >= h) return { status: STATUS_CAN, how: '自分で登れる', gapCm: 0 };
+    const gapCm = Math.ceil(h - climb);
     const step = roundUp(h - climb);
-    if (step <= climb) return { status: STATUS_HELP, help: HELP_STEP, stepCm: step, how: `踏み台${step}cm` };
-    return { status: STATUS_NOT_YET, how: 'まだ登れない' };
+    if (step <= climb) return { status: STATUS_HELP, help: HELP_STEP, stepCm: step, how: `踏み台${step}cm`, gapCm };
+    return { status: STATUS_NOT_YET, how: 'まだ登れない', gapCm };
   }
+  // How far the hand falls short of the thing on tiptoe: the 「あと○cm」 of a reach goal.
+  const gapCm = Math.max(0, Math.ceil(h - tiptoe));
   // A thing on furniture must also be within the ledger's horizontal reach from the edge.
   const onTop = goal.under ? floorHazardLevel(ledger, body, goal.under, goal) : null;
   if (onTop !== null) {
-    if (onTop === REACH_STANDING) return { status: STATUS_CAN, how: '床から届く' };
-    if (onTop === REACH_TIPTOE) return { status: STATUS_CAN, how: '背伸びで届く' };
+    if (onTop === REACH_STANDING) return { status: STATUS_CAN, how: '床から届く', gapCm: 0 };
+    if (onTop === REACH_TIPTOE) return { status: STATUS_CAN, how: '背伸びで届く', gapCm: 0 };
   } else {
-    if (h <= reach) return { status: STATUS_CAN, how: '床から届く' };
-    if (h <= tiptoe) return { status: STATUS_CAN, how: '背伸びで届く' };
+    if (h <= reach) return { status: STATUS_CAN, how: '床から届く', gapCm: 0 };
+    if (h <= tiptoe) return { status: STATUS_CAN, how: '背伸びで届く', gapCm: 0 };
   }
   if (goal.help === HELP_CLOSER) {
     // A thing on furniture within the ledger's horizontal reach from the edge the child stands at.
-    if (h > tiptoe) return { status: STATUS_NOT_YET, how: '天板にまだ届かない' };
+    if (h > tiptoe) return { status: STATUS_NOT_YET, how: '天板にまだ届かない', gapCm };
     const within = roundDown(horizontalReach(ledger, reach, h));
-    if (within <= 0) return { status: STATUS_NOT_YET, how: '縁の物にもまだ届かない' };
-    return { status: STATUS_HELP, help: HELP_CLOSER, maxDistanceCm: within, how: `縁から${within}cm以内に置く` };
+    if (within <= 0) return { status: STATUS_NOT_YET, how: '縁の物にもまだ届かない', gapCm };
+    return { status: STATUS_HELP, help: HELP_CLOSER, maxDistanceCm: within, how: `縁から${within}cm以内に置く`, gapCm };
   }
   if (goal.help === HELP_LOWER) {
     // With shelf levels, name the highest level within reach; otherwise a height.
     const level = goal.levels ? goal.levels.filter((each) => each <= reach).length : 0;
-    if (goal.levels && level === 0) return { status: STATUS_NOT_YET, how: 'いちばん下の段にも届かない' };
+    if (goal.levels && level === 0) return { status: STATUS_NOT_YET, how: 'いちばん下の段にも届かない', gapCm };
     const maxHeightCm = goal.levels ? goal.levels[level - 1] : roundDown(reach);
     const how = goal.levels ? `下から${level}段目（${maxHeightCm}cm）までに置く` : `${maxHeightCm}cm以下に置く`;
-    return { status: STATUS_HELP, help: HELP_LOWER, maxHeightCm, how };
+    return { status: STATUS_HELP, help: HELP_LOWER, maxHeightCm, how, gapCm };
   }
   const step = roundUp(h - reach);
-  if (step <= climb) return { status: STATUS_HELP, help: HELP_STEP, stepCm: step, how: `踏み台${step}cm` };
-  if (goal.alt && goal.alt.height <= reach) return { status: STATUS_HELP, help: HELP_LOWER, maxHeightCm: goal.alt.height, how: goal.alt.text };
-  return { status: STATUS_NOT_YET, how: 'まだ届かない' };
+  if (step <= climb) return { status: STATUS_HELP, help: HELP_STEP, stepCm: step, how: `踏み台${step}cm`, gapCm };
+  if (goal.alt && goal.alt.height <= reach) return { status: STATUS_HELP, help: HELP_LOWER, maxHeightCm: goal.alt.height, how: goal.alt.text, gapCm };
+  return { status: STATUS_NOT_YET, how: 'まだ届かない', gapCm };
 }
 
 /** The body of the child in general, or of 「うちの子」 (a fixed z), at an age. */
@@ -154,4 +157,35 @@ export function adjustmentTimeline({ ledger, room, landmarks, hazards = [], sex,
     previous = now;
   }
   return rows;
+}
+
+/**
+ * The span of each help (「助けの期間」): for every goal that ever needs a step, the first and
+ * last months a step is needed and the month it is no longer needed; for things put lower or
+ * closer, whether that help is still needed at the end of the range. Built from the timeline.
+ */
+export function helpSpans(timeline, [from, to]) {
+  const byGoal = new Map();
+  for (const row of timeline) {
+    if (!byGoal.has(row.goalId)) byGoal.set(row.goalId, { goalId: row.goalId, label: row.label, rows: [] });
+    byGoal.get(row.goalId).rows.push(row);
+  }
+  return [...byGoal.values()].map(({ goalId, label, rows }) => {
+    const statusAt = (months) => rows.filter((row) => row.months <= months).at(-1);
+    const stepRows = rows.filter((row) => row.stepCm !== null && row.status === STATUS_HELP);
+    const canRow = rows.find((row) => row.status === STATUS_CAN);
+    const endStatus = statusAt(to);
+    return {
+      goalId,
+      label,
+      stepFrom: stepRows[0]?.months ?? null,
+      stepMax: stepRows.length ? Math.max(...stepRows.map((row) => row.stepCm)) : null,
+      stepMin: stepRows.length ? Math.min(...stepRows.map((row) => row.stepCm)) : null,
+      canFrom: canRow?.months ?? null,
+      stillHelpedAtEnd: endStatus?.status === STATUS_HELP ? endStatus.how : null,
+      notYetAtEnd: endStatus?.status === STATUS_NOT_YET,
+      from,
+      to,
+    };
+  });
 }
