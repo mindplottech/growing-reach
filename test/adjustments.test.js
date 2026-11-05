@@ -141,7 +141,7 @@ test('practice (KO): from 30 months the step comes, with an adult beside at firs
   for (const goal of stepped) {
     assert.equal(goal.accompany, practice.from_words);
   }
-  assert.equal(now.goals.find(({ id }) => id === 'switch').stepCm, 15);
+  assert.equal(now.goals.find(({ id }) => id === 'wash').stepCm, 20);
   // Putting a thing lower is not a step: it is offered at any age.
   assert.ok(adjustmentsAt({ ...base, months: 15 }).goals.some(({ help, status }) => help === HELP_LOWER && status === STATUS_HELP));
 });
@@ -178,5 +178,20 @@ test('practice (KO): hand washing starts on a step at 2 years, the others at 2½
   assert.equal(at(24, 'wash').stepFromMonths, undefined);
   assert.equal(at(21, 'wash').stepFromMonths, 24);
   assert.equal(at(24, 'switch').status, STATUS_WITH_ADULT);
-  assert.equal(at(24, 'switch').stepFromMonths, 30);
+});
+
+test('practice (KO): a light switch is never reached from a step, and the cooking counter is always with an adult', () => {
+  const at = (months, id) => adjustmentsAt({ ...base, months }).goals.find((goal) => goal.id === id);
+  for (let months = minMonths; months <= maxMonths; months += 1) {
+    for (const id of ['switch', 'toilet_switch', 'help_cook']) {
+      const goal = at(months, id);
+      if (!goal) continue;
+      assert.ok(!(goal.status === STATUS_HELP && goal.help === HELP_STEP), `${id} at ${months}`);
+    }
+    const cook = at(months, 'help_cook');
+    if (cook) assert.equal(cook.status, STATUS_WITH_ADULT);
+  }
+  assert.equal(at(18, 'switch').how, byId('practice_step_stool').before_words);
+  assert.equal(at(36, 'switch').how, byId('practice_step_stool').together_words);
+  assert.equal(at(48, 'switch').status, STATUS_CAN);
 });

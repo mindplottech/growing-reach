@@ -135,6 +135,16 @@ export function applyPractice(ledger, months, result, goal = {}) {
   const practice = ledger.items.find(({ id }) => id === 'practice_step_stool');
   if (!practice || !Number.isFinite(practice.step_from_months)) throw new Error('ledger item not found or malformed: practice_step_stool');
   const crawling = isCrawlingAge(ledger, months);
+  const together = {
+    status: STATUS_WITH_ADULT, help: HELP_ADULT, gapCm: result.gapCm, neededStepCm: result.stepCm ?? null,
+  };
+  // KO: the cooking counter is always together with an adult, at any age.
+  if ((practice.always_with_adult_goals ?? []).includes(goal.id)) return { ...together, how: practice.together_words ?? '大人と一緒に', always: true };
+  // KO: a light switch is never reached from a step; until the hand gets there from the floor,
+  // it is done with an adult.
+  if ((practice.no_step_goals ?? []).includes(goal.id) && result.status !== STATUS_CAN) {
+    return { ...together, how: months < practice.step_from_months ? practice.before_words : practice.together_words, never: true };
+  }
   // つかまり立ちのころ: what the hand gets to, it gets to standing at the furniture.
   if (crawling && result.status === STATUS_CAN && goal.kind !== 'climb' && goal.kind !== 'work') {
     return { ...result, how: CRAWL_REACH_WORDS };

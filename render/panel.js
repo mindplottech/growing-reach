@@ -89,6 +89,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   let shownGoalId = null;
   // KO's practice for the step stool, in the ledger's words (「最初は付き添って」).
   const practiceWords = ledger.items.find(({ id }) => id === 'practice_step_stool')?.from_words ?? '';
+  const practiceBefore = ledger.items.find(({ id }) => id === 'practice_step_stool')?.before_words ?? '';
   // How many whole runs (seeds 1..n) あーちゃん walks through on its own, in turn. Display only.
   const WANDER_RUNS = 5;
   let shownWithHelp = true;
@@ -301,7 +302,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // The goals with something to do come first as big tiles; what the child does already is a
     // row of small chips. The full words are in each tooltip.
     const badge = (goal) => {
-      if (goal.status === STATUS_WITH_ADULT) return '🤗 抱っこで';
+      if (goal.status === STATUS_WITH_ADULT) return goal.how === practiceBefore ? '🤗 抱っこで' : '🤝 一緒に';
       if (goal.status === STATUS_NOT_YET) return '… まだ';
       if (goal.help === HELP_STEP) return `🪜 踏み台${goal.stepCm}cm`;
       if (goal.maxHeightCm !== undefined) return `⬇ ${goal.maxHeightCm}cmより下に`;
@@ -323,7 +324,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     };
     const groups = [
       { kind: 'help', head: '🪜 大人がひと工夫すると、自分でできる', goals: now.goals.filter(({ status }) => status === STATUS_HELP), make: tile },
-      { kind: 'adult', head: '🤗 大人と一緒に', goals: now.goals.filter(({ status }) => status === STATUS_WITH_ADULT), make: tile },
+      { kind: 'adult', head: '🤝 大人と一緒に', goals: now.goals.filter(({ status }) => status === STATUS_WITH_ADULT), make: tile },
       { kind: 'notyet', head: '… まだ', goals: now.goals.filter(({ status }) => status === STATUS_NOT_YET), make: tile },
       { kind: 'can', head: '✓ もう自分でできる', goals: now.goals.filter(({ status }) => status === STATUS_CAN), make: chip },
     ].filter(({ goals }) => goals.length > 0);
@@ -402,7 +403,9 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       return { main: `${age}：${scene.label}`, sub: `${scene.how}。助けはいらない`, toggles: false };
     }
     if (scene.status === STATUS_WITH_ADULT) {
-      return { main: `${age}：${scene.how} → ${scene.label}`, sub: `踏み台は${formatAge(scene.stepFromMonths)}から（${practiceWords}）`, toggles: false };
+      // Switches and the cooking counter have no step age (KO): just the together line.
+      const sub = scene.stepFromMonths ? `踏み台は${formatAge(scene.stepFromMonths)}から（${practiceWords}）` : '';
+      return { main: `${age}：${scene.how} → ${scene.label}`, sub, toggles: false };
     }
     if (scene.status === STATUS_NOT_YET) {
       return { main: `${age}：${scene.label} は、まだ`, sub: [scene.how, gap].filter(Boolean).join('・'), toggles: false };
