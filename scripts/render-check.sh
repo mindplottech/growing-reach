@@ -46,6 +46,7 @@ echo "あーちゃんの図形："
 shot "scripts/figure-preview.html" figure-ages.png 1200 520 4000
 shot "scripts/figure-preview.html?arms=2.98" figure-reach.png 1200 520 4000
 shot "scripts/figure-preview.html?turns=1.4,-1.0,2.2&look=1" figure-look.png 1200 520 4000
+shot "scripts/figure-preview.html?months=9,12,15&crawl=1&turns=1.2,1.2,1.2&look=1" figure-crawl.png 1200 520 4000
 echo "アプリ全体："
 shot ".preview.html?months=15" app-15.png 1400 860 15000
 shot ".preview.html?months=60" app-60.png 1400 860 15000

@@ -8,6 +8,9 @@ import {
 
 const body = (months, sex = 'male', z) => getBodyValues(ledger, { months, sex, z });
 const inRange = (points) => points.filter(([months]) => months >= minMonths && months <= maxMonths);
+// KO's つかまり立ちのころ: before this month the child crawls and does not climb (practice_mobility).
+const walkFrom = byId('practice_mobility').walk_from_months;
+const walking = (months) => months >= walkFrom;
 
 test('height and its SD equal the ledger at every anchor month in range', () => {
   for (const sex of SEXES) {
@@ -38,9 +41,11 @@ test('reach matches the ledger reference values at anchor months', () => {
   const { anchor_months: anchors } = byId('height_percentiles');
   const reference = byId('reach_height_standing').reference_values_from_P50;
   for (const sex of SEXES) {
+    // The reference values start at the first toddler interval; the infant anchors come before it.
+    const offset = anchors.length - reference[sex].length;
     anchors.forEach((months, i) => {
-      if (months > maxMonths) return;
-      assert.equal(Number(body(months, sex).reach.value.toFixed(1)), reference[sex][i]);
+      if (months > maxMonths || i < offset) return;
+      assert.equal(Number(body(months, sex).reach.value.toFixed(1)), reference[sex][i - offset]);
     });
   }
 });
@@ -56,7 +61,7 @@ test('reach follows the individual height and carries its SD through the slope',
 
 test('climb equals the ledger at every series point and is shared by both sexes', () => {
   const entry = byId('climb_height');
-  for (const [months, value] of climbPoints()) {
+  for (const [months, value] of climbPoints().filter(([m]) => walking(m))) {
     for (const sex of SEXES) {
       assert.equal(body(months, sex).climb.value, value);
       assert.equal(body(months, sex).climb.sd, entry.individual_sd.value);
@@ -65,14 +70,19 @@ test('climb equals the ledger at every series point and is shared by both sexes'
 });
 
 test('climb is interpolated between series points at every month', () => {
-  for (const months of everyMonth()) {
+  for (const months of everyMonth().filter(walking)) {
     close(body(months).climb.value, expectedAt(climbPoints(), months));
+  }
+  // つかまり立ちのころ: no climbing is computed.
+  for (const months of everyMonth().filter((m) => !walking(m))) {
+    assert.equal(body(months).climb.value, 0);
+    assert.equal(body(months).climb.category, 'provisional');
   }
 });
 
 test('walk speed equals the ledger at series points and is interpolated between them', () => {
   const { sd_series_used: sdSeries } = byId('walk_speed').age_4to5_candidates;
-  for (const months of everyMonth()) {
+  for (const months of everyMonth().filter(walking)) {
     close(body(months).walkSpeed.value, expectedAt(walkPoints(), months));
     close(body(months).walkSpeed.sd, expectedAt(sdSeries, months));
   }
@@ -92,7 +102,8 @@ test('categories come from the ledger and change where the evidence ends', () =>
   for (const months of walkEntry.age_4to5_candidates.measured_points_months) {
     assert.equal(body(months).walkSpeed.category, walkEntry.category);
   }
-  assert.equal(body(minMonths).walkSpeed.category, walkEntry.age_4to5_candidates.category);
+  assert.equal(body(walkFrom).walkSpeed.category, walkEntry.age_4to5_candidates.category);
+  assert.equal(body(minMonths).walkSpeed.category, byId('crawl_speed').category);
   assert.equal(body(maxMonths).walkSpeed.category, walkEntry.age_4to5_candidates.category);
 });
 
@@ -115,15 +126,19 @@ test('values are read from the ledger, not from the code', () => {
   const edited = structuredClone(ledger);
   byId('height_percentiles', edited).values.male.P50[0] = 50;
   byId('reach_height_standing', edited).formula = 'reach = height * 2 - 10';
-  byId('climb_height', edited).series_from_formula[0][1] = 11;
+  byId('climb_height', edited).series_from_formula[1][1] = 11;
   byId('climb_height', edited).individual_sd.value = 3;
   byId('walk_speed', edited).age_4to5_candidates.series_used[0][1] = 0.5;
   const result = getBodyValues(edited, { months: minMonths, sex: 'male' });
+  // Climb and walk from the walking age (18 months: a climb series point, before the walk series starts).
+  const walkingResult = getBodyValues(edited, { months: 18, sex: 'male' });
   assert.equal(result.height.value, 50);
   assert.equal(result.reach.value, 90);
-  assert.equal(result.climb.value, 11);
-  assert.equal(result.climb.sd, 3);
-  assert.equal(result.walkSpeed.value, 0.5);
+  assert.equal(walkingResult.climb.value, 11);
+  assert.equal(walkingResult.climb.sd, 3);
+  assert.equal(walkingResult.walkSpeed.value, 0.5);
+  byId('crawl_speed', edited).value = 0.2;
+  assert.equal(getBodyValues(edited, { months: minMonths, sex: 'male' }).walkSpeed.value, 0.2);
 });
 
 test('an unexpected reach formula fails loudly', () => {

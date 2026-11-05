@@ -15,10 +15,12 @@
 //   months=15,30,48   the ages          arms=2.98   arms raised (radians)
 //   turns=0,1.4,-1    each body's turn  look=1      heads turn toward the viewer (render/look.js)
 //   close=1           a closer camera on the first child
+//   crawl=1           on hands and knees (つかまり立ちのころ), mid-step
 import * as THREE from 'three';
 import { makeChild, applyProportions } from '../render/childFigure3d.js';
 import { gaitFor } from '../render/gait.js';
 import { lookAngles } from '../render/look.js';
+import { applyCrawl, liftHead } from '../render/crawl.js';
 import { getBodyValues, SEX_ANY } from '../sim/body.js';
 import { settings } from '../sim/params.js';
 
@@ -58,6 +60,7 @@ months.forEach((month, i) => {
       arm.rotation.z = (side === 0 ? -1 : 1) * 0.4;
     });
   }
+  if (query.has('crawl')) applyCrawl(child, 1, 0.8);
   scene.add(child.root);
   if (query.has('look')) {
     child.head.rotation.order = 'YXZ';
@@ -67,6 +70,7 @@ months.forEach((month, i) => {
     child.head.rotation.y = yaw;
     child.head.rotation.x = pitch;
   }
+  if (query.has('crawl')) liftHead(child, 1);
 });
 renderer.render(scene, camera);
 document.title = 'ready';

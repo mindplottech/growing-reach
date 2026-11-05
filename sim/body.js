@@ -95,8 +95,21 @@ function climbFromHeightCoefficients(ledger) {
   return { slope: Number(match[1]), intercept: -Number(match[2]) };
 }
 
+/**
+ * KO's つかまり立ちのころ (ledger: practice_mobility): before walk_from_months the child crawls
+ * and pulls to stand at furniture; climbing is not computed (no measured climb heights).
+ */
+export function isCrawlingAge(ledger, months) {
+  const { walk_from_months: walkFrom } = item(ledger, 'practice_mobility');
+  if (!Number.isFinite(walkFrom)) throw new Error('practice_mobility.walk_from_months is missing');
+  return months < walkFrom;
+}
+
 /** Both sexes share one series: the ledger warns against the sex-specific formulas. */
 function climb(ledger, months, z) {
+  if (isCrawlingAge(ledger, months)) {
+    return { value: 0, sd: 0, category: item(ledger, 'practice_mobility').category, crawling: true };
+  }
   const entry = item(ledger, 'climb_height');
   const { extension_beyond_45: extension, individual_sd: individualSd } = entry;
   const median = climbMedian(ledger, months);
@@ -115,6 +128,10 @@ function climb(ledger, months, z) {
  * rest of the series is derived. The SD is its own series (a toddler group and an older group).
  */
 function walkSpeed(ledger, months, z) {
+  if (isCrawlingAge(ledger, months)) {
+    const crawl = item(ledger, 'crawl_speed');
+    return { value: crawl.value + Math.min(Math.max(z, -2), 2) * crawl.sd, sd: crawl.sd, category: crawl.category, crawling: true };
+  }
   const entry = item(ledger, 'walk_speed');
   const {
     series_used: series, sd_series_used: sdSeries, measured_points_months: measured, category,
@@ -148,6 +165,7 @@ export function getBodyValues(ledger, { months, sex, z: individual }) {
     tiptoeReach: tiptoeReach(ledger, reachResult, z.tiptoe),
     climb: climb(ledger, months, z.climb),
     walkSpeed: walkSpeed(ledger, months, z.walkSpeed),
+    crawling: isCrawlingAge(ledger, months),
   };
 }
 

@@ -1,4 +1,4 @@
-import { getBodyValues, SEX_ANY } from './body.js';
+import { getBodyValues, isCrawlingAge, SEX_ANY } from './body.js';
 import { landmarkHeight } from './room.js';
 import { floorHazardLevel } from './hazards.js';
 import { horizontalReach, REACH_STANDING, REACH_TIPTOE } from './scaffold.js';
@@ -18,6 +18,9 @@ export const HELP_STEP = 'step';
 export const HELP_LOWER = 'lower';
 export const HELP_CLOSER = 'closer';
 export const HELP_ADULT = 'adult';
+
+// The words for a thing reached while standing at the furniture (つかまり立ち).
+const CRAWL_REACH_WORDS = 'つかまり立ちで届く';
 
 const STEP_ROUND_CM = 5;
 const roundUp = (value) => Math.ceil(value / STEP_ROUND_CM) * STEP_ROUND_CM;
@@ -128,10 +131,22 @@ export function goalStatus(ledger, body, goal) {
  * the child up instead (「大人と一緒に」). From that age the step comes with an adult beside at
  * first. The body says what is possible; this says what is done.
  */
-export function applyPractice(ledger, months, result) {
-  if (result.status !== STATUS_HELP || result.help !== HELP_STEP) return result;
+export function applyPractice(ledger, months, result, goal = {}) {
   const practice = ledger.items.find(({ id }) => id === 'practice_step_stool');
   if (!practice || !Number.isFinite(practice.step_from_months)) throw new Error('ledger item not found or malformed: practice_step_stool');
+  const crawling = isCrawlingAge(ledger, months);
+  // つかまり立ちのころ: what the hand gets to, it gets to standing at the furniture.
+  if (crawling && result.status === STATUS_CAN && goal.kind !== 'climb' && goal.kind !== 'work') {
+    return { ...result, how: CRAWL_REACH_WORDS };
+  }
+  // つかまり立ちのころ the child climbs nothing: a goal of the step kind is done held up by an adult.
+  if (crawling && goal.help === HELP_STEP && result.status !== STATUS_CAN) {
+    return {
+      status: STATUS_WITH_ADULT, help: HELP_ADULT, how: practice.before_words, gapCm: result.gapCm,
+      neededStepCm: result.stepCm ?? null, stepFromMonths: practice.step_from_months,
+    };
+  }
+  if (result.status !== STATUS_HELP || result.help !== HELP_STEP) return result;
   if (months < practice.step_from_months) {
     return {
       status: STATUS_WITH_ADULT, help: HELP_ADULT, how: practice.before_words, gapCm: result.gapCm,
@@ -173,7 +188,7 @@ export function adjustmentsAt({ ledger, room, landmarks, hazards = [], months, s
   const dangerous = [...hazards, ...(lock ? [{ id: lock.id, label: lock.mapLabel ?? lock.label, height: lock.height }] : [])];
   const goals = placeGoals(ledger, room, landmarks)
     .filter((goal) => inAge(goal, months))
-    .map((goal) => ({ ...goal, ...applyPractice(ledger, months, goalStatus(ledger, body, goal)) }));
+    .map((goal) => ({ ...goal, ...applyPractice(ledger, months, goalStatus(ledger, body, goal), goal) }));
   const stepCm = Math.max(0, ...goals.filter((goal) => goal.help === HELP_STEP && goal.status === STATUS_HELP).map((goal) => goal.stepCm));
   const reach = body.reach.value;
   const withStep = stepCm > 0 ? dangerous

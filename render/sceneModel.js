@@ -258,10 +258,11 @@ export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Se
     }),
     pane,
     curtain,
+    // つかまり立ちのころ nothing is climbed (climb 0): that plane is left out.
     planes: [
       { id: 'reach', label: '立って届く高さ（床に立ったとき）', height: body.reach.value, category: body.reach.category },
       { id: 'climb', label: '登れる高さ（床に立ったとき）', height: body.climb.value, category: body.climb.category },
-    ],
+    ].filter(({ height }) => height > 0),
     childHeight: body.height.value,
   };
 }

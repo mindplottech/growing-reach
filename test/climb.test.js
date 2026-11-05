@@ -18,7 +18,8 @@ test('the extension series is used past the formula range', () => {
 });
 
 test('up to the valid age the formula series is used, unchanged', () => {
-  for (const [months, value] of entry.series_from_formula) {
+  const walkFrom = byId('practice_mobility').walk_from_months;
+  for (const [months, value] of entry.series_from_formula.filter(([m]) => m >= walkFrom)) {
     assert.equal(climbAt(months).value, value);
     assert.equal(climbAt(months).category, entry.category);
   }

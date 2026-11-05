@@ -24,10 +24,17 @@ test('ledger v4: the climb height categories stay as the ledger gives them', () 
   assert.equal(at(60).climb.category, 'provisional');
 });
 
-test('ledger v5: the range starts at 15 months, where the climb height is 39.9 cm', () => {
-  assert.deepEqual(ledger._meta.age_range_months, [15, 60]);
-  assert.equal(rounded(at(15).climb.value), 39.9);
-  assert.equal(at(15).climb.category, 'formula');
+test('ledger v7: the range starts at 9 months; until 1歳4か月 the child crawls and pulls to stand (KO)', () => {
+  assert.deepEqual(ledger._meta.age_range_months, [9, 60]);
+  // The ledger keeps the climb formula from 15 months, but before KO's walking age nothing is climbed.
+  assert.equal(ledger.items.find(({ id }) => id === 'climb_height').series_from_formula[0][1], 39.9);
+  assert.equal(at(15).climb.value, 0);
+  assert.equal(rounded(at(18).climb.value), 42.8);
+  assert.equal(at(18).climb.category, 'formula');
+  // 9 months: CFA2024 表2 (9〜10月未満 女 P50 69.9), reaching 1.59 × 69.9 − 34.22 at the pull-to-stand.
+  assert.equal(rounded(at(9.5).height.value), 69.9);
+  assert.equal(rounded(at(9.5).reach.value), rounded(69.9 * 1.59 - 34.22));
+  assert.equal(at(9.5).walkSpeed.value, ledger.items.find(({ id }) => id === 'crawl_speed').value);
 });
 
 test('ledger v5: the median 1-year-old girl is 75.3 cm and reaches 85.5 cm standing', () => {
@@ -36,10 +43,10 @@ test('ledger v5: the median 1-year-old girl is 75.3 cm and reaches 85.5 cm stand
   assert.equal(rounded(getBodyValues(ledger, { months: 21, sex: 'male' }).reach.value), 96.3);
 });
 
-test('ledger v5: the walk speed is 0.82 m/s with SD 0.14 at 15 months and 0.99 with SD 0.11 at 36', () => {
-  assert.equal(rounded(at(15).walkSpeed.value), 0.8);
-  assert.equal(at(15).walkSpeed.sd, 0.14);
-  assert.equal(at(15).walkSpeed.category, 'converted');
+test('ledger v5: the walk speed is 0.82 m/s with SD 0.14 at 16 months and 0.99 with SD 0.11 at 36', () => {
+  assert.equal(rounded(at(16).walkSpeed.value), 0.8);
+  assert.equal(at(16).walkSpeed.sd, 0.14);
+  assert.equal(at(16).walkSpeed.category, 'converted');
   assert.equal(at(29).walkSpeed.category, 'measured');
   assert.equal(at(36).walkSpeed.value, 0.99);
   assert.equal(at(36).walkSpeed.sd, 0.11);

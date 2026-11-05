@@ -119,15 +119,17 @@ test('practice (KO): before 30 months no step stool is offered; the adult holds 
       if (goal.status === STATUS_WITH_ADULT) {
         assert.equal(goal.help, HELP_ADULT);
         assert.equal(goal.how, practice.before_words);
-        assert.ok(goal.neededStepCm > 0);
+        assert.ok(goal.neededStepCm === null || goal.neededStepCm > 0); // null: つかまり立ちのころ, no step at all
       }
     }
   }
-  // 1歳3か月 and the switch: with an adult, not a 35 cm step.
-  const switch15 = adjustmentsAt({ ...base, months: 15 }).goals.find(({ id }) => id === 'switch');
-  assert.equal(switch15.status, STATUS_WITH_ADULT);
-  assert.equal(switch15.neededStepCm, 35);
-  assert.equal(adjustmentsAt({ ...base, months: 15 }).stepCm, 0);
+  // 1歳3か月 (つかまり立ちのころ) and 1歳6か月 (walking): the switch is with an adult, not a step
+  // (at 18 months the body alone would say a 30 cm step).
+  const switchAt = (months) => adjustmentsAt({ ...base, months }).goals.find(({ id }) => id === 'switch');
+  assert.equal(switchAt(15).status, STATUS_WITH_ADULT);
+  assert.equal(switchAt(18).status, STATUS_WITH_ADULT);
+  assert.equal(switchAt(18).neededStepCm, 30);
+  assert.equal(adjustmentsAt({ ...base, months: 18 }).stepCm, 0);
 });
 
 test('practice (KO): from 30 months the step comes, with an adult beside at first', () => {
@@ -146,8 +148,14 @@ test('practice (KO): from 30 months the step comes, with an adult beside at firs
 test('practice (KO): each goal is shown only in its 年ごろ, and the 遊びと生活 follow the age', () => {
   const ids = (months) => adjustmentsAt({ ...base, months }).goals.map(({ id }) => id);
   // 1歳3か月: no toilet goals (KO: 4歳で行きたいと言える), no hook, no cooking; the crayons are there.
-  for (const id of ['sit', 'flush', 'paper', 'toilet_switch', 'hook', 'help_cook', 'tidy', 'laundry']) assert.ok(!ids(15).includes(id), id);
-  for (const id of ['crayons', 'toys', 'clothes', 'books']) assert.ok(ids(15).includes(id), id);
+  for (const id of ['sit', 'flush', 'paper', 'toilet_switch', 'hook', 'help_cook', 'tidy', 'laundry']) assert.ok(!ids(18).includes(id), id);
+  for (const id of ['crayons', 'toys', 'clothes', 'books']) assert.ok(ids(18).includes(id), id);
+  // つかまり立ちのころ (9か月): the touch toys and the books, reached standing at the furniture; no walking goals.
+  for (const id of ['toys', 'books', 'switch', 'wash']) assert.ok(ids(9).includes(id), id);
+  for (const id of ['crayons', 'clothes', 'shoes', 'step_up', 'seat', 'cup']) assert.ok(!ids(9).includes(id), id);
+  assert.equal(adjustmentsAt({ ...base, months: 9 }).goals.find(({ id }) => id === 'toys').how, 'つかまり立ちで届く');
+  assert.equal(activitiesAt(ledger, 9).label, 'つかまり立ちのころ');
+  assert.ok(activitiesAt(ledger, 9).play.includes('手遊び'));
   // 2歳: tidying and the laundry basket come; 3歳: the crayons and the touch toys go, the hook comes.
   assert.ok(ids(24).includes('tidy') && ids(24).includes('laundry'));
   assert.ok(!ids(36).includes('crayons') && !ids(36).includes('toys') && ids(36).includes('hook'));
@@ -155,8 +163,8 @@ test('practice (KO): each goal is shown only in its 年ごろ, and the 遊びと
   assert.ok(ids(48).includes('sit') && !ids(48).includes('paper') && ids(60).includes('paper'));
   // The window is no longer something to want (it invites climbing to the window).
   assert.ok(!ids(15).includes('window_view'));
-  assert.equal(activitiesAt(ledger, 15).label, '1歳');
-  assert.ok(activitiesAt(ledger, 15).play.includes('いないいないばあ'));
+  assert.equal(activitiesAt(ledger, 16).label, '1歳');
+  assert.ok(activitiesAt(ledger, 16).play.includes('いないいないばあ'));
   assert.equal(activitiesAt(ledger, 48).label, '4歳');
   assert.equal(byId('practice_age_activities').source, 'KO_PRACTICE');
 });

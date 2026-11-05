@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { applyProportions, makeChild } from './childFigure3d.js';
 import { easeLook, lookAngles } from './look.js';
+import { applyCrawl, easeCrawl, liftHead } from './crawl.js';
 import { gaitFor } from './gait.js';
 import { createIdle } from './idle.js';
 import { EVENT } from '../sim/events.js';
@@ -255,6 +256,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   // Turn (y) first, then nod (x) about the turned head, then the idle tilt (z).
   child.head.rotation.order = 'YXZ';
   let look = { yaw: 0, pitch: 0 };
+  // How far into crawling the figure is (0 standing … 1 on hands and knees), eased over real time.
+  let crawlBlend = 0;
   const toViewer = new THREE.Vector3();
   scene.add(child.root);
   const blob = new THREE.Mesh(
@@ -484,7 +487,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const boxIds = new Set(room.landmarks.filter(({ temporary }) => temporary).map(({ id }) => id));
     const firstBuild = model === null;
     model = buildSceneModel({ ledger, room, landmarks: simulation.landmarks, body: simulation.body, boxIds, hazards: simulation.hazards });
-    gait = { ...gaitFor(ledger, settings, simulation.months), heightCm: simulation.body.height.value };
+    gait = { ...gaitFor(ledger, settings, simulation.months), heightCm: simulation.body.height.value, crawling: Boolean(simulation.body.crawling) };
     updatePose = createPoseTracker(settings.display_seconds, gait);
     updateIdle = createIdle(settings.idle_figure);
     busyUntil = -Infinity;
@@ -773,6 +776,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     }, seconds);
     const shownPose = help ? helpPose() : pose;
     applyPose(child, shownPose, gait);
+    // KO's つかまり立ちのころ: crawl while moving, stand up at the furniture when stopped.
+    crawlBlend = easeCrawl(crawlBlend, { crawlingAge: gait?.crawling, moving: shownPose.walk?.moving ?? 0, helped: Boolean(help) }, realSeconds);
+    applyCrawl(child, crawlBlend, shownPose.walk?.phase ?? 0);
     // Still means: nothing going on now, and nothing for a moment before. The moments of
     // touching something dangerous come from the record so far and the scene's known moment.
     // Blinks, breaths and yawns take real time, whatever the playback speed.
@@ -793,6 +799,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     look = easeLook(look, lookAngles(toViewer, shownPose.arms ?? 0), realSeconds);
     child.head.rotation.y = look.yaw;
     child.head.rotation.x += look.pitch;
+    liftHead(child, crawlBlend);
     const onFloor = floorShadow(shownPose.feet);
     blob.position.set(shownPose.x, 0.5, shownPose.z);
     blob.scale.setScalar(onFloor.scale);
