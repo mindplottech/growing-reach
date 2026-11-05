@@ -246,3 +246,8 @@
 
 - Claude Code に任せたこと：`.claude/skills/` に3つ。ledger-update（原典をページまで当たる・出典を登録する・4区分を付ける・格上げしない・食い違いは KO に決めてもらう・check:ledger と npm test で確かめる）、render-check（render-check.sh で描き、7枚の画像を開いて何を見るか）、dev-log-entry（この dev-log の1節の書き方。KO が決めていないことを KO の判断と書かない）。CLAUDE.md の冒頭の作品説明を今の向き（自分でできる・助け）に直し、hooks・検証・skills の場所を書き足した。
 - 私（KO）の判断：hooks と skills として repo に残す（KO）。手順の中身は、これまでの作業（台帳 v4〜v6・今日の描画の確認）から Claude Code が書き起こした。
+
+## 2026-11-05 README・LICENSE・提出用の概要
+
+- Claude Code に任せたこと：README を今の画面に合わせた（消した「100人の試行で見る」「助けの期間」の記述を外し、あーちゃん・育つ・振り向くを足した）。「Claude Code の使い方」を4節（原典と台帳／hooks と検証／描いて確かめる／分担の記録）にし、hooks が止めた実際の出力と、描画で見つけた4つの不具合を載せた。画面の画像2枚（docs/images/）。LICENSE（MIT、mindplottech）。提出用の概要を docs/submission.md に（英語197語・日本語）。
+- 私（KO）の判断：README・LICENSE・提出用の概要を整える（KO）。ライセンスを MIT・著作権者を mindplottech にしたのは Claude Code（KO の確認待ち）。
