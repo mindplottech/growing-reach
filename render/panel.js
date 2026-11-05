@@ -5,6 +5,7 @@ import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
+import { adjustmentsAt, adjustmentTimeline, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
 import { normalCdf } from '../sim/random.js';
 
@@ -65,6 +66,14 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   const myChild = document.querySelector('#my-child');
   const myChildNote = document.querySelector('#my-child-note');
   const myChildPosition = document.querySelector('#my-child-position');
+  const adjustLists = {
+    can: document.querySelector('#adjust-can'),
+    help: document.querySelector('#adjust-help'),
+    notyet: document.querySelector('#adjust-notyet'),
+    next: document.querySelector('#adjust-next'),
+    adults: document.querySelector('#adjust-adults'),
+  };
+  const adjustTitle = document.querySelector('#adjustments-title');
   const total = settings.trial_count;
   let view = null;
   let lastTags = null;
@@ -109,6 +118,64 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       lines.push(`身長から、登れる高さ ${cm(measuredBody.climb.value)}・立って届く高さ ${cm(measuredBody.reach.value)} と推測して計算しています。`);
     }
     myChildPosition.replaceChildren(...lines.map((text, i) => element(i === 0 ? 'strong' : 'span', '', text)).flatMap((node, i) => (i ? [document.createElement('br'), node] : [node])));
+  }
+
+  /**
+   * The adjustments of the age on the slider: what the child does by themselves, what one
+   * help makes possible, what is still to come, and what the step would bring into reach.
+   * Deterministic, from the ledger; the hundred runs are not involved. Returns the tag levels.
+   */
+  function showAdjustments(child) {
+    const simulation = session.getSimulation();
+    const room = session.getRoom();
+    const shared = { ledger, room, landmarks: simulation.landmarks, hazards: simulation.hazards, sex: child.sex, individual: child.individual };
+    const now = adjustmentsAt({ ...shared, months: child.months });
+    const rows = adjustmentTimeline(shared);
+    const who = child.individual ? 'この子は' : '';
+    adjustTitle.textContent = `${formatAge(child.months)}の環境調整`;
+    const firstCan = (goalId) => rows.find((row) => row.goalId === goalId && row.status === STATUS_CAN)?.months ?? null;
+    const item = (text, quiet = false) => { const li = element('li', quiet ? 'quiet' : '', ''); li.append(text); return li; };
+    const bold = (text) => { const node = element('strong', '', text); return node; };
+
+    // By themselves, with the age it became so when that is later than the start.
+    adjustLists.can.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_CAN).map((goal) => {
+      const since = firstCan(goal.id);
+      const li = item(`${goal.label}`);
+      li.append(`（${goal.how}${since && since > ledger._meta.age_range_months[0] ? `・${formatAge(since)}から` : ''}）`);
+      return li;
+    }));
+    // With help: one step covers every goal needing one; things put lower or closer each on a line.
+    const helped = now.goals.filter(({ status }) => status === STATUS_HELP);
+    const stepGoals = helped.filter(({ help }) => help === HELP_STEP);
+    const helpItems = [];
+    if (stepGoals.length) {
+      const li = item('');
+      li.append(bold(`踏み台 ${now.stepCm}cm`), ` → ${stepGoals.map(({ label }) => label).join('・')}`);
+      helpItems.push(li);
+    }
+    for (const goal of helped.filter(({ help }) => help !== HELP_STEP)) {
+      const li = item('');
+      li.append(bold(goal.how), ` → ${goal.label}`);
+      helpItems.push(li);
+    }
+    adjustLists.help.replaceChildren(...helpItems);
+    adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => item(`${goal.label}（${goal.how}）`, true)));
+    // The next changes after this age: the first three, in age order.
+    // Only the steps getting smaller and the goals becoming possible by themselves; a shelf or
+    // hook height creeping up with the child is not a change worth a line.
+    const coming = rows
+      .filter((row) => row.months > child.months && (row.status === STATUS_CAN || row.stepCm !== null))
+      .slice(0, 3)
+      .map((row) => {
+        const said = row.status === STATUS_CAN ? `${row.label}（${row.how}・助けを卒業）` : `${row.label}：${row.how}で足りる`;
+        return item(`${formatAge(row.months)}：${who}${said}`);
+      });
+    adjustLists.next.replaceChildren(...coming);
+    // What the step also brings into reach: the adults' side, kept below.
+    adjustLists.adults.replaceChildren(...now.hazardsWithStep.map((hazard) => item(`踏み台${now.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く → ${hazard.putAbove}cmより上へ`)));
+
+    const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_NOT_YET]: 'plain' };
+    return new Map(now.goals.map((goal) => [`goal-${goal.id}`, { level: level[goal.status], text: goal.how }]));
   }
 
   /** Marks the cell whose scenes are playing, if one was pressed. */
@@ -273,7 +340,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     ]));
     reasons.replaceChildren(...right.reasons.map((text) => element('li', '', text)));
 
-    lastTags = new Map(places(right).map((row) => [row.id, reachWords(row)]));
+    lastTags = new Map([...places(right).map((row) => [row.id, reachWords(row)]), ...showAdjustments(child)]);
     countermeasure.textContent = '';
     retry.disabled = true;
     retry.dataset.pending = 'false';

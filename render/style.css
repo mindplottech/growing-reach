@@ -504,6 +504,25 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 
 #results.stale #verdict, #results.stale .result-table { opacity: 0.55; }
 
+/* ---- The adjustments of the age ---- */
+.adjustments { padding: 10px 12px 6px; border-radius: 10px; background: var(--accent-soft); }
+.adjustments-title { margin: 0; font-size: 15px; }
+.adjust-lead { margin: 2px 0 8px; font-size: 12px; color: var(--muted); }
+.adjust-block { margin-top: 6px; }
+.adjust-heading { margin: 0 0 2px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.adjust-heading::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.adjust-heading.can::before { background: #2e8b57; }
+.adjust-heading.help::before { background: #e0a000; }
+.adjust-heading.notyet::before { background: #8a9299; }
+.adjust-heading.next::before { background: var(--accent); }
+.adjust-heading.adults::before { background: var(--danger); }
+.adjust-list { margin: 0 0 4px; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.adjust-list li.quiet { color: var(--muted); }
+.adjust-list strong { font-weight: 700; }
+.adjust-block:has(.adjust-list:empty) { display: none; }
+.runs { margin-top: 10px; }
+.runs > summary { cursor: pointer; font-weight: 700; font-size: 13px; min-height: 36px; display: flex; align-items: center; color: var(--muted); }
+
 /* ---- The conclusion and the table of the two conditions ---- */
 
 .conclusion { padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }

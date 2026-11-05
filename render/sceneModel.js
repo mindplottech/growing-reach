@@ -1,6 +1,7 @@
 import { canClimb, canReach } from '../sim/ability.js';
 import { landmarkHeight } from '../sim/room.js';
 import { footholdReachLevel, REACH_NONE } from '../sim/scaffold.js';
+import { placeGoals } from '../sim/adjustments.js';
 
 export const STATE_CLIMBABLE = 'climbable';
 export const STATE_REACHABLE = 'reachable';
@@ -236,6 +237,10 @@ export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Se
     contentHeight: Math.max(pane?.top ?? 0, ...objects.map(({ visualTop }) => visualTop)),
     objects,
     hazards: hazards.map(({ id, label, kind, on, x, y, w, d, height }) => ({ id, label, kind, on, x, z: y, w, d, bottom: height })),
+    // The goals (「やりたいこと」): things on furniture lie on its top; things on the wall hang at their height.
+    goals: placeGoals(ledger, room, landmarks).map((goal) => ({
+      id: `goal-${goal.id}`, label: goal.short ?? goal.label, x: goal.x, z: goal.y, w: goal.w, d: goal.d, height: goal.height, onWall: Boolean(goal.wall),
+    })),
     pane,
     curtain,
     planes: [

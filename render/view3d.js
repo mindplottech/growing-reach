@@ -35,6 +35,8 @@ const PLANK_COUNT = 9;
 const CHIP_LIFT_CM = 10;
 const HAZARD_COLOUR = 0xb5534a;
 const HAZARD_THICK_CM = 3;
+const GOAL_WALL_THICK_CM = 2;
+const GOAL_WALL_SIZE_CM = 8;
 const HAZARD_LABEL_SHARE = 0.8;
 const SIT_DROP = 0.14;
 // Walking, for the look only: a small bob per step, the arms swing a share of the legs, and the
@@ -62,6 +64,7 @@ const TAG_STYLES = {
   danger: { fill: 'rgba(211,47,47,0.95)', ink: '#ffffff', mesh: 0xd32f2f },
   caution: { fill: 'rgba(240,173,0,0.95)', ink: '#1f2933', mesh: 0xe0a000 },
   plain: { fill: 'rgba(120,128,136,0.92)', ink: '#ffffff', mesh: 0x8a9299 },
+  ok: { fill: 'rgba(46,139,87,0.95)', ink: '#ffffff', mesh: 0x2e8b57 },
 };
 // A tag whose colour changed grows for about a second (KO's choice); one the child just reached
 // grows more and blinks for a moment.
@@ -462,6 +465,22 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       mesh.add(label);
       roomGroup.add(mesh);
       tags.set(hazard.id, { sprite: label, text: hazard.label, meshes: [mesh] });
+    }
+    // The goals: a small plate on the wall at the thing's height, or a small thing on furniture.
+    for (const goal of model.goals) {
+      const thick = goal.onWall ? GOAL_WALL_THICK_CM : HAZARD_THICK_CM;
+      const mesh = new THREE.Mesh(
+        new RoundedBoxGeometry(goal.w, goal.onWall ? GOAL_WALL_SIZE_CM : thick, goal.d, CORNER_SEGMENTS, Math.min(goal.w, goal.d, thick) * CORNER_SHARE),
+        new THREE.MeshStandardMaterial({ color: TAG_STYLES.plain.mesh, roughness: 0.6 }),
+      );
+      const y = goal.onWall ? goal.height : goal.height + thick / 2;
+      mesh.position.set(goal.x + goal.w / 2, y, goal.z + goal.d / 2);
+      mesh.castShadow = true;
+      const label = labelSprite(goal.label, { share: HAZARD_LABEL_SHARE });
+      label.center.set(0.5, -0.3);
+      mesh.add(label);
+      roomGroup.add(mesh);
+      tags.set(goal.id, { sprite: label, text: goal.label, meshes: [mesh] });
     }
     for (const id of tags.keys()) paintTag(id);
     const previous = new Map(planes.map(({ id, mesh }) => [id, mesh.position.y]));

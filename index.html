@@ -17,7 +17,7 @@
 </head>
 <body>
   <header class="app-header">
-    <h1>Growing Reach <span class="app-subtitle">1歳3か月〜5歳の子の手がどこまで届くか</span></h1>
+    <h1>Growing Reach <span class="app-subtitle">この部屋で、子どもが自分でできるようになること</span></h1>
     <div class="header-actions">
       <button id="open-guide" type="button" class="header-button">
         <span class="icon" style="--icon: url(../assets/icons/circle-help.svg)"></span>使い方
@@ -109,6 +109,33 @@
         </details>
       </section>
 
+      <section id="adjustments" class="adjustments" aria-live="polite" aria-labelledby="adjustments-title">
+        <h2 id="adjustments-title" class="adjustments-title">この月齢の環境調整</h2>
+        <p class="adjust-lead">大人がこれをすると、この子は自分でできる。</p>
+        <div class="adjust-block">
+          <h3 class="adjust-heading can">自分でできる</h3>
+          <ul id="adjust-can" class="adjust-list"></ul>
+        </div>
+        <div class="adjust-block">
+          <h3 class="adjust-heading help">この助けがあればできる</h3>
+          <ul id="adjust-help" class="adjust-list"></ul>
+        </div>
+        <div class="adjust-block">
+          <h3 class="adjust-heading notyet">まだ</h3>
+          <ul id="adjust-notyet" class="adjust-list"></ul>
+        </div>
+        <div class="adjust-block">
+          <h3 class="adjust-heading next">次に変わること</h3>
+          <ol id="adjust-next" class="adjust-list"></ol>
+        </div>
+        <div class="adjust-block">
+          <h3 class="adjust-heading adults">だから大人がすること</h3>
+          <ul id="adjust-adults" class="adjust-list"></ul>
+        </div>
+      </section>
+
+      <details id="runs" class="runs">
+      <summary>100人の試行で見る（危険な物にどれだけ届くか）</summary>
       <section id="verdict" class="conclusion" data-tone="pending" aria-live="polite">
         <p class="conclusion-text">計算しています…</p>
       </section>
@@ -121,6 +148,7 @@
       </table>
 
       <p id="conditions" class="conditions"></p>
+      </details>
 
       <details id="more" class="more">
         <summary>くわしく見る</summary>
