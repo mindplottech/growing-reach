@@ -48,6 +48,8 @@ const HELP_SIDE_ANGLE = 0.6;
 const HELP_LOOK_SHARE = 0.55;
 const HELP_FORWARD_LEAN = 0.18;
 const HELP_FORWARD_ARMS = 0.5;
+// The camera stays this far inside the outer walls, so a thing in a corner is seen from the room.
+const HELP_CAMERA_MARGIN_CM = 30;
 // Floor tones by room (display only): tiles in the wet rooms, earth at the entrance.
 const ROOM_FLOORS = { washroom: 0xe3e7ea, toilet: 0xdfe8ee, entrance: 0xd6d0c6, kitchen: 0xece4d6 };
 const ROOM_FLOOR_OPACITY = 0.85;
@@ -649,10 +651,19 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const target = new THREE.Vector3(
       stand.x + (centre.x - stand.x) * HELP_LOOK_SHARE, model.childHeight * 0.6, stand.y + (centre.y - stand.y) * HELP_LOOK_SHARE,
     );
-    // Behind the child's shoulder: back along the facing, swung to one side.
-    const back = new THREE.Vector3(facing.x, 0, facing.y).applyAxisAngle(new THREE.Vector3(0, 1, 0), HELP_SIDE_ANGLE);
+    // Behind the child's shoulder: back along the facing, swung to one side. The side that would
+    // put the camera outside the room (behind a wall) is not used; what is left is kept inside.
     const distance = model.childHeight * HELP_DISTANCE_HEIGHTS;
-    const wanted = target.clone().add(back.multiplyScalar(distance * Math.cos(HELP_PITCH))).add(new THREE.Vector3(0, distance * Math.sin(HELP_PITCH), 0));
+    const up = new THREE.Vector3(0, 1, 0);
+    const inside = (p) => p.x >= HELP_CAMERA_MARGIN_CM && p.x <= model.width - HELP_CAMERA_MARGIN_CM
+      && p.z >= HELP_CAMERA_MARGIN_CM && p.z <= model.depth - HELP_CAMERA_MARGIN_CM;
+    const candidate = (angle) => target.clone()
+      .add(new THREE.Vector3(facing.x, 0, facing.y).applyAxisAngle(up, angle).multiplyScalar(distance * Math.cos(HELP_PITCH)))
+      .add(new THREE.Vector3(0, distance * Math.sin(HELP_PITCH), 0));
+    const options = [candidate(HELP_SIDE_ANGLE), candidate(-HELP_SIDE_ANGLE), candidate(0)];
+    const wanted = options.find(inside) ?? options[2];
+    wanted.x = Math.min(Math.max(wanted.x, HELP_CAMERA_MARGIN_CM), model.width - HELP_CAMERA_MARGIN_CM);
+    wanted.z = Math.min(Math.max(wanted.z, HELP_CAMERA_MARGIN_CM), model.depth - HELP_CAMERA_MARGIN_CM);
     controls.target.lerp(target, FOLLOW_EASE);
     camera.position.lerp(wanted, FOLLOW_EASE);
   }

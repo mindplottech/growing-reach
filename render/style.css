@@ -547,9 +547,36 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 .adjust-heading.adults::before { background: var(--danger); }
 .adjust-list { margin: 0 0 4px; padding-left: 18px; font-size: 13px; line-height: 1.55; }
 .adjust-list li.quiet { color: var(--muted); }
-.adjust-list li.showable { cursor: pointer; border-radius: 6px; margin-left: -6px; padding-left: 6px; }
-.adjust-list li.showable:hover { background: rgba(255, 255, 255, 0.7); }
-.adjust-list li.showable[aria-pressed="true"] { background: #fff; box-shadow: inset 3px 0 0 var(--accent); }
+.adjust-list li.showable {
+  list-style: none;
+  position: relative;
+  margin: 4px 0 4px -18px;
+  padding: 6px 64px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  min-height: 36px;
+}
+.adjust-list li.showable::after {
+  content: '3Dで見る';
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  font-size: 11px;
+  color: var(--accent);
+  background: #fff;
+}
+.adjust-list li.showable:hover { border-color: var(--accent); background: #fff; }
+.adjust-list li.showable[aria-pressed="true"] { border-color: var(--accent); background: #fff; box-shadow: inset 4px 0 0 var(--accent); }
+.adjust-list li.showable[aria-pressed="true"]::after { content: '表示中'; background: var(--accent); color: #fff; }
+/* The rows of 「この助けがあればできる」 are the heart of the screen: a full button each. */
+#adjust-help li.showable { border-color: #e0a000; background: #fff; }
+#adjust-help li.showable:hover, #adjust-help li.showable[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 4px 0 0 #e0a000; }
 .adjust-list strong { font-weight: 700; }
 .adjust-block:has(.adjust-list:empty) { display: none; }
 .adjust-spans { margin-top: 6px; }
