@@ -262,6 +262,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       line.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     }
   }
+  // The dangerous things and the lock's tag show only while the hundred runs are being looked at.
+  let hazardsShown = false;
+  const hazardNodes = [];
   let gait = null;
   let updatePose = createPoseTracker(settings.display_seconds, gait);
   let updateIdle = createIdle(settings.idle_figure);
@@ -345,9 +348,13 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     label.raycast = noRaycast;
     label.visible = object.kind === 'window_lock';
     group.add(label);
-    if (object.kind === 'window_lock') tags.set(object.id, { sprite: label, text: object.label, meshes: [] });
+    if (object.kind === 'window_lock') {
+      tags.set(object.id, { sprite: label, text: object.label, meshes: [] });
+      label.visible = hazardsShown;
+      hazardNodes.push(label);
+    }
     Object.assign(group.userData, {
-      id: object.id, top: object.top, w: object.w, edge, label, materials, alwaysLabelled: label.visible,
+      id: object.id, top: object.top, w: object.w, edge, label, materials, alwaysLabelled: object.kind === 'window_lock', isLock: object.kind === 'window_lock',
     });
     roomGroup.add(group);
     objectMeshes.set(object.id, group);
@@ -355,7 +362,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
 
   function showLabels() {
     for (const [id, group] of objectMeshes) {
-      group.userData.label.visible = group.userData.alwaysLabelled || id === hoveredId;
+      const always = group.userData.alwaysLabelled && (!group.userData.isLock || hazardsShown);
+      group.userData.label.visible = always || id === hoveredId;
     }
   }
 
@@ -445,6 +453,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     addWall(model.depth, 0, model.depth / 2, Math.PI / 2);
 
     roomGroup.add(buildSkirting(model));
+    hazardNodes.length = 0;
     model.objects.forEach(addObject);
     showLabels();
     // Dangerous things lie flat on their furniture; they are drawn but not picked or dragged.
@@ -464,6 +473,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       label.center.set(0.5, turn % 2 === 0 ? 1.15 : -0.3);
       mesh.add(label);
       roomGroup.add(mesh);
+      mesh.visible = hazardsShown;
+      hazardNodes.push(mesh);
       tags.set(hazard.id, { sprite: label, text: hazard.label, meshes: [mesh] });
     }
     // The goals: a small plate on the wall at the thing's height, or a small thing on furniture.
@@ -759,6 +770,11 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
         if (before.size > 0 && before.get(id)?.level !== tagLevels.get(id)?.level) tags.get(id).sprite.userData.popUntil = now + TAG_POP_MS;
       }
       fitLabels();
+    },
+    /** Shows or hides the dangerous things and the lock's tag (the goals stay). */
+    showHazards(visible) {
+      hazardsShown = visible;
+      for (const node of hazardNodes) node.visible = visible;
     },
     /** The child just reached this thing: its tag grows and blinks for `seconds`. */
     pulse(id, seconds) {

@@ -301,6 +301,10 @@ async function start() {
     });
     toolbar.attachView(view);
     panel.attachView(view);
+    // The dangerous things appear in the room only while the hundred runs are open.
+    const runs = document.querySelector('#runs');
+    view.showHazards(runs.open);
+    runs.addEventListener('toggle', () => view.showHazards(runs.open));
   } catch (error) {
     const hint = document.querySelector('#tool-hint');
     hint.textContent = `3D表示を読み込めませんでした（${error.message}）`;
