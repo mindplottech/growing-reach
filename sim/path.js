@@ -178,3 +178,27 @@ export function routeLength(from, route) {
   }
   return length;
 }
+
+/**
+ * A free spot inside one area of the room (a room of the house), nearest its middle: where the
+ * child starts when that room is chosen. Uses the same grid as the routes. Null if none.
+ */
+export function freeSpotIn(room, landmarks, area, { cell, clearance }) {
+  const grid = createGrid(room, landmarks, { cell, clearance });
+  const inside = (col, row) => {
+    const { x, y } = centreOf(grid, col, row);
+    return x > area.x + clearance && x < area.x + area.w - clearance && y > area.y + clearance && y < area.y + area.d - clearance;
+  };
+  const [col0, row0] = cellOf(grid, { x: area.x + area.w / 2, y: area.y + area.d / 2 });
+  for (let radius = 0; radius < Math.max(grid.cols, grid.rows); radius += 1) {
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        const col = col0 + dx;
+        const row = row0 + dy;
+        if (isFree(grid, col, row) && inside(col, row)) return centreOf(grid, col, row);
+      }
+    }
+  }
+  return null;
+}

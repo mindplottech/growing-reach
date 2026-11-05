@@ -8,6 +8,7 @@ import { reachWords } from '../sim/wording.js';
 import { activitiesAt, adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
 import { helpScene } from '../sim/helpScene.js';
+import { freeSpotIn } from '../sim/path.js';
 import { activityIcon, GOAL_ICONS, ROOM_ICONS } from './icons.js';
 import { normalCdf } from '../sim/random.js';
 
@@ -174,6 +175,9 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
           if (shownGoalId !== null) closeHelp();
           showAdjustments(lastChild);
           view?.setGoalRoom(adjustRoom);
+          // あーちゃん starts in that room and walks there; the camera looks at it (KO).
+          view?.focusArea((room.rooms ?? []).find(({ id }) => id === adjustRoom) ?? null);
+          autoplay.useAuto(wanderRuns(lastChild));
         });
         return button;
       }));
@@ -293,39 +297,57 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // What the step also brings into reach: the adults' side, kept below.
     adjustLists.adults.replaceChildren(...all.hazardsWithStep.map((hazard) => item(`踏み台${all.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く → ${hazard.putAbove}cmより上へ`)));
 
-    // The same, to be read at a glance: one tile per goal, a picture, a short name and a badge
-    // in the status's colour. The things to do come first. The full words are in the tooltip.
-    const order = { [STATUS_HELP]: 0, [STATUS_WITH_ADULT]: 1, [STATUS_NOT_YET]: 2, [STATUS_CAN]: 3 };
+    // The same, to be read at a glance (KO): grouped under plain headings instead of a colour key.
+    // The goals with something to do come first as big tiles; what the child does already is a
+    // row of small chips. The full words are in each tooltip.
     const badge = (goal) => {
-      if (goal.status === STATUS_CAN) return ['can', '✓ 自分で'];
-      if (goal.status === STATUS_WITH_ADULT) return ['adult', '🤗 抱っこで'];
-      if (goal.status === STATUS_NOT_YET) return ['notyet', '… まだ'];
-      if (goal.help === HELP_STEP) return ['help', `🪜 踏み台${goal.stepCm}cm`];
-      if (goal.maxHeightCm !== undefined) return ['help', `⬇ ${goal.maxHeightCm}cmまでに`];
-      return ['help', `↔ 縁から${goal.maxDistanceCm}cm`];
+      if (goal.status === STATUS_WITH_ADULT) return '🤗 抱っこで';
+      if (goal.status === STATUS_NOT_YET) return '… まだ';
+      if (goal.help === HELP_STEP) return `🪜 踏み台${goal.stepCm}cm`;
+      if (goal.maxHeightCm !== undefined) return `⬇ ${goal.maxHeightCm}cmより下に`;
+      return `↔ 手前${goal.maxDistanceCm}cmに`;
     };
-    const tiles = [...now.goals].sort((a, b) => order[a.status] - order[b.status]).map((goal) => {
-      const [kind, words] = badge(goal);
-      const tile = element('li', `goal-tile ${kind}`, '');
-      tile.title = `${named(goal)}：${goal.how}${goal.accompany ? `（${goal.accompany}）` : ''}`;
-      tile.append(
-        element('span', 'goal-tile-icon', GOAL_ICONS[goal.id] ?? '•'),
-        element('span', 'goal-tile-name', adjustRoom === 'all' && roomName.has(goal.room) ? `${ROOM_ICONS[goal.room] ?? ''}${goal.short ?? goal.label}` : (goal.short ?? goal.label)),
-        element('span', 'goal-tile-badge', words),
-      );
-      return kind === 'can' || kind === 'notyet' ? tile : showable(tile, goal);
-    });
-    document.querySelector('#adjust-tiles').replaceChildren(...tiles);
-    // Next: the first two changes as small pictures; and the adults' side as one warning line.
+    const nameOf = (goal) => (adjustRoom === 'all' && roomName.has(goal.room) ? `${ROOM_ICONS[goal.room] ?? ''}${goal.short ?? goal.label}` : (goal.short ?? goal.label));
+    const tipOf = (goal) => `${named(goal)}：${goal.how}${goal.accompany ? `（${goal.accompany}）` : ''}`;
+    const tile = (goal, kind) => {
+      const li = element('li', `goal-tile ${kind}`, '');
+      li.title = tipOf(goal);
+      li.append(element('span', 'goal-tile-icon', GOAL_ICONS[goal.id] ?? '•'), element('span', 'goal-tile-name', nameOf(goal)), element('span', 'goal-tile-badge', badge(goal)));
+      return kind === 'notyet' ? li : showable(li, goal);
+    };
+    const chip = (goal) => {
+      const li = element('li', 'goal-chip', '');
+      li.title = tipOf(goal);
+      li.append(element('span', 'activity-icon', GOAL_ICONS[goal.id] ?? '•'), nameOf(goal));
+      return li;
+    };
+    const groups = [
+      { kind: 'help', head: '🪜 大人がひと工夫すると、自分でできる', goals: now.goals.filter(({ status }) => status === STATUS_HELP), make: tile },
+      { kind: 'adult', head: '🤗 大人と一緒に', goals: now.goals.filter(({ status }) => status === STATUS_WITH_ADULT), make: tile },
+      { kind: 'notyet', head: '… まだ', goals: now.goals.filter(({ status }) => status === STATUS_NOT_YET), make: tile },
+      { kind: 'can', head: '✓ もう自分でできる', goals: now.goals.filter(({ status }) => status === STATUS_CAN), make: chip },
+    ].filter(({ goals }) => goals.length > 0);
+    document.querySelector('#adjust-groups').replaceChildren(...groups.map(({ kind, head, goals, make }) => {
+      const section = element('section', `goal-group ${kind}`, '');
+      const list = element('ul', kind === 'can' ? 'goal-chips' : 'goal-tiles', '');
+      list.append(...goals.map((goal) => make(goal, kind)));
+      section.append(element('h3', 'goal-group-head', head), list);
+      return section;
+    }));
+    // これから: the first two changes, each with its picture, its name and what it becomes.
     document.querySelector('#adjust-next-icons').replaceChildren(...rows
       .filter((row) => row.months > child.months && (row.status === STATUS_CAN || row.stepCm !== null))
       .slice(0, 2)
       .map((row) => {
-        const chip = element('span', 'next-chip', '');
-        const words = row.status === STATUS_CAN ? '✓ 自分で' : `🪜 ${row.stepCm}cm`;
-        chip.title = `${formatAge(row.months)}：${row.label}（${row.how}）`;
-        chip.append(element('span', 'next-age', formatAge(row.months)), element('span', 'activity-icon', GOAL_ICONS[row.goalId] ?? '•'), words);
-        return chip;
+        const goal = all.goals.find(({ id }) => id === row.goalId);
+        const next = element('span', 'next-chip', '');
+        next.title = `${formatAge(row.months)}：${row.label}（${row.how}）`;
+        next.append(
+          element('span', 'next-age', formatAge(row.months)),
+          element('span', 'activity-icon', GOAL_ICONS[row.goalId] ?? '•'),
+          `${goal?.short ?? row.label} ${row.status === STATUS_CAN ? '✓ 自分で' : `🪜 ${row.stepCm}cmで`}`,
+        );
+        return next;
       }));
     document.querySelector('#adjust-warn').replaceChildren(...all.hazardsWithStep.map((hazard) => {
       const chip = element('span', 'warn-chip', `⚠️ ${hazard.label}は${hazard.putAbove}cmより上へ`);
@@ -340,6 +362,35 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
 
     const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_WITH_ADULT]: 'caution', [STATUS_NOT_YET]: 'plain' };
     return new Map(all.goals.map((goal) => [`goal-${goal.id}`, { level: level[goal.status], text: goal.how }]));
+  }
+
+  /**
+   * On its own, あーちゃん just walks about the house: whole runs, one after another (the scenes of
+   * touching dangerous things are no longer played, KO 2026-11-05). あーちゃん is the child the
+   * panel computes for: the median body (z = 0 for height and climb). With a room chosen in the
+   * panel, the child starts in that room and mostly goes to its things (KO 2026-11-05).
+   */
+  function wanderRuns(child) {
+    const height = lastAll?.body.height;
+    const individual = child.individual ?? { height: 0, climb: 0 };
+    return Array.from({ length: WANDER_RUNS }, (_, i) => ({
+      ...child, individual, seed: i + 1, room: focusedRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: 'あーちゃん', height,
+    }));
+  }
+
+  /** The house with the chosen room in front: the start inside it, its things preferred. */
+  function focusedRoom() {
+    const house = session.getRoom();
+    const area = (house.rooms ?? []).find(({ id }) => id === adjustRoom);
+    if (!area) return house;
+    const within = (item) => item.x + item.w / 2 >= area.x && item.x + item.w / 2 <= area.x + area.w
+      && item.y + item.d / 2 >= area.y && item.y + item.d / 2 <= area.y + area.d;
+    const start = freeSpotIn(house, house.landmarks, area, { cell: settings.path_grid_cm, clearance: settings.path_clearance_cm });
+    return {
+      ...house,
+      start: start ?? house.start,
+      landmarks: house.landmarks.map((item) => (within(item) ? item : { ...item, interest: (item.interest ?? settings.interest_default) * settings.focus_outside_interest })),
+    };
   }
 
   /** The words over the 3D view for one scene: the help, the goal, and where the hand gets to. */
@@ -587,15 +638,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     retry.dataset.pending = 'false';
     document.querySelector('#results').classList.remove('stale');
     view?.setTags(lastTags);
-    // On its own, あーちゃん just walks about the house: whole runs, one after another. The scenes
-    // of touching dangerous things are no longer played (KO, 2026-11-05).
-    // あーちゃん is the child the panel computes for: the median body (z = 0 for height and
-    // climb), or 「うちの子」 when given. Only what the child does differs from run to run.
-    const height = lastAll?.body.height;
-    const individual = child.individual ?? { height: 0, climb: 0 };
-    autoplay.useAuto(Array.from({ length: WANDER_RUNS }, (_, i) => ({
-      ...child, individual, seed: i + 1, room: session.getRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: 'あーちゃん', height,
-    })));
+    autoplay.useAuto(wanderRuns(child));
     showPressed();
     return right;
   }

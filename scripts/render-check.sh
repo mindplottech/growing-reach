@@ -27,7 +27,7 @@ fi
 sed -e 's#https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js#./.cache/three/build/three.module.js#' \
     -e 's#https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/#./.cache/three/examples/jsm/#' \
     -e 's#<head>#<head><script>const g=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(t,a){if(t\&\&t.startsWith("webgl"))a={...(a||{}),preserveDrawingBuffer:true};return g.call(this,t,a)};</script>#' \
-    -e 's#</body>#<script>const q=new URLSearchParams(location.search);setTimeout(()=>{const m=q.get("months");if(m){const s=document.querySelector("\#months");s.value=m;s.dispatchEvent(new Event("input",{bubbles:true}));s.dispatchEvent(new Event("change",{bubbles:true}));}const g=q.get("goal");if(g)setTimeout(()=>document.querySelector(`li[data-goal="${g}"]`)?.click(),800);},2500);</script></body>#' \
+    -e 's#</body>#<script>const q=new URLSearchParams(location.search);setTimeout(()=>{const m=q.get("months");if(m){const s=document.querySelector("\#months");s.value=m;s.dispatchEvent(new Event("input",{bubbles:true}));s.dispatchEvent(new Event("change",{bubbles:true}));}const r=q.get("area");if(r)setTimeout(()=>document.querySelector(`\#adjust-rooms button[data-room="${r}"]`)?.click(),400);const g=q.get("goal");if(g)setTimeout(()=>document.querySelector(`li[data-goal="${g}"]`)?.click(),800);},2500);</script></body>#' \
     index.html > .preview.html
 
 python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 &
@@ -50,6 +50,8 @@ shot "scripts/figure-preview.html?months=9,12,15&crawl=1&turns=1.2,1.2,1.2&look=
 echo "アプリ全体："
 shot ".preview.html?months=15" app-15.png 1400 860 15000
 shot ".preview.html?months=60" app-60.png 1400 860 15000
+shot ".preview.html?months=15&area=washroom" app-15-washroom.png 1400 860 15000
+shot ".preview.html?months=36&area=kitchen" app-36-kitchen.png 1400 860 15000
 echo "助けの場面（電気をつける）："
 shot ".preview.html?months=15&goal=switch" help-switch-15.png 1400 860 16000
 shot ".preview.html?months=30&goal=switch" help-switch-30.png 1400 860 16000

@@ -80,3 +80,16 @@ test('with no way round, the child walks straight to the point', () => {
   const closed = createGrid(walled, ring, { cell: 5, clearance: 0 });
   assert.deepEqual(findPath(closed, { x: 5, y: 5 }, { x: 50, y: 50 }), [{ x: 50, y: 50 }]);
 });
+
+test('a chosen room gives a free starting spot inside it, off the furniture', async () => {
+  const { freeSpotIn } = await import('../sim/path.js');
+  const { roomLayout, settings } = await import('./helpers.js');
+  for (const area of roomLayout.rooms) {
+    const spot = freeSpotIn(roomLayout, roomLayout.landmarks, area, { cell: settings.path_grid_cm, clearance: settings.path_clearance_cm });
+    assert.ok(spot, area.id);
+    assert.ok(spot.x > area.x && spot.x < area.x + area.w && spot.y > area.y && spot.y < area.y + area.d, area.id);
+    for (const item of roomLayout.landmarks) {
+      assert.ok(!(spot.x > item.x && spot.x < item.x + item.w && spot.y > item.y && spot.y < item.y + item.d), `${area.id} in ${item.id}`);
+    }
+  }
+});

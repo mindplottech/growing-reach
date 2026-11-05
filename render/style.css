@@ -821,3 +821,17 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
    The caption over the 3D shows only while a help scene is open. */
 .workspace { grid-template-columns: minmax(0, 1fr) var(--panel-width); }
 .help-caption[hidden] { display: none; }
+
+/* The groups of goals under plain headings (2026-11-05, KO): no colour key needed. */
+.adjust-activities-title { margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #8a6d2f; }
+.goal-groups { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.goal-group-head { margin: 0 0 4px; font-size: 12px; font-weight: 700; }
+.goal-group.help .goal-group-head { color: #9a6b00; }
+.goal-group.adult .goal-group-head { color: #b04f76; }
+.goal-group.can .goal-group-head { color: #2e7a4f; }
+.goal-group.notyet .goal-group-head { color: var(--muted); }
+.goal-groups .goal-tiles { margin: 0; }
+.goal-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.goal-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 4px; border-radius: 12px; background: #f3faf5; border: 1px solid #b9dcc6; font-size: 12px; white-space: nowrap; }
+.adjust-next-kind { flex: none; padding: 0 6px; border-radius: 8px; background: #dde7f3; font-size: 11px; }
+.next-chip { white-space: nowrap; }

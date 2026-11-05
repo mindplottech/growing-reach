@@ -333,11 +333,20 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let hoveredId = null;
   let tool = { type: 'select' };
 
+  // The room chosen in the panel (an area of the house), or null for the whole house.
+  let focusedArea = null;
   function fitCamera() {
-    const { position, target } = cameraPlacement(model, camera.aspect, FIELD_OF_VIEW);
+    const { position, target } = focusedArea ? areaPlacement(focusedArea) : cameraPlacement(model, camera.aspect, FIELD_OF_VIEW);
     controls.target.set(target.x, target.y, target.z);
     camera.position.set(position.x, position.y, position.z);
     controls.update();
+  }
+
+  /** The camera framing one area: the same fit as the whole house, on the area's floor and walls. */
+  function areaPlacement(area) {
+    const local = cameraPlacement({ width: area.w, depth: area.d, wallHeight: model.wallHeight }, camera.aspect, FIELD_OF_VIEW);
+    const shift = ({ x, y, z }) => ({ x: x + area.x, y, z: z + area.y });
+    return { position: shift(local.position), target: shift(local.target) };
   }
 
   // Following: the camera glides to a close view of the child and keeps it while on; turning
@@ -994,6 +1003,12 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       for (const { room, nodes } of goalNodes) {
         for (const node of nodes) node.visible = roomId === 'all' || roomId === room;
       }
+    },
+    /** Frames the chosen room (null: the whole house), unless a help scene holds the camera. */
+    focusArea(area) {
+      focusedArea = area;
+      cameraTouched = false;
+      if (model && !help) fitCamera();
     },
     /** Shows or hides the dangerous things and the lock's tag (the goals stay). */
     showHazards(visible) {
