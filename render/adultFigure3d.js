@@ -20,6 +20,20 @@ const HOLD_LEAN = 0.12;
 const BESIDE_LEAN = 0.25;
 const HEAD_DOWN = 0.35;
 const EASE_PER_SECOND = 4;
+// Watching the child (KO 2026-11-06): the head turns toward them up to the neck's reach, and the
+// shoulders take a share of the turn; past that the adult keeps the furthest turn. The head
+// follows a moving child at this rate, so it does not snap. Display only.
+const NECK_TURN_LIMIT = 1.1;
+const TRUNK_TURN_SHARE = 0.3;
+const TRUNK_TURN_LIMIT = 0.45;
+const NECK_PITCH_LIMIT = 0.7;
+const GAZE_PER_SECOND = 3;
+// Kneeling on the 土間 to help with the shoes (KO 2026-11-06): upright on both knees, the hands
+// on the thighs; reaching in, the body bends forward and the hands go down to the child's foot,
+// this high off the floor.
+const KNEEL_LEAN = 0.15;
+const KNEEL_REACH_LEAN = 0.55;
+const KNEEL_FOOT_HEIGHT_CM = 12;
 
 /** The adult figure, standing, feet at y = 0. */
 export function makeAdult(heightCm) {
@@ -64,6 +78,7 @@ export function makeAdult(heightCm) {
   part(trunk, new THREE.CapsuleGeometry(1, 1, 6, 16), top, [0, shoulderY * 0.55, 0], [H * SHARE.shoulderHalf * 0.9, shoulderY * 0.38, H * SHARE.chestDepth]);
   part(trunk, new THREE.CylinderGeometry(H * 0.022, H * 0.026, H * 0.04, 12), skin, [0, shoulderY + H * 0.02, 0]);
   const head = new THREE.Group();
+  head.rotation.order = 'YXZ';
   head.position.set(0, H * SHARE.head - hipY, 0);
   trunk.add(head);
   const r = H * SHARE.headRadius;
@@ -116,6 +131,7 @@ export function poseAdult(adult, target, seconds) {
   adult.root.rotation.y = next.yaw;
   adult.trunk.rotation.x = next.lean;
   adult.head.rotation.x = next.headDown;
+  watch(adult, target.lookAt, seconds, moved);
   adult.legs.forEach((hip, i) => { hip.rotation.x = next.hips[i]; });
   adult.knees.forEach((knee, i) => { knee.rotation.x = next.knees[i]; });
   adult.arms.forEach((shoulder, i) => {
@@ -123,6 +139,36 @@ export function poseAdult(adult, target, seconds) {
     shoulder.rotation.z = (i === 0 ? 1 : -1) * next.inward;
   });
   adult.elbows.forEach((elbow, i) => { elbow.rotation.x = next.elbowBend[i]; });
+}
+
+/**
+ * Turns the head (and a little the shoulders) toward `lookAt` (x, y, z in cm, the child's head),
+ * eased so a walking child is followed smoothly. No point: the adult looks ahead.
+ */
+function watch(adult, lookAt, seconds, jump) {
+  let yaw = 0;
+  let pitch = null;
+  if (lookAt) {
+    const { root } = adult;
+    const dx = lookAt.x - root.position.x;
+    const dz = lookAt.z - root.position.z;
+    yaw = Math.atan2(dx, dz) - root.rotation.y;
+    yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+    const eyeY = root.position.y + adult.heightCm * SHARE.head;
+    pitch = Math.max(-NECK_PITCH_LIMIT, Math.min(NECK_PITCH_LIMIT, Math.atan2(eyeY - lookAt.y, Math.hypot(dx, dz))));
+  }
+  const trunkWant = Math.max(-TRUNK_TURN_LIMIT, Math.min(TRUNK_TURN_LIMIT, yaw * TRUNK_TURN_SHARE));
+  const headWant = Math.max(-NECK_TURN_LIMIT, Math.min(NECK_TURN_LIMIT, yaw - trunkWant));
+  const gaze = adult.gaze ?? { head: 0, trunk: 0 };
+  const ease = jump ? 1 : Math.min(1, seconds * GAZE_PER_SECOND);
+  gaze.head += (headWant - gaze.head) * ease;
+  gaze.trunk += (trunkWant - gaze.trunk) * ease;
+  adult.gaze = gaze;
+  adult.trunk.rotation.order = 'YXZ';
+  adult.trunk.rotation.y = gaze.trunk;
+  adult.head.rotation.y = gaze.head;
+  // Looking down at the child: the pitch replaces the pose's own head tilt, minus the lean.
+  if (pitch !== null) adult.head.rotation.x = pitch - adult.trunk.rotation.x;
 }
 
 function shapeFor(adult, target) {
@@ -138,6 +184,29 @@ function shapeFor(adult, target) {
   }
   const shoulderY = H * SHARE.shoulder;
   const reach = H * (SHARE.upperArm + SHARE.forearm);
+  if (target.mode === 'kneel') {
+    // Thighs straight down, shins back along the floor: the root goes down by the shin.
+    const kneeY = H * SHARE.knee;
+    const rootY = -kneeY + H * SHARE.shinRadius;
+    const out = target.reach ?? 0;
+    const lean = KNEEL_LEAN + (KNEEL_REACH_LEAN - KNEEL_LEAN) * out;
+    // The arms toward the foot: as in 'hold', from the shoulder as it is with the lean.
+    const shoulderUp = shoulderY - hipY;
+    const shoulderAt = { y: rootY + hipY + Math.cos(lean) * shoulderUp, z: Math.sin(lean) * shoulderUp };
+    const forward = Math.max(1, target.holdForward - shoulderAt.z);
+    const drop = Math.max(1, shoulderAt.y - KNEEL_FOOT_HEIGHT_CM);
+    const length = Math.min(reach, Math.hypot(forward, drop));
+    const bend = Math.acos(Math.min(1, length / reach)) * 2;
+    const angle = Math.atan2(forward, drop) + bend / 2 - lean;
+    // At rest the hands lie on the thighs.
+    const restAngle = 0.5 - lean;
+    const shoulder = restAngle + (angle - restAngle) * out;
+    const elbow = 0.9 + (bend - 0.9) * out;
+    return {
+      x: target.x, z: target.z, yaw: target.yaw, rootY, lean, headDown: HEAD_DOWN,
+      hips: [0, 0], knees: [Math.PI / 2, Math.PI / 2], shoulders: [-shoulder, -shoulder], elbowBend: [-elbow, -elbow], inward: 0.12,
+    };
+  }
   if (target.mode === 'hold') {
     // The arms point down and forward to the child's sides, a little bent, a little inward.
     const lean = HOLD_LEAN;

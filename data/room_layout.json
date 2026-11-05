@@ -8,6 +8,7 @@
     "hazards": "危険な物は家具の上に置く（on が家具、dx・dy は家具の角からの位置、w・d は大きさ）。高さは置いた家具の天板の高さ。位置と大きさは設計者が置いた仮値",
     "goals_note": "goals は「やりたいこと」。計算（sim/adjustments.js）と表示だけが読み、100人の試行（simulation.js）は読まない。on は家具の上、wall は壁の位置（仮値）。高さは台帳を指す。",
     "rooms_note": "部屋ごとに width・depth・start・landmarks・goals・hazards を持つ。寸法と配置は設計者の仮値、高さは台帳を指す。",
+    "sit_on_note": "sit_on は、その物を使うとき子どもが座る家具（靴は玄関の段差に座って履く）。表示だけが読み、計算には使わない。",
     "house_note": "一つの家。rooms は環境調整の表示で部屋ごとにまとめるための区画、walls は腰高の間仕切り（経路の障害物。ドアの隙間から出入りする）。寸法と配置は設計者の仮値。"
   },
   "width": 450,
@@ -128,13 +129,13 @@
             "sofa_seat"
           ],
           "scaffold": true,
-          "x": 30,
-          "y": 60,
-          "w": 180,
-          "d": 80,
+          "x": 0,
+          "y": 40,
+          "w": 80,
+          "d": 180,
           "approach": {
-            "x": 120,
-            "y": 160
+            "x": 100,
+            "y": 150
           },
           "room": "living"
         },
@@ -146,13 +147,13 @@
             "low_table_top"
           ],
           "scaffold": true,
-          "x": 70,
-          "y": 190,
-          "w": 100,
-          "d": 60,
+          "x": 120,
+          "y": 80,
+          "w": 60,
+          "d": 100,
           "approach": {
-            "x": 190,
-            "y": 220
+            "x": 200,
+            "y": 130
           },
           "room": "living"
         },
@@ -488,10 +489,10 @@
           ],
           "help": "lower",
           "wall": {
-            "x": 500,
-            "y": 240,
-            "w": 30,
-            "d": 4
+            "x": 532,
+            "y": 110,
+            "w": 4,
+            "d": 30
           },
           "room": "washroom",
           "from_months": 16
@@ -606,7 +607,8 @@
             "d": 30
           },
           "room": "entrance",
-          "from_months": 16
+          "from_months": 16,
+          "sit_on": "entry_step"
         },
         {
           "id": "hook",
@@ -760,8 +762,8 @@
           "kind": "cord",
           "label": "コード",
           "on": "low_table",
-          "dx": 40,
-          "dy": 25,
+          "dx": 15,
+          "dy": 40,
           "w": 30,
           "d": 4
         },
@@ -1403,7 +1405,8 @@
             "w": 12,
             "d": 30
           },
-          "room": "entrance"
+          "room": "entrance",
+          "sit_on": "entry_step"
         },
         {
           "id": "hook",

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { adjustmentsAt, HELP_CLOSER, HELP_LOWER, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET } from '../sim/adjustments.js';
 import { helpScene } from '../sim/helpScene.js';
-import { selectLayout } from '../sim/room.js';
+import { landmarkHeight, selectLayout } from '../sim/room.js';
 import { createSimulation } from '../sim/simulation.js';
 import { settings } from '../sim/params.js';
 import { SEX_ANY } from '../sim/body.js';
@@ -113,4 +113,25 @@ test('toilet (KO 2026-11-06): the child sits on the seat facing out, the stool i
   // The stool reaches out of the bowl's front, on the side the child faces.
   assert.ok(sit.prop.y < bowl.y && sit.prop.y + sit.prop.d > bowl.y);
   assert.ok(sit.withHelp.y > bowl.y && sit.withHelp.y < bowl.y + bowl.d / 2);
+});
+
+test('shoes (KO 2026-11-06): sitting on the entrance step; the adult puts them on (1歳代), helps (2歳代), or is not there (3歳から)', () => {
+  const step = room.landmarks.find(({ id }) => id === 'entry_step');
+  const stepHeight = landmarkHeight(ledger, step.heightOf);
+  const expected = [[18, 'puts_on'], [30, 'helps'], [40, 'alone']];
+  for (const [months, dressing] of expected) {
+    const shoes = scenesWithAdult(months).get('shoes');
+    assert.equal(shoes.dressing, dressing, `${months}`);
+    // Seated on the step, on it, facing out over its front toward where the child comes from.
+    assert.equal(shoes.withHelp.seated, stepHeight);
+    assert.ok(shoes.stand.x > step.x && shoes.stand.x < step.x + step.w);
+    assert.ok(shoes.stand.y > step.y && shoes.stand.y < step.y + step.d);
+    assert.deepEqual(shoes.facing, { x: 0, y: Math.sign(step.approach.y - (step.y + step.d / 2)) });
+    if (dressing === 'alone') assert.equal(shoes.adult, null);
+    else {
+      assert.equal(shoes.adult.mode, 'kneel');
+      // In front of the child, off the step.
+      assert.ok((shoes.adult.y - shoes.stand.y) * shoes.facing.y > step.d / 2);
+    }
+  }
 });

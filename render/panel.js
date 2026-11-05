@@ -7,7 +7,7 @@ import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
 import { activitiesAt, adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
-import { helpScene } from '../sim/helpScene.js';
+import { DRESS_ALONE, DRESS_HELPS, DRESS_PUTS_ON, helpScene } from '../sim/helpScene.js';
 import { freeSpotIn } from '../sim/path.js';
 import { activityIcon, GOAL_ICONS, ROOM_ICONS } from './icons.js';
 import { normalCdf } from '../sim/random.js';
@@ -18,6 +18,12 @@ const MODE_MONTHS = 'months';
 const MODE_ROOM = 'room';
 // 「あと○cm」 is said only when the thing is this close (display only).
 const NEAR_GAP_CM = 15;
+// What the shoe scene shows, in words (KO 2026-11-06).
+const DRESSING_WORDS = {
+  [DRESS_PUTS_ON]: '段差に座って、自分で履こうとする。最後は大人が履かせる',
+  [DRESS_HELPS]: '段差に座って自分で足を入れ、かかとは大人が手伝う',
+  [DRESS_ALONE]: '段差に座って、一人で履く',
+};
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -320,7 +326,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       const li = element('li', 'goal-chip', '');
       li.title = tipOf(goal);
       li.append(element('span', 'activity-icon', GOAL_ICONS[goal.id] ?? '•'), nameOf(goal));
-      return li;
+      // Shoes (KO): pressing shows the child putting them on alone.
+      return goal.sit_on ? showable(li, goal) : li;
     };
     const groups = [
       { kind: 'help', head: '🪜 大人がひと工夫すると、自分でできる', goals: now.goals.filter(({ status }) => status === STATUS_HELP), make: tile },
@@ -399,6 +406,11 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const age = formatAge(months);
     const figure = shownWithHelp ? scene.withHelp : scene.without;
     const gap = scene.gapCm > 0 ? `あと${scene.gapCm}cm` : '';
+    if (scene.dressing) {
+      // Putting on shoes on the step (KO 2026-11-06), by who does what at this age.
+      const main = scene.status === STATUS_CAN ? `${age}：一人で履く → ${scene.label}` : `${age}：${scene.how} → ${scene.label}`;
+      return { main, sub: DRESSING_WORDS[scene.dressing], toggles: false };
+    }
     if (scene.status === STATUS_CAN) {
       return { main: `${age}：${scene.label}`, sub: `${scene.how}。助けはいらない`, toggles: false };
     }
@@ -437,7 +449,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     shownGoalId = goalId;
     const scene = helpScene({ ledger, room: session.getRoom(), goal, body: lastAll.body, sizes: settings.help_scene, adultSizes: settings.adult_figure });
     // No help is needed any more (the slider moved on): nothing to show, back to the house.
-    if (scene.status === STATUS_CAN) { closeHelp(); return; }
+    // Except putting on shoes (KO): the child doing it alone is shown too.
+    if (scene.status === STATUS_CAN && !scene.dressing) { closeHelp(); return; }
     if (scene.status !== STATUS_HELP) shownWithHelp = true;
     view?.showHelp(scene, shownWithHelp);
     const words = captionFor(scene, lastAll.months);

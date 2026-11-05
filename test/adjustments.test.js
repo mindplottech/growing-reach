@@ -209,7 +209,11 @@ test('practice (KO 2026-11-06): the toothbrush with an adult until 2, then 「�
   assert.equal(at(24, 'toothbrush').status, STATUS_CAN);
   assert.equal(at(24, 'toothbrush').accompany, '練習から');
   assert.equal(at(30, 'clothes').how, '着ようとする・大人が手伝う');
-  assert.equal(at(30, 'shoes').how, '履こうとする・大人が手伝う');
+  // Shoes (KO 2026-11-06, changed): 1歳代 tries while the adult puts them on, 2歳代 the adult helps.
+  assert.equal(at(18, 'shoes').how, '履こうとする・大人が履かせる');
+  assert.equal(at(18, 'shoes').adultPart, 'puts_on');
+  assert.equal(at(30, 'shoes').how, '大人が手伝って履く');
+  assert.equal(at(30, 'shoes').adultPart, 'helps');
   assert.equal(at(36, 'clothes').status, STATUS_CAN);
   assert.equal(at(36, 'shoes').status, STATUS_CAN);
 });

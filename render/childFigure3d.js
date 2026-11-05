@@ -51,6 +51,8 @@ export function makeChild() {
   // What the outfit switches: the toddler's clothes, or the baby's diaper and bare skin.
   const outfit = { toddler: [], baby: [], chubby: [] };
   const knees = [];
+  // Each foot's shoe (sole and upper) and bare foot, for the shoe scene to take off and put on.
+  const feet = [];
   const legs = [-1, 1].map((side) => {
     const hip = new THREE.Group();
     hip.position.set(side * 0.06, HIP_Y, 0);
@@ -62,9 +64,12 @@ export function makeChild() {
     hip.add(knee);
     outfit.chubby.push(part(knee, new THREE.CapsuleGeometry(0.047, 0.07, 4, 12), skin, [0, -0.065, 0]));
     // A round shoe with a white sole; bare, a round little foot.
-    outfit.toddler.push(part(knee, new THREE.SphereGeometry(0.052, 16, 12), matte(SOLES, 0.6), [0, 0.018 - KNEE_Y, 0.02], [1, 0.32, 1.45]));
-    outfit.toddler.push(part(knee, new THREE.SphereGeometry(0.05, 16, 12), matte(SHOES, 0.55), [0, 0.04 - KNEE_Y, 0.018], [1, 0.75, 1.4]));
-    outfit.baby.push(part(knee, new THREE.SphereGeometry(0.046, 16, 12), skin, [0, 0.03 - KNEE_Y, 0.02], [1, 0.7, 1.35]));
+    const sole = part(knee, new THREE.SphereGeometry(0.052, 16, 12), matte(SOLES, 0.6), [0, 0.018 - KNEE_Y, 0.02], [1, 0.32, 1.45]);
+    const shoe = part(knee, new THREE.SphereGeometry(0.05, 16, 12), matte(SHOES, 0.55), [0, 0.04 - KNEE_Y, 0.018], [1, 0.75, 1.4]);
+    const bare = part(knee, new THREE.SphereGeometry(0.046, 16, 12), skin, [0, 0.03 - KNEE_Y, 0.02], [1, 0.7, 1.35]);
+    outfit.toddler.push(sole, shoe);
+    outfit.baby.push(bare);
+    feet.push({ shoe: [sole, shoe], bare });
     lower.add(hip);
     knees.push(knee);
     return hip;
@@ -141,7 +146,7 @@ export function makeChild() {
   root.add(body);
   for (const mesh of outfit.baby) mesh.visible = false;
   return {
-    root, body, arms, legs, knees, lower, torso, head, belly, eyes, mouth, openMouth,
+    root, body, arms, legs, knees, lower, torso, head, belly, eyes, mouth, openMouth, feet,
     outfit: { ...outfit, covered: [chest, belly, ...sleeves], shirt, skin },
   };
 }
@@ -165,6 +170,26 @@ export function applyProportions(figure, { headShare, bellyShare, legShare }) {
 
 /** The hip joint and the thigh's thickness, in figure units: for sitting on a seat. */
 export const SEATED = { hipY: HIP_Y, thighRadius: 0.058 };
+
+/** A loose shoe like the figure's (sole and upper), one figure unit tall at scale 1: for the shoe scene. */
+export function makeLooseShoe() {
+  const group = new THREE.Group();
+  const add = (color, roughness, y, scale) => {
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshStandardMaterial({ color, roughness }));
+    mesh.position.y = y;
+    mesh.scale.set(...scale);
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+  add(SOLES, 0.6, -0.022, [0.052, 0.052 * 0.32, 0.052 * 1.45]);
+  add(SHOES, 0.55, 0, [0.05, 0.05 * 0.75, 0.05 * 1.4]);
+  return group;
+}
+
+/** The hand at the end of an arm, in the arm's own frame (figure units). */
+export const HAND_IN_ARM = { y: -0.19 };
+/** The shoe's middle on a foot, in the knee's own frame (figure units). */
+export const SHOE_ON_KNEE = { y: 0.04 - KNEE_Y, z: 0.018 };
 
 /** The top of the head of the base figure, in figure units. */
 export const BASE_UNIT_HEIGHT = HEAD.y + HEAD.radius * 0.97;

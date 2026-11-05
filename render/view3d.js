@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { applyOutfit, applyProportions, makeChild, SEATED } from './childFigure3d.js';
+import { applyOutfit, applyProportions, HAND_IN_ARM, makeChild, makeLooseShoe, SEATED, SHOE_ON_KNEE } from './childFigure3d.js';
+import { DRESS_ALONE, DRESS_HELPS } from '../sim/helpScene.js';
 import { makeAdult, poseAdult } from './adultFigure3d.js';
 import { easeLook, lookAngles } from './look.js';
 import { applyCrawl, easeCrawl, liftHead } from './crawl.js';
@@ -69,6 +70,21 @@ const HELP_CAMERA_MARGIN_CM = 30;
 // Where the adult sits on the sofa: the hips this far in from the front edge, toward one end.
 const ADULT_SOFA_FROM_FRONT_CM = 28;
 const ADULT_SOFA_SIDE_SHARE = 0.22;
+// Putting on shoes on the step (KO 2026-11-06, display only): one round of the motion takes this
+// long (real seconds), and these are its shapes: how far the child leans in, lifts the foot,
+// and reaches down. The foot is the child's right (the side the shoe goes on).
+const DRESS_PERIOD_S = 6;
+const DRESS_LEAN = 0.4;
+const DRESS_THIGH_LIFT = 0.55;
+const DRESS_KNEE_TUCK = 0.75;
+const DRESS_ARMS = 0.75;
+const DRESS_ARMS_IN = 0.12;
+const DRESS_TRY_WIGGLES = 7;
+// The shoe scene's camera: in front of the seated child, to the side away from the adult, and
+// high, looking down at the hands and the feet (cm).
+const DRESS_CAMERA = { front: 175, side: 35, up: 150, lookUp: 30, lookToAdult: 18 };
+const smoothstep = (t) => t * t * (3 - 2 * t);
+const clamp01 = (t) => Math.min(1, Math.max(0, t));
 // Floor tones by room (display only): tiles in the wet rooms, earth at the entrance.
 const ROOM_FLOORS = { washroom: 0xe3e7ea, toilet: 0xdfe8ee, entrance: 0xd6d0c6, kitchen: 0xece4d6 };
 const ROOM_FLOOR_OPACITY = 0.85;
@@ -324,6 +340,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   // The help scene being shown, if any: the figure stands where the scene says instead of
   // following the run, a stool may be drawn, and the thing may be moved. Display only.
   let help = null;
+  // The shoe scene: the loose shoe, and the clock of its round.
+  let looseShoe = null;
+  let dressClock = 0;
   const goalMeshes = new Map();
   const helpGroup = new THREE.Group();
   scene.add(helpGroup);
@@ -695,11 +714,88 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       stool.add(edge);
       helpGroup.add(stool);
     }
+    // The shoe the child is putting on, carried from the hands to the foot.
+    if (shown.dressing) {
+      looseShoe = makeLooseShoe();
+      looseShoe.traverse((node) => { node.raycast = noRaycast; });
+      helpGroup.add(looseShoe);
+    }
+  }
+
+  /**
+   * One round of putting on a shoe, at `t` (0–1): how far the shoe has gone on, how far the foot
+   * is lifted and the child leans in, and how far the adult reaches in. By who does what (KO):
+   * alone the child pulls it on; with help the child pushes the foot in and the adult pulls the
+   * heel; in the 1歳代 the child only tries, and the adult puts it on.
+   */
+  function dressMotion(dressing, t) {
+    const ease = (a, b) => smoothstep(clamp01((t - a) / (b - a)));
+    const reachDown = ease(0, 0.12) * (1 - ease(0.8, 0.95));
+    const lift = ease(0.12, 0.25) * (1 - ease(0.72, 0.85));
+    if (dressing === DRESS_ALONE) {
+      return { on: ease(0.25, 0.6), lift, lean: reachDown, arms: reachDown, adult: 0 };
+    }
+    const adult = ease(0.42, 0.55) * (1 - ease(0.78, 0.9));
+    if (dressing === DRESS_HELPS) {
+      return { on: 0.6 * ease(0.25, 0.45) + 0.4 * ease(0.5, 0.68), lift, lean: reachDown, arms: reachDown, adult };
+    }
+    // 1歳代: the shoe goes to the toes and back (it does not go on), then the adult puts it on.
+    const tries = ease(0.2, 0.3) * (1 - ease(0.42, 0.5)) * (0.3 + 0.15 * Math.sin(t * Math.PI * 2 * DRESS_TRY_WIGGLES));
+    return { on: Math.max(tries, ease(0.5, 0.7)), lift, lean: reachDown * (1 - 0.5 * adult), arms: reachDown * (1 - 0.6 * adult), adult };
+  }
+
+  /** The child on the step putting on the shoe, as `dressMotion` says; the loose shoe placed. */
+  function dressChild(motion) {
+    // Leaning in from the hips: turned about the hip joint, so the seat does not slide. Straight,
+    // the torso sits where applyProportions puts it for the leg share.
+    const hipY = SEATED.hipY;
+    const torsoHome = -hipY * (1 - child.lower.scale.y);
+    const lean = motion.lean * DRESS_LEAN;
+    child.torso.rotation.x = lean;
+    child.torso.position.y = torsoHome + hipY * (1 - Math.cos(lean));
+    child.torso.position.z = -hipY * Math.sin(lean);
+    // The right foot comes up toward the hands: the thigh lifts and the knee tucks in.
+    child.legs[1].rotation.x = -Math.PI / 2 - motion.lift * DRESS_THIGH_LIFT;
+    child.knees[1].rotation.x = Math.PI / 2 + motion.lift * DRESS_KNEE_TUCK;
+    // Both hands down to that foot.
+    child.arms.forEach((arm, i) => {
+      arm.rotation.x = -motion.arms * DRESS_ARMS;
+      arm.rotation.z = (i === 0 ? 1 : -1) * DRESS_ARMS_IN * motion.arms;
+    });
+    // The shoe: in the hands, then on the foot. The figure's own shoe shows once it is on.
+    const on = motion.on >= 1;
+    const [sole, upper] = child.feet[1].shoe;
+    sole.visible = on;
+    upper.visible = on;
+    child.feet[1].bare.visible = !on;
+    if (!looseShoe) return;
+    looseShoe.visible = !on;
+    child.root.updateMatrixWorld(true);
+    const hands = new THREE.Vector3();
+    for (const arm of child.arms) hands.add(arm.localToWorld(new THREE.Vector3(0, HAND_IN_ARM.y, 0)));
+    hands.multiplyScalar(0.5);
+    const foot = child.knees[1].localToWorld(new THREE.Vector3(0, SHOE_ON_KNEE.y, SHOE_ON_KNEE.z));
+    looseShoe.position.lerpVectors(hands, foot, motion.on);
+    child.knees[1].getWorldQuaternion(looseShoe.quaternion);
+    looseShoe.scale.setScalar(child.root.scale.y);
+  }
+
+  /** Back from the shoe scene: the body straight and both shoes on (bare feet for the baby). */
+  function undressChild() {
+    child.torso.rotation.x = 0;
+    child.torso.position.y = -SEATED.hipY * (1 - child.lower.scale.y);
+    child.torso.position.z = 0;
+    const baby = child.feet[0].bare.visible;
+    child.feet[1].shoe.forEach((mesh) => { mesh.visible = !baby; });
+    child.feet[1].bare.visible = baby;
   }
 
   /** Puts every moved thing back and takes the stool away. */
   function unplaceHelp() {
     disposeGroup(helpGroup);
+    looseShoe = null;
+    dressClock = 0;
+    undressChild();
     for (const { mesh, home } of goalMeshes.values()) mesh.position.copy(home);
   }
 
@@ -750,6 +846,21 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   function lookAtHelp() {
     if (!help || help.cameraFree || !model) return;
     const { stand, thing, facing } = help.scene;
+    if (help.scene.dressing) {
+      // In front of the child, to the side away from the adult; alone, from that same side.
+      const side = { x: -facing.y, y: facing.x };
+      const away = help.scene.adult ? -Math.sign((help.scene.adult.x - stand.x) * side.x + (help.scene.adult.y - stand.y) * side.y) || -1 : -1;
+      // Looking a little toward the adult's side, so both are in the picture.
+      const shift = help.scene.adult ? -away * DRESS_CAMERA.lookToAdult : 0;
+      const look = new THREE.Vector3(stand.x + facing.x * 15 + side.x * shift, DRESS_CAMERA.lookUp, stand.y + facing.y * 15 + side.y * shift);
+      const from = new THREE.Vector3(
+        stand.x + facing.x * DRESS_CAMERA.front + side.x * DRESS_CAMERA.side * away, DRESS_CAMERA.up,
+        stand.y + facing.y * DRESS_CAMERA.front + side.y * DRESS_CAMERA.side * away,
+      );
+      controls.target.lerp(look, FOLLOW_EASE);
+      camera.position.lerp(from, FOLLOW_EASE);
+      return;
+    }
     const centre = { x: thing.x + thing.w / 2, y: thing.y + thing.d / 2 };
     const target = new THREE.Vector3(
       stand.x + (centre.x - stand.x) * HELP_LOOK_SHARE, CLOSE_VIEW_HEIGHT_CM * 0.6, stand.y + (centre.y - stand.y) * HELP_LOOK_SHARE,
@@ -849,7 +960,18 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     crawlBlend = easeCrawl(crawlBlend, { crawlingAge: gait?.crawling, moving: shownPose.walk?.moving ?? 0, helped: Boolean(help) }, realSeconds);
     applyCrawl(child, crawlBlend, shownPose.walk?.phase ?? 0);
     if (shownPose.seated !== null && shownPose.seated !== undefined) seatChild(shownPose.seated);
-    poseAdult(adult, adultTarget(), realSeconds);
+    // Putting on shoes on the step (KO): the round goes on in real time, whatever the speed.
+    const dressing = help ? help.scene.withHelp.dressing : null;
+    let dressNow = null;
+    if (dressing) {
+      dressClock += realSeconds;
+      dressNow = dressMotion(dressing, (dressClock % DRESS_PERIOD_S) / DRESS_PERIOD_S);
+      dressChild(dressNow);
+    }
+    // The adult watches あーちゃん: the child's head, wherever the figure is drawn.
+    const childHead = new THREE.Vector3();
+    child.head.getWorldPosition(childHead);
+    poseAdult(adult, { ...adultTarget(), reach: dressNow?.adult ?? 0, lookAt: { x: childHead.x, y: childHead.y, z: childHead.z } }, realSeconds);
     // Still means: nothing going on now, and nothing for a moment before. The moments of
     // touching something dangerous come from the record so far and the scene's known moment.
     // Blinks, breaths and yawns take real time, whatever the playback speed.

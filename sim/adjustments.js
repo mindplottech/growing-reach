@@ -151,7 +151,7 @@ export function applyPractice(ledger, months, result, goal = {}) {
       if (!Number.isFinite(until)) throw new Error(`ledger item malformed: practice_self_care.${goal.id}`);
       return months < until;
     });
-    if (stage) return { ...together, how: stage.words, selfCare: true, untilMonths: stage.until_months };
+    if (stage) return { ...together, how: stage.words, selfCare: true, untilMonths: stage.until_months, adultPart: stage.adult_part ?? null };
     const from = care.from_words_by_goal?.[goal.id];
     if (from && result.status !== STATUS_NOT_YET) return { ...result, accompany: from };
   }

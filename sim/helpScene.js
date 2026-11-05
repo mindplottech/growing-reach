@@ -1,4 +1,5 @@
 import { HELP_CLOSER, HELP_LOWER, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_WITH_ADULT } from './adjustments.js';
+import { landmarkHeight } from './room.js';
 
 // One goal, tried in front of the thing (「助けを置いて、使うところを見せる」): where the child
 // stands, what help is put there (a step stool, the thing lower or closer), and where the hand
@@ -16,6 +17,18 @@ const HOLD_AT_SHARE = 0.55;
 const LIFT_ROUND_CM = 5;
 const BESIDE_BACK_CM = 10;
 const HOLD_SIDE_SHARE = 0.8;
+// Putting on shoes, sitting on the step (display only): the child sits this far along the step
+// from the shoe shelf and this far in from its front edge; the adult kneels on the 土間 this far
+// in front of the child and this far to one side, so the child is not hidden.
+const SIT_FROM_THING_CM = 45;
+const SIT_END_MARGIN_CM = 25;
+const SIT_IN_FROM_EDGE_CM = 8;
+const KNEEL_FRONT_CM = 42;
+const KNEEL_SIDE_CM = 22;
+/** How the shoes go on, by who does what (ledger practice_self_care.shoes.adult_part). */
+export const DRESS_PUTS_ON = 'puts_on';
+export const DRESS_HELPS = 'helps';
+export const DRESS_ALONE = 'alone';
 
 /** The side of a footprint that faces a point, as a unit step along x or y (y is the floor's depth). */
 function sideToward(object, point) {
@@ -57,6 +70,9 @@ export function helpScene({ ledger, room, goal, body, sizes, adultSizes = null }
   const tiptoe = reach + tiptoeGain;
   const isWork = goal.kind === 'work';
   const isClimb = goal.kind === 'climb';
+  // Putting on shoes (KO 2026-11-06): the child sits on the step (goal.sit_on), facing the 土間.
+  const seat = goal.sit_on ? (room.landmarks ?? []).find(({ id }) => id === goal.sit_on) : null;
+  if (seat) return seatedScene({ ledger, goal, seat, thing, areaCentre, adultSizes, reach });
 
   /** The figure on a surface `feet` high, trying for a thing at `height`. */
   function figure(feet, height) {
@@ -160,6 +176,58 @@ export function helpScene({ ledger, room, goal, body, sizes, adultSizes = null }
     prop,
     without,
     withHelp,
+    adult,
+  };
+}
+
+/**
+ * The child sits on `seat` (the step at the entrance) facing out over its front, and puts the
+ * shoes on: trying while the adult puts them on (1歳代), with the adult helping (2歳代), or alone
+ * (3歳から, or whenever the goal is the child's own). Display only; the status is the goal's.
+ */
+function seatedScene({ ledger, goal, seat, thing, areaCentre, adultSizes, reach }) {
+  const seatHeight = landmarkHeight(ledger, seat.heightOf);
+  const out = sideToward(seat, seat.approach ?? areaCentre);
+  const centre = { x: thing.x + thing.w / 2, y: thing.y + thing.d / 2 };
+  // Along the step, a little way from the shelf; just in from the front edge.
+  const toward = (along, low, length) => clamp(along, low + SIT_END_MARGIN_CM, low + length - SIT_END_MARGIN_CM);
+  const awayFrom = (from, low, length) => (from > low + length / 2 ? from - SIT_FROM_THING_CM : from + SIT_FROM_THING_CM);
+  const sit = out.y !== 0
+    ? { x: toward(awayFrom(centre.x, seat.x, seat.w), seat.x, seat.w), y: (out.y > 0 ? seat.y + seat.d : seat.y) - out.y * SIT_IN_FROM_EDGE_CM }
+    : { x: (out.x > 0 ? seat.x + seat.w : seat.x) - out.x * SIT_IN_FROM_EDGE_CM, y: toward(awayFrom(centre.y, seat.y, seat.d), seat.y, seat.d) };
+  const together = goal.status === STATUS_WITH_ADULT;
+  const dressing = !together ? DRESS_ALONE : goal.adultPart === DRESS_PUTS_ON ? DRESS_PUTS_ON : DRESS_HELPS;
+  const figure = {
+    x: sit.x, y: sit.y, feet: 0, yaw: Math.atan2(out.x, out.y), arms: 0, stretch: 0, forward: false,
+    handHeight: seatHeight + reach, reaches: true, seated: seatHeight, dressing,
+  };
+  let adult = null;
+  if (together && adultSizes) {
+    // Kneeling on the 土間 in front of the child, a little to one side, turned to the child's feet.
+    const side = { x: -out.y, y: out.x };
+    const at = { x: sit.x + out.x * KNEEL_FRONT_CM + side.x * KNEEL_SIDE_CM, y: sit.y + out.y * KNEEL_FRONT_CM + side.y * KNEEL_SIDE_CM };
+    const feet = { x: sit.x + out.x * KNEEL_FRONT_CM * 0.4, y: sit.y + out.y * KNEEL_FRONT_CM * 0.4 };
+    adult = { mode: 'kneel', x: at.x, y: at.y, yaw: Math.atan2(feet.x - at.x, feet.y - at.y), holdForward: Math.hypot(feet.x - at.x, feet.y - at.y), dressing };
+  }
+  return {
+    goalId: goal.id,
+    label: goal.label,
+    short: goal.short ?? goal.label,
+    status: goal.status,
+    kind: goal.kind,
+    how: goal.how,
+    gapCm: goal.gapCm ?? 0,
+    stepFromMonths: null,
+    feetStep: false,
+    tiptoe: false,
+    dressing,
+    stand: sit,
+    facing: out,
+    thing: { ...thing, height: goal.height },
+    thingAfter: { ...thing, height: goal.height },
+    prop: null,
+    without: figure,
+    withHelp: figure,
     adult,
   };
 }
