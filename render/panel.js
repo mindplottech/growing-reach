@@ -84,6 +84,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   let lastChild = null;
   // The goal being shown in 3D with its help placed (「助けを置いて見せる」), and which side.
   let shownGoalId = null;
+  // How many whole runs (seeds 1..n) あーちゃん walks through on its own, in turn. Display only.
+  const WANDER_RUNS = 5;
   let shownWithHelp = true;
   let lastAll = null;
   const caption = {
@@ -505,7 +507,12 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     retry.dataset.pending = 'false';
     document.querySelector('#results').classList.remove('stale');
     view?.setTags(lastTags);
-    autoplay.useAuto(plays.right.auto);
+    // On its own, あーちゃん just walks about the house: whole runs, one after another. The scenes
+    // of touching dangerous things are no longer played (KO, 2026-11-05).
+    const height = lastAll?.body.height;
+    autoplay.useAuto(Array.from({ length: WANDER_RUNS }, (_, i) => ({
+      ...child, seed: i + 1, room: session.getRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: 'あーちゃん', height,
+    })));
     showPressed();
     return right;
   }
