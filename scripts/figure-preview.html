@@ -17,7 +17,7 @@
 //   close=1           a closer camera on the first child
 //   crawl=1           on hands and knees (つかまり立ちのころ), mid-step
 import * as THREE from 'three';
-import { makeChild, applyProportions } from '../render/childFigure3d.js';
+import { makeChild, applyOutfit, applyProportions } from '../render/childFigure3d.js';
 import { gaitFor } from '../render/gait.js';
 import { lookAngles } from '../render/look.js';
 import { applyCrawl, liftHead } from '../render/crawl.js';
@@ -52,6 +52,7 @@ months.forEach((month, i) => {
   const { unitHeight } = applyProportions(child, gaitFor(ledger, settings, month));
   const heightCm = getBodyValues(ledger, { months: month, sex: SEX_ANY }).height.value;
   child.root.scale.setScalar(heightCm / unitHeight);
+  applyOutfit(child, month < ledger.items.find(({ id }) => id === 'practice_mobility').walk_from_months);
   child.root.position.x = (i - (months.length - 1) / 2) * gap;
   child.root.rotation.y = turns[i] ?? 0;
   if (query.has('arms')) {
@@ -60,7 +61,7 @@ months.forEach((month, i) => {
       arm.rotation.z = (side === 0 ? -1 : 1) * 0.4;
     });
   }
-  if (query.has('crawl')) applyCrawl(child, 1, 0.8);
+  if (query.has('crawl')) applyCrawl(child, 1, Number(query.get('phase') ?? 0.8));
   scene.add(child.root);
   if (query.has('look')) {
     child.head.rotation.order = 'YXZ';

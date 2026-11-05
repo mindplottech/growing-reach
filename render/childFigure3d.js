@@ -23,6 +23,10 @@ const CHEEK = { radius: 0.03, x: 0.1, down: 0.05 };
 const MOUTH_SHAPE = { radius: 0.017, tube: 0.0055, down: 0.068 };
 const SHOULDER = { x: 0.13, y: 0.57 };
 const HIP_Y = 0.27;
+// The knee: the leg bends here, for crawling. Height above the floor, in figure units.
+const KNEE_Y = 0.13;
+const DIAPER = 0xffffff;
+const DIAPER_TAB = 0xa8d8f0;
 
 /** The figure, with the body group that leans and the two shoulder groups that raise the arms. */
 export function makeChild() {
@@ -44,25 +48,42 @@ export function makeChild() {
   // `lower` group, which the proportions can shorten; the body rides on top of it.
   const lower = new THREE.Group();
   body.add(lower);
+  // What the outfit switches: the toddler's clothes, or the baby's diaper and bare skin.
+  const outfit = { toddler: [], baby: [], chubby: [] };
+  const knees = [];
   const legs = [-1, 1].map((side) => {
     const hip = new THREE.Group();
     hip.position.set(side * 0.06, HIP_Y, 0);
-    // A round shoe with a white sole, then a chubby leg and the trouser leg.
-    part(hip, new THREE.SphereGeometry(0.052, 16, 12), matte(SOLES, 0.6), [0, 0.018 - HIP_Y, 0.02], [1, 0.32, 1.45]);
-    part(hip, new THREE.SphereGeometry(0.05, 16, 12), matte(SHOES, 0.55), [0, 0.04 - HIP_Y, 0.018], [1, 0.75, 1.4]);
-    part(hip, new THREE.CapsuleGeometry(0.048, 0.1, 4, 12), skin, [0, 0.12 - HIP_Y, 0]);
-    part(hip, new THREE.CapsuleGeometry(0.058, 0.07, 4, 12), pants, [0, 0.215 - HIP_Y, 0]);
+    // The thigh (in the trouser leg), then the knee with the shin and the foot below it.
+    outfit.toddler.push(part(hip, new THREE.CapsuleGeometry(0.058, 0.07, 4, 12), pants, [0, 0.215 - HIP_Y, 0]));
+    outfit.chubby.push(part(hip, new THREE.CapsuleGeometry(0.05, 0.08, 4, 12), skin, [0, -(HIP_Y - KNEE_Y) / 2, 0]));
+    const knee = new THREE.Group();
+    knee.position.set(0, KNEE_Y - HIP_Y, 0);
+    hip.add(knee);
+    outfit.chubby.push(part(knee, new THREE.CapsuleGeometry(0.047, 0.07, 4, 12), skin, [0, -0.065, 0]));
+    // A round shoe with a white sole; bare, a round little foot.
+    outfit.toddler.push(part(knee, new THREE.SphereGeometry(0.052, 16, 12), matte(SOLES, 0.6), [0, 0.018 - KNEE_Y, 0.02], [1, 0.32, 1.45]));
+    outfit.toddler.push(part(knee, new THREE.SphereGeometry(0.05, 16, 12), matte(SHOES, 0.55), [0, 0.04 - KNEE_Y, 0.018], [1, 0.75, 1.4]));
+    outfit.baby.push(part(knee, new THREE.SphereGeometry(0.046, 16, 12), skin, [0, 0.03 - KNEE_Y, 0.02], [1, 0.7, 1.35]));
     lower.add(hip);
+    knees.push(knee);
     return hip;
   });
 
   // A round body: trousers below, a T-shirt with a white collar over a round belly. No neck.
   const torso = new THREE.Group();
   body.add(torso);
-  part(torso, new THREE.SphereGeometry(0.135, 22, 16), pants, [0, 0.31, 0], [1, 0.62, 0.86]);
-  part(torso, new THREE.SphereGeometry(0.14, 24, 18), shirt, [0, 0.46, 0], [1, 1.12, 0.86]);
+  outfit.toddler.push(part(torso, new THREE.SphereGeometry(0.135, 22, 16), pants, [0, 0.31, 0], [1, 0.62, 0.86]));
+  const chest = part(torso, new THREE.SphereGeometry(0.14, 24, 18), shirt, [0, 0.46, 0], [1, 1.12, 0.86]);
   const belly = part(torso, new THREE.SphereGeometry(0.1, 20, 16), shirt, [0, 0.42, 0.03], [1, 0.9, 0.95]);
-  part(torso, new THREE.TorusGeometry(0.068, 0.014, 8, 24), matte(COLLAR, 0.6), [0, 0.598, 0.0], [1, 1, 1]).rotation.x = Math.PI / 2;
+  const collar = part(torso, new THREE.TorusGeometry(0.068, 0.014, 8, 24), matte(COLLAR, 0.6), [0, 0.598, 0.0], [1, 1, 1]);
+  collar.rotation.x = Math.PI / 2;
+  outfit.toddler.push(collar);
+  // The baby's diaper: puffed up at the bottom, with two blue tabs at the front.
+  const diaperMaterial = matte(DIAPER, 0.85);
+  outfit.baby.push(part(torso, new THREE.SphereGeometry(0.15, 22, 16), diaperMaterial, [0, 0.29, -0.02], [1.08, 0.72, 1.12]));
+  outfit.baby.push(part(torso, new THREE.SphereGeometry(0.1, 18, 14), diaperMaterial, [0, 0.3, -0.1], [1.25, 0.9, 0.95]));
+  for (const side of [-1, 1]) outfit.baby.push(part(torso, new THREE.BoxGeometry(0.04, 0.03, 0.01), matte(DIAPER_TAB, 0.7), [side * 0.08, 0.33, 0.13]));
 
   // The head: big and round, with ears, hair over the top, and a tuft.
   const head = new THREE.Group();
@@ -104,10 +125,12 @@ export function makeChild() {
   openMouth.visible = false;
 
   // Arms: a puffed sleeve, a chubby arm and a round hand, hanging from a shoulder that turns.
+  const sleeves = [];
   const arms = [-1, 1].map((side) => {
     const shoulder = new THREE.Group();
     shoulder.position.set(side * SHOULDER.x, SHOULDER.y, 0);
-    part(shoulder, new THREE.SphereGeometry(0.05, 14, 12), shirt, [0, -0.025, 0], [1, 1.1, 1]);
+    const sleeve = part(shoulder, new THREE.SphereGeometry(0.05, 14, 12), shirt, [0, -0.025, 0], [1, 1.1, 1]);
+    sleeves.push(sleeve);
     part(shoulder, new THREE.CapsuleGeometry(0.036, 0.1, 4, 12), skin, [0, -0.115, 0]);
     part(shoulder, new THREE.SphereGeometry(0.042, 14, 12), skin, [0, -0.19, 0]);
     torso.add(shoulder);
@@ -116,7 +139,11 @@ export function makeChild() {
 
   const root = new THREE.Group();
   root.add(body);
-  return { root, body, arms, legs, lower, torso, head, belly, eyes, mouth, openMouth };
+  for (const mesh of outfit.baby) mesh.visible = false;
+  return {
+    root, body, arms, legs, knees, lower, torso, head, belly, eyes, mouth, openMouth,
+    outfit: { ...outfit, covered: [chest, belly, ...sleeves], shirt, skin },
+  };
 }
 
 const BELLY_BASE = [1, 0.9, 0.95];
@@ -138,3 +165,18 @@ export function applyProportions(figure, { headShare, bellyShare, legShare }) {
 
 /** The top of the head of the base figure, in figure units. */
 export const BASE_UNIT_HEIGHT = HEAD.y + HEAD.radius * 0.97;
+
+/**
+ * The clothes for the age (display only): the toddler's T-shirt and trousers and shoes, or in the
+ * つかまり立ちのころ a baby's puffed-up diaper, bare chubby body and bare feet.
+ */
+export function applyOutfit(figure, baby) {
+  const { toddler, baby: babyParts, chubby, covered, shirt, skin } = figure.outfit;
+  for (const mesh of toddler) mesh.visible = !baby;
+  for (const mesh of babyParts) mesh.visible = baby;
+  for (const mesh of covered) mesh.material = baby ? skin : shirt;
+  // Chubby arms and legs, a rounder chest for the baby.
+  const plump = baby ? 1.18 : 1;
+  for (const mesh of chubby) mesh.scale.set(plump, 1, plump);
+  covered[0].scale.set(plump, 1.12, 0.86 * plump);
+}

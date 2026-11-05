@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { applyProportions, makeChild } from './childFigure3d.js';
+import { applyOutfit, applyProportions, makeChild } from './childFigure3d.js';
 import { easeLook, lookAngles } from './look.js';
 import { applyCrawl, easeCrawl, liftHead } from './crawl.js';
 import { gaitFor } from './gait.js';
@@ -621,6 +621,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     });
 
     const { unitHeight } = applyProportions(child, gait);
+    // つかまり立ちのころ: a diaper and bare skin; from walking on, the T-shirt and shorts.
+    applyOutfit(child, Boolean(gait.crawling));
     // The top of the head stands at the ledger's height.
     child.root.scale.setScalar(model.childHeight / unitHeight);
     if (selectedId && !objectMeshes.has(selectedId)) selectedId = null;
