@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adjustmentsAt, adjustmentTimeline, goalStatus, placeGoals, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT, HELP_STEP, HELP_LOWER, HELP_ADULT } from '../sim/adjustments.js';
+import { activitiesAt, adjustmentsAt, adjustmentTimeline, goalStatus, inAge, placeGoals, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT, HELP_STEP, HELP_LOWER, HELP_ADULT } from '../sim/adjustments.js';
 import { createSimulation } from '../sim/simulation.js';
 import { getBodyValues, SEX_ANY } from '../sim/body.js';
 import * as helpersAll from './helpers.js';
@@ -49,10 +49,14 @@ test('with age, help gets smaller and then is no longer needed; nothing ever get
     if (previous) {
       for (const goal of now.goals) {
         const before = previous.goals.find(({ id }) => id === goal.id);
+        if (!before) continue; // a goal of a new age (KO's 「年ごろ」) starts here
         assert.ok(rank[goal.status] >= rank[before.status], `${goal.id} at ${months}`);
         if (goal.stepCm !== undefined && before.stepCm !== undefined) assert.ok(goal.stepCm <= before.stepCm);
       }
-      if (months > stepFrom) assert.ok(now.stepCm <= previous.stepCm);
+      // The one stool for all: compared over the goals of both ages (a goal of a new 年ごろ may bring its own).
+      const stepOf = (state, ids) => Math.max(0, ...state.goals.filter((goal) => ids.has(goal.id) && goal.status === STATUS_HELP && goal.help === HELP_STEP).map((goal) => goal.stepCm));
+      const shared = new Set(previous.goals.map(({ id }) => id).filter((id) => now.goals.some((goal) => goal.id === id)));
+      if (months > stepFrom) assert.ok(stepOf(now, shared) <= stepOf(previous, shared), `stool at ${months}`);
     }
     previous = now;
   }
@@ -62,7 +66,7 @@ test('with age, help gets smaller and then is no longer needed; nothing ever get
 test('the timeline lists each change once, in age order, starting with every goal at the youngest age', () => {
   const rows = adjustmentTimeline(base);
   const first = rows.filter(({ months }) => months === minMonths);
-  assert.equal(first.length, roomLayout.goals.length);
+  assert.equal(first.length, roomLayout.goals.filter((goal) => inAge(goal, minMonths)).length);
   for (let i = 1; i < rows.length; i += 1) assert.ok(rows[i].months >= rows[i - 1].months);
   const seat = rows.filter(({ goalId }) => goalId === 'seat');
   assert.equal(seat[seat.length - 1].status, STATUS_CAN);
@@ -101,7 +105,7 @@ test('every room has goals with heights, and the hundred runs still work there',
     assert.equal(goals.length, room.goals.length, id);
     for (const goal of goals) assert.ok(goal.height > 0 && goal.x >= 0 && goal.y >= 0 && goal.x + goal.w <= room.width + 1e-9 && goal.y + goal.d <= room.depth + 1e-9, `${id} ${goal.id}`);
     const now = adjustmentsAt({ ledger, room, landmarks: simulation.landmarks, hazards: simulation.hazards, months: 24, sex: SEX_ANY });
-    assert.equal(now.goals.length, room.goals.length);
+    assert.equal(now.goals.length, room.goals.filter((goal) => inAge(goal, 24)).length);
   }
 });
 
@@ -137,4 +141,22 @@ test('practice (KO): from 30 months the step comes, with an adult beside at firs
   assert.equal(now.goals.find(({ id }) => id === 'switch').stepCm, 15);
   // Putting a thing lower is not a step: it is offered at any age.
   assert.ok(adjustmentsAt({ ...base, months: 15 }).goals.some(({ help, status }) => help === HELP_LOWER && status === STATUS_HELP));
+});
+
+test('practice (KO): each goal is shown only in its 年ごろ, and the 遊びと生活 follow the age', () => {
+  const ids = (months) => adjustmentsAt({ ...base, months }).goals.map(({ id }) => id);
+  // 1歳3か月: no toilet goals (KO: 4歳で行きたいと言える), no hook, no cooking; the crayons are there.
+  for (const id of ['sit', 'flush', 'paper', 'toilet_switch', 'hook', 'help_cook', 'tidy', 'laundry']) assert.ok(!ids(15).includes(id), id);
+  for (const id of ['crayons', 'toys', 'clothes', 'books']) assert.ok(ids(15).includes(id), id);
+  // 2歳: tidying and the laundry basket come; 3歳: the crayons and the touch toys go, the hook comes.
+  assert.ok(ids(24).includes('tidy') && ids(24).includes('laundry'));
+  assert.ok(!ids(36).includes('crayons') && !ids(36).includes('toys') && ids(36).includes('hook'));
+  // 4歳: the toilet; 5歳: the paper too (KO: 自分でトイレの処理ができる).
+  assert.ok(ids(48).includes('sit') && !ids(48).includes('paper') && ids(60).includes('paper'));
+  // The window is no longer something to want (it invites climbing to the window).
+  assert.ok(!ids(15).includes('window_view'));
+  assert.equal(activitiesAt(ledger, 15).label, '1歳');
+  assert.ok(activitiesAt(ledger, 15).play.includes('いないいないばあ'));
+  assert.equal(activitiesAt(ledger, 48).label, '4歳');
+  assert.equal(byId('practice_age_activities').source, 'KO_PRACTICE');
 });

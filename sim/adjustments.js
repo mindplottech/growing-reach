@@ -141,6 +141,21 @@ export function applyPractice(ledger, months, result) {
   return { ...result, accompany: practice.from_words };
 }
 
+/**
+ * Whether a goal belongs to this age: the layout gives each goal the months it is shown
+ * (from_months inclusive, until_months exclusive), after KO's 「年ごろの遊びと生活」.
+ */
+export function inAge(goal, months) {
+  return (goal.from_months ?? -Infinity) <= months && months < (goal.until_months ?? Infinity);
+}
+
+/** KO's 「年ごろの遊びと生活」 for an age (ledger: practice_age_activities), or null. */
+export function activitiesAt(ledger, months) {
+  const entry = ledger.items.find(({ id }) => id === 'practice_age_activities');
+  if (!entry || !Array.isArray(entry.bands)) throw new Error('ledger item not found or malformed: practice_age_activities');
+  return entry.bands.find((band) => band.from_months <= months && months < band.until_months) ?? null;
+}
+
 /** The body of the child in general, or of 「うちの子」 (a fixed z), at an age. */
 function bodyAt(ledger, { months, sex = SEX_ANY, individual = null }) {
   return getBodyValues(ledger, { months, sex, z: individual ?? undefined });
@@ -156,7 +171,9 @@ export function adjustmentsAt({ ledger, room, landmarks, hazards = [], months, s
   // The window lock counts among the dangerous things a step could bring into reach.
   const lock = landmarks.find(({ role }) => role === 'window_lock');
   const dangerous = [...hazards, ...(lock ? [{ id: lock.id, label: lock.mapLabel ?? lock.label, height: lock.height }] : [])];
-  const goals = placeGoals(ledger, room, landmarks).map((goal) => ({ ...goal, ...applyPractice(ledger, months, goalStatus(ledger, body, goal)) }));
+  const goals = placeGoals(ledger, room, landmarks)
+    .filter((goal) => inAge(goal, months))
+    .map((goal) => ({ ...goal, ...applyPractice(ledger, months, goalStatus(ledger, body, goal)) }));
   const stepCm = Math.max(0, ...goals.filter((goal) => goal.help === HELP_STEP && goal.status === STATUS_HELP).map((goal) => goal.stepCm));
   const reach = body.reach.value;
   const withStep = stepCm > 0 ? dangerous

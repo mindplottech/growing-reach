@@ -764,3 +764,11 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 /* 2026-11-05 画面を引き算した（KO）。要素とスクリプトは残し、表示だけ消している。
    戻すときは index.html の is-removed を外す（元の状態はブランチ before-simplify）。 */
 .is-removed { display: none !important; }
+
+/* KO's 「この年ごろの遊びと生活」 */
+.adjust-activities { margin: 6px 0 8px; padding: 8px 10px; border-radius: 8px; background: #fff7e8; border: 1px solid #f0d9a8; }
+.adjust-activities-title { margin: 0 0 4px; font-size: 12px; font-weight: 700; }
+.adjust-activities-source { margin-left: 4px; font-size: 10px; font-weight: 400; color: var(--muted); }
+.adjust-activities-line { margin: 2px 0 0; font-size: 12px; line-height: 1.5; display: flex; gap: 6px; }
+.adjust-activities-kind { flex: none; padding: 0 6px; border-radius: 8px; background: #f3e2bd; font-size: 11px; }
+.adjust-empty { margin: 6px 0; font-size: 12px; color: var(--muted); }

@@ -5,7 +5,7 @@ import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
-import { adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
+import { activitiesAt, adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
 import { helpScene } from '../sim/helpScene.js';
 import { normalCdf } from '../sim/random.js';
@@ -185,6 +185,15 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const named = (goal) => (adjustRoom === 'all' && roomName.has(goal.room) ? `${roomName.get(goal.room)}：${goal.label}` : goal.label);
     const who = child.individual ? 'この子は' : '';
     adjustTitle.textContent = `${formatAge(child.months)}の環境調整`;
+    // KO's 「年ごろの遊びと生活」, in KO's words.
+    const band = activitiesAt(ledger, child.months);
+    const activities = document.querySelector('#adjust-activities');
+    activities.hidden = !band;
+    if (band) {
+      document.querySelector('#adjust-play').textContent = band.play.join('、');
+      document.querySelector('#adjust-life').textContent = band.life.join('、');
+    }
+    document.querySelector('#adjust-empty').hidden = now.goals.length > 0;
     const firstCan = (goalId) => rows.find((row) => row.goalId === goalId && row.status === STATUS_CAN)?.months ?? null;
     const item = (text, quiet = false) => { const li = element('li', quiet ? 'quiet' : '', ''); li.append(text); return li; };
     // A row that can be pressed to see its goal in 3D.
@@ -317,7 +326,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   /** Shows one goal in 3D with its help placed, and says what is being shown over the view. */
   function openHelp(goalId) {
     const goal = lastAll?.goals.find(({ id }) => id === goalId);
-    if (!goal) return;
+    // Not of this age (the slider moved on): back to the house.
+    if (!goal) { if (shownGoalId) closeHelp(); return; }
     shownGoalId = goalId;
     const scene = helpScene({ ledger, room: session.getRoom(), goal, body: lastAll.body, sizes: settings.help_scene });
     // No help is needed any more (the slider moved on): nothing to show, back to the house.

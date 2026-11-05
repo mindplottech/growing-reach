@@ -407,7 +407,7 @@
         },
         {
           "id": "toys",
-          "label": "おもちゃを自分で出す",
+          "label": "さわって遊ぶおもちゃを出す",
           "short": "おもちゃ",
           "kind": "reach",
           "heightOf": [
@@ -421,22 +421,8 @@
             "w": 30,
             "d": 12
           },
-          "room": "living"
-        },
-        {
-          "id": "window_view",
-          "label": "窓の外を見る",
-          "short": "窓",
-          "kind": "reach",
-          "on_landmark": "window",
-          "help": "step",
-          "wall": {
-            "x": 60,
-            "y": 388,
-            "w": 30,
-            "d": 10
-          },
-          "room": "living"
+          "room": "living",
+          "until_months": 36
         },
         {
           "id": "switch",
@@ -518,7 +504,8 @@
           "dy": 15,
           "w": 20,
           "d": 20,
-          "room": "toilet"
+          "room": "toilet",
+          "from_months": 48
         },
         {
           "id": "flush",
@@ -536,7 +523,8 @@
             "w": 8,
             "d": 4
           },
-          "room": "toilet"
+          "room": "toilet",
+          "from_months": 48
         },
         {
           "id": "paper",
@@ -554,7 +542,8 @@
             "w": 4,
             "d": 14
           },
-          "room": "toilet"
+          "room": "toilet",
+          "from_months": 60
         },
         {
           "id": "toilet_switch",
@@ -579,7 +568,8 @@
             "w": 7,
             "d": 4
           },
-          "room": "toilet"
+          "room": "toilet",
+          "from_months": 48
         },
         {
           "id": "step_up",
@@ -629,7 +619,8 @@
             "w": 6,
             "d": 4
           },
-          "room": "entrance"
+          "room": "entrance",
+          "from_months": 36
         },
         {
           "id": "help_cook",
@@ -642,7 +633,8 @@
           "dy": 5,
           "w": 20,
           "d": 12,
-          "room": "kitchen"
+          "room": "kitchen",
+          "from_months": 36
         },
         {
           "id": "own_cup",
@@ -662,6 +654,77 @@
             "d": 25
           },
           "room": "kitchen"
+        },
+        {
+          "id": "crayons",
+          "label": "なぐり書きのクレヨンを取る",
+          "short": "クレヨン",
+          "kind": "reach",
+          "on": "dining_table",
+          "help": "closer",
+          "dx": 20,
+          "dy": 60,
+          "w": 10,
+          "d": 8,
+          "room": "living",
+          "until_months": 36
+        },
+        {
+          "id": "clothes",
+          "label": "靴下や服を自分で出す",
+          "short": "服",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "clothes_drawer_levels"
+          ],
+          "level_index": 2,
+          "help": "lower",
+          "wall": {
+            "x": 0,
+            "y": 270,
+            "w": 12,
+            "d": 40
+          },
+          "room": "living"
+        },
+        {
+          "id": "tidy",
+          "label": "おもちゃを片付けて戻す",
+          "short": "片付け",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "toy_shelf"
+          ],
+          "help": "lower",
+          "wall": {
+            "x": 355,
+            "y": 388,
+            "w": 30,
+            "d": 12
+          },
+          "room": "living",
+          "from_months": 24
+        },
+        {
+          "id": "laundry",
+          "label": "脱いだ服をかごに入れる",
+          "short": "かご",
+          "kind": "reach",
+          "heightOf": [
+            "goal_heights",
+            "laundry_basket"
+          ],
+          "help": "lower",
+          "wall": {
+            "x": 410,
+            "y": 100,
+            "w": 30,
+            "d": 30
+          },
+          "room": "washroom",
+          "from_months": 24
         }
       ],
       "hazards": [

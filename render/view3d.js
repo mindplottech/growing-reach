@@ -425,6 +425,15 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   }
 
   /** Redraws one tag in its row's colour, with the same words as its row. */
+  // The goals not of this age (KO's 「年ごろ」) have no tag: their things are hidden. Run after
+  // new tags come and after the room is built again, whichever comes last.
+  function showGoalsOfAge() {
+    if (tagLevels.size === 0) return;
+    for (const [id, tag] of tags) {
+      if (tag.nameOnly) for (const mesh of tag.meshes) mesh.visible = tagLevels.has(id);
+    }
+  }
+
   function paintTag(id) {
     const tag = tags.get(id);
     if (!tag) return;
@@ -590,6 +599,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       goalMeshes.set(goal.id, { mesh, home: mesh.position.clone(), onWall: goal.onWall, thick });
     }
     for (const id of tags.keys()) paintTag(id);
+    showGoalsOfAge();
     const previous = new Map(planes.map(({ id, mesh }) => [id, mesh.position.y]));
     planes = model.planes.map(({ id, label, height }) => {
       const mesh = new THREE.Mesh(
@@ -944,6 +954,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       const now = performance.now();
       const before = tagLevels;
       tagLevels = new Map(next);
+      showGoalsOfAge();
       for (const id of tags.keys()) {
         paintTag(id);
         if (before.size > 0 && before.get(id)?.level !== tagLevels.get(id)?.level) tags.get(id).sprite.userData.popUntil = now + TAG_POP_MS;

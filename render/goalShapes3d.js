@@ -207,9 +207,38 @@ function soap(group) {
   box(group, 3.4, 1.2, 1.6, 0.8, 12.2, 0, material(PUMP), 0.4);
 }
 
+/** A box of crayons, three of them lying in front. */
+function crayons(group) {
+  box(group, 9, 2, 6, 0, 1, 0, material(0xf2c14e), 0.5);
+  [0xd9534f, 0x3f6fb5, 0x5aa65a].forEach((color, i) => {
+    cylinder(group, 0.5, 0.5, 6, -2.5 + i * 2.5, 2.6, -4.5, material(color), { axis: 'z' });
+  });
+}
+
+/** Folded clothes: a small stack of a shirt and socks. */
+function foldedClothes(group) {
+  box(group, 10, 2.2, 8, 0, 1.1, 0, material(0xf6a6b2), 0.8);
+  box(group, 9, 2, 7, 0, 3.2, 0, material(0x9fc5e8), 0.8);
+  box(group, 3, 1.4, 6, -2, 4.9, 0, material(0xffffff), 0.5);
+  box(group, 3, 1.4, 6, 2, 4.9, 0, material(0xffffff), 0.5);
+}
+
+/** A basket with blocks going back in. */
+function blockBasket(group) {
+  box(group, 14, 6, 10, 0, 3, 0, material(0xd8b48a), 1);
+  [[0xd9534f, -3], [0xf2c14e, 0], [0x5aa65a, 3]].forEach(([color, x]) => box(group, 3, 3, 3, x, 7, 0, material(color), 0.4));
+}
+
+/** A laundry basket with a shirt over its edge. */
+function laundryBasket(group) {
+  cylinder(group, 13, 11, 18, 0, 9, 0, material(0xe9e4da));
+  box(group, 12, 1, 8, 0, 18.5, -2, material(0xf6a6b2), 0.4);
+}
+
 const BUILDERS = {
   cup, own_cup: cup, books: frogBook, toys, towel, toothbrush, paper: paperRoll, switch: lightSwitch, toilet_switch: lightSwitch,
   hook: coatOnHook, help_cook: bowlAndSpoon, shoes, flush: flushLever, seat: cushion, wash: soap,
+  crayons, clothes: foldedClothes, tidy: blockBasket, laundry: laundryBasket,
 };
 
 /** Which goals have a drawn thing (the others keep their plate). */
