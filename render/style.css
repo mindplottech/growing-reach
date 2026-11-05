@@ -278,6 +278,29 @@ button, input, select { font: inherit; color: inherit; }
 
 .canvas-message[hidden] { display: none; }
 
+/* The line over the 3D view that says what is being shown, with the help on or off. */
+.help-caption {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  max-width: 62%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.help-caption-main { margin: 0; font-weight: 700; }
+.help-caption-main .quiet { font-weight: 400; color: var(--muted); }
+.help-caption-sub { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+.help-caption-actions { display: flex; gap: 6px; margin-top: 6px; }
+.help-caption-actions button { min-height: 30px; padding: 0 12px; border: 1px solid var(--accent); border-radius: 15px; background: #fff; color: var(--accent); font-size: 12px; cursor: pointer; }
+.help-caption-actions button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.help-caption-actions .help-close { margin-left: auto; border-color: var(--line); color: var(--muted); }
+.help-caption [hidden] { display: none; }
+
 .delete-chip {
   position: absolute;
   z-index: 2;
@@ -524,6 +547,9 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
 .adjust-heading.adults::before { background: var(--danger); }
 .adjust-list { margin: 0 0 4px; padding-left: 18px; font-size: 13px; line-height: 1.55; }
 .adjust-list li.quiet { color: var(--muted); }
+.adjust-list li.showable { cursor: pointer; border-radius: 6px; margin-left: -6px; padding-left: 6px; }
+.adjust-list li.showable:hover { background: rgba(255, 255, 255, 0.7); }
+.adjust-list li.showable[aria-pressed="true"] { background: #fff; box-shadow: inset 3px 0 0 var(--accent); }
 .adjust-list strong { font-weight: 700; }
 .adjust-block:has(.adjust-list:empty) { display: none; }
 .adjust-spans { margin-top: 6px; }

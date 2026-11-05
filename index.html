@@ -75,6 +75,15 @@
         </button>
         <p id="tool-hint" class="canvas-hint" hidden>家具はドラッグで動かせます。右ドラッグで向きを変え、ホイールで拡大します。</p>
         <p id="canvas-message" class="canvas-message" role="status" hidden></p>
+        <div id="help-caption" class="help-caption" aria-live="polite">
+          <p id="help-caption-main" class="help-caption-main">右の「この助けがあればできる」の行を押すと、その助けを置いて、子どもが使うところを見せます。</p>
+          <p id="help-caption-sub" class="help-caption-sub" hidden></p>
+          <div id="help-caption-actions" class="help-caption-actions" hidden>
+            <button id="help-without" type="button" aria-pressed="false">助けなし</button>
+            <button id="help-with" type="button" aria-pressed="true">助けあり</button>
+            <button id="help-close" type="button" class="help-close">閉じる</button>
+          </div>
+        </div>
         <p id="moment-flash" class="moment-flash" aria-live="polite" hidden></p>
       </div>
       <section id="playbar" class="playbar" aria-label="場面の再生">
@@ -111,7 +120,7 @@
 
       <section id="adjustments" class="adjustments" aria-live="polite" aria-labelledby="adjustments-title">
         <h2 id="adjustments-title" class="adjustments-title">この月齢の環境調整</h2>
-        <p class="adjust-lead">大人がこれをすると、この子は自分でできる。</p>
+        <p class="adjust-lead">大人がこれをすると、この子は自分でできる。行を押すと 3D で見られます。</p>
         <div id="adjust-rooms" class="adjust-rooms" role="group" aria-label="部屋"></div>
         <div class="adjust-block">
           <h3 class="adjust-heading can">自分でできる</h3>

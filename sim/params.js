@@ -64,6 +64,11 @@ const SETTINGS = {
     fall_hold: 0.8,
     reach_gesture: 1.2,
   }, '画面の動きだけに使い、記録の時刻には使わない', '秒'),
+  help_scene: provisional('助けを置いて見せる場面の寸法（表示だけ）', {
+    stand_distance_cm: 20,
+    step_width_cm: 40,
+    step_depth_cm: 30,
+  }, '表示のみ・計算に使わない。子どもが物の縁から立つ距離は、踏み台の奥行き30cmの半分に5cm足した。踏み台は市販の子ども用（幅40cm前後・奥行き30cm前後）に合わせた仮値で、高さは adjustments.js が月齢ごとに計算する', 'cm'),
 };
 
 /** Sizes and distances of the room that are not measurements. */

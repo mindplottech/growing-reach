@@ -278,6 +278,11 @@ async function start() {
     session, history, startRoom, catalog: furnitureCatalog, say: messenger(), results,
   });
   const panel = mountPanel({ ledger, settings, session, getChild, autoplay });
+  // Asking to watch the run (play, the watch buttons, a row of the table) closes the help scene;
+  // the run's own automatic playing underneath does not.
+  for (const id of ['#play', '#scene-play', '#watch-touches', '#watch-falls']) {
+    document.querySelector(id)?.addEventListener('click', () => panel.closeHelp(), true);
+  }
 
   // The 3D view loads later; until then a moment is only shown in words.
   let view = null;

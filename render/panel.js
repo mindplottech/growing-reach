@@ -7,6 +7,7 @@ import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
 import { adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
+import { helpScene } from '../sim/helpScene.js';
 import { normalCdf } from '../sim/random.js';
 
 const MONTHS_PER_YEAR = 12;
@@ -81,6 +82,20 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   // The room the adjustments are shown for: 'all' or one of the layout's rooms.
   let adjustRoom = 'living';
   let lastChild = null;
+  // The goal being shown in 3D with its help placed (「助けを置いて見せる」), and which side.
+  let shownGoalId = null;
+  let shownWithHelp = true;
+  let lastAll = null;
+  let autoOpened = false;
+  const caption = {
+    main: document.querySelector('#help-caption-main'),
+    sub: document.querySelector('#help-caption-sub'),
+    actions: document.querySelector('#help-caption-actions'),
+    with: document.querySelector('#help-with'),
+    without: document.querySelector('#help-without'),
+    close: document.querySelector('#help-close'),
+  };
+  const CAPTION_IDLE = caption.main.textContent;
   const total = settings.trial_count;
   let view = null;
   let lastTags = null;
@@ -138,6 +153,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const room = session.getRoom();
     const shared = { ledger, room, landmarks: simulation.landmarks, hazards: simulation.hazards, sex: child.sex, individual: child.individual };
     const all = adjustmentsAt({ ...shared, months: child.months });
+    lastAll = all;
     const allRows = adjustmentTimeline(shared);
     // The room chips: all, then each room of the layout; the lists below show the chosen one.
     const areas = room.rooms ?? [];
@@ -146,7 +162,13 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
         const button = element('button', '', area.label);
         button.type = 'button';
         button.dataset.room = area.id;
-        button.addEventListener('click', () => { adjustRoom = area.id; showAdjustments(lastChild); view?.setGoalRoom(adjustRoom); });
+        button.addEventListener('click', () => {
+          adjustRoom = area.id;
+          // A new room starts at its first goal needing help, as the first screen does.
+          if (shownGoalId !== null) { shownGoalId = null; autoOpened = false; }
+          showAdjustments(lastChild);
+          view?.setGoalRoom(adjustRoom);
+        });
         return button;
       }));
     }
@@ -161,6 +183,20 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     adjustTitle.textContent = `${formatAge(child.months)}の環境調整`;
     const firstCan = (goalId) => rows.find((row) => row.goalId === goalId && row.status === STATUS_CAN)?.months ?? null;
     const item = (text, quiet = false) => { const li = element('li', quiet ? 'quiet' : '', ''); li.append(text); return li; };
+    // A row that can be pressed to see its goal in 3D.
+    const showable = (li, goal) => {
+      li.classList.add('showable');
+      li.setAttribute('role', 'button');
+      li.tabIndex = 0;
+      li.dataset.goal = goal.id;
+      li.setAttribute('aria-pressed', String(goal.id === shownGoalId));
+      const press = () => openHelp(goal.id);
+      li.addEventListener('click', press);
+      li.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); press(); }
+      });
+      return li;
+    };
     const bold = (text) => { const node = element('strong', '', text); return node; };
 
     // By themselves, with the age it became so when that is later than the start.
@@ -168,7 +204,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       const since = firstCan(goal.id);
       const li = item(named(goal));
       li.append(`（${goal.how}${since && since > ledger._meta.age_range_months[0] ? `・${formatAge(since)}から` : ''}）`);
-      return li;
+      return showable(li, goal);
     }));
     // With help: one step covers every goal needing one; things put lower or closer each on a line.
     const helped = now.goals.filter(({ status }) => status === STATUS_HELP);
@@ -176,18 +212,22 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const helpItems = [];
     // 「あと○cm」: how far the hand or the climb falls short, when it is close.
     const gap = (goal) => (goal.gapCm > 0 && goal.gapCm <= NEAR_GAP_CM ? `（あと${goal.gapCm}cm）` : '');
-    if (stepGoals.length) {
+    // One row per goal, so each can be pressed to see it; the step's height is the one that covers all.
+    for (const goal of stepGoals) {
       const li = item('');
-      li.append(bold(`踏み台 ${now.stepCm}cm`), ` → ${stepGoals.map((goal) => `${named(goal)}${gap(goal)}`).join('・')}`);
-      helpItems.push(li);
+      li.append(bold(`踏み台 ${goal.stepCm}cm`), ` → ${named(goal)}${gap(goal)}`);
+      helpItems.push(showable(li, goal));
+    }
+    if (stepGoals.length > 1 && stepGoals.some((goal) => goal.stepCm !== now.stepCm)) {
+      helpItems.push(item(`踏み台を1つにするなら、いちばん高い ${now.stepCm}cm で全部に足りる`, true));
     }
     for (const goal of helped.filter(({ help }) => help !== HELP_STEP)) {
       const li = item('');
       li.append(bold(goal.how), ` → ${named(goal)}${gap(goal)}`);
-      helpItems.push(li);
+      helpItems.push(showable(li, goal));
     }
     adjustLists.help.replaceChildren(...helpItems);
-    adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => item(`${named(goal)}（${goal.how}${goal.gapCm ? `・あと${goal.gapCm}cm` : ''}）`, true)));
+    adjustLists.notyet.replaceChildren(...now.goals.filter(({ status }) => status === STATUS_NOT_YET).map((goal) => showable(item(`${named(goal)}（${goal.how}${goal.gapCm ? `・あと${goal.gapCm}cm` : ''}）`, true), goal)));
     // The span of each help: from when to when a step is needed, and when the goal is theirs.
     adjustLists.spans.replaceChildren(...helpSpans(rows, ledger._meta.age_range_months).map((span) => {
       const goal = all.goals.find(({ id }) => id === span.goalId);
@@ -218,9 +258,80 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // What the step also brings into reach: the adults' side, kept below.
     adjustLists.adults.replaceChildren(...all.hazardsWithStep.map((hazard) => item(`踏み台${all.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く → ${hazard.putAbove}cmより上へ`)));
 
+    // The scene being shown follows the age: the stool gets lower, and one day is not needed.
+    // The first time, the first goal needing help is shown, so the screen starts at the point.
+    if (!autoOpened) {
+      autoOpened = true;
+      const first = now.goals.find(({ status }) => status === STATUS_HELP) ?? now.goals[0];
+      if (first) shownGoalId = first.id;
+    }
+    if (shownGoalId) openHelp(shownGoalId);
+
     const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_NOT_YET]: 'plain' };
     return new Map(all.goals.map((goal) => [`goal-${goal.id}`, { level: level[goal.status], text: goal.how }]));
   }
+
+  /** The words over the 3D view for one scene: the help, the goal, and where the hand gets to. */
+  function captionFor(scene, months) {
+    const age = formatAge(months);
+    const figure = shownWithHelp ? scene.withHelp : scene.without;
+    const gap = scene.gapCm > 0 ? `あと${scene.gapCm}cm` : '';
+    if (scene.status === STATUS_CAN) {
+      return { main: `${age}：${scene.label}`, sub: `${scene.how}。助けはいらない`, toggles: false };
+    }
+    if (scene.status === STATUS_NOT_YET) {
+      return { main: `${age}：${scene.label} は、まだ`, sub: [scene.how, gap].filter(Boolean).join('・'), toggles: false };
+    }
+    const kind = scene.prop?.kind;
+    const main = kind === HELP_STEP
+      ? `${age}：踏み台 ${scene.prop.heightCm}cm があると → ${scene.label}`
+      : `${age}：${scene.how} → ${scene.label}`;
+    let sub;
+    if (kind === HELP_STEP) {
+      const where = shownWithHelp ? '踏み台の上なら' : '床からは';
+      if (figure.forward) sub = shownWithHelp ? `${where}、肘の高さで使える` : `${where}、天板が肘より高い`;
+      else if (scene.kind === 'climb') sub = shownWithHelp ? `${where}、登れる` : `${where}、${gap ? `${gap} ` : ''}登れない`;
+      else sub = shownWithHelp ? `${where}、手が届く` : `${where}、${gap ? `${gap} ` : ''}届かない`;
+    } else if (kind === HELP_LOWER) {
+      sub = shownWithHelp ? 'この高さなら、床から手が届く' : `いまの高さには、${gap || 'まだ'}届かない`;
+    } else {
+      sub = shownWithHelp ? '縁の近くなら、手が届く' : '奥にあると、手が届かない';
+    }
+    return { main, sub, toggles: true };
+  }
+
+  /** Shows one goal in 3D with its help placed, and says what is being shown over the view. */
+  function openHelp(goalId) {
+    const goal = lastAll?.goals.find(({ id }) => id === goalId);
+    if (!goal) return;
+    shownGoalId = goalId;
+    const scene = helpScene({ ledger, room: session.getRoom(), goal, body: lastAll.body, sizes: settings.help_scene });
+    if (scene.status !== STATUS_HELP) shownWithHelp = true;
+    view?.showHelp(scene, shownWithHelp);
+    const words = captionFor(scene, lastAll.months);
+    caption.main.textContent = words.main;
+    caption.sub.textContent = words.sub;
+    caption.sub.hidden = !words.sub;
+    caption.actions.hidden = false;
+    caption.with.hidden = !words.toggles;
+    caption.without.hidden = !words.toggles;
+    caption.with.setAttribute('aria-pressed', String(shownWithHelp));
+    caption.without.setAttribute('aria-pressed', String(!shownWithHelp));
+    for (const li of document.querySelectorAll('.adjust-list li[data-goal]')) li.setAttribute('aria-pressed', String(li.dataset.goal === goalId));
+  }
+
+  /** Back to the run: the figure follows the hundred children again. */
+  function closeHelp() {
+    shownGoalId = null;
+    view?.clearHelp();
+    caption.main.textContent = CAPTION_IDLE;
+    caption.sub.hidden = true;
+    caption.actions.hidden = true;
+    for (const li of document.querySelectorAll('.adjust-list li[data-goal]')) li.setAttribute('aria-pressed', 'false');
+  }
+  caption.with.addEventListener('click', () => { shownWithHelp = true; if (shownGoalId) openHelp(shownGoalId); });
+  caption.without.addEventListener('click', () => { shownWithHelp = false; if (shownGoalId) openHelp(shownGoalId); });
+  caption.close.addEventListener('click', closeHelp);
 
   document.querySelector('#print-adjustments').addEventListener('click', () => {
     document.querySelector('#print-date').textContent = new Date().toLocaleDateString('ja-JP');
@@ -248,6 +359,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     cell.classList.add('playable');
     cell.tabIndex = 0;
     const press = () => {
+      closeHelp();
       autoplay.useList(cell.dataset.play, scenesOfRow(side, id));
       showPressed();
     };
@@ -431,6 +543,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   // A whole run by number, of the right-hand condition: from the start to the end of the trial.
   seedInput.addEventListener('change', () => {
     const seed = Number.parseInt(seedInput.value, 10) || 1;
+    closeHelp();
     autoplay.useRun({
       ...getChild(), seed, room: session.getRoom(), start: 0, end: settings.trial_seconds, moment: null, thing: null, heading: `${seed}番の子`,
     });
@@ -452,6 +565,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       view = next;
       if (lastTags) view.setTags(lastTags);
       view.setGoalRoom(adjustRoom);
+      if (shownGoalId) openHelp(shownGoalId);
     },
+    closeHelp,
   };
 }

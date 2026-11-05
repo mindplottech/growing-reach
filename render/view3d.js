@@ -38,6 +38,16 @@ const HAZARD_THICK_CM = 3;
 const GOAL_WALL_THICK_CM = 2;
 const GOAL_LABEL_SHARE = 0.62;
 const PARTITION_HEIGHT_CM = 100;
+// The help scene (「助けを置いて見せる」): the stool's look and the close camera on the spot.
+const STOOL_COLOUR = 0xe0b86a;
+const STOOL_EDGE = 0x9a7a3a;
+const STOOL_CORNER_CM = 2;
+const HELP_DISTANCE_HEIGHTS = 2.6;
+const HELP_PITCH = 0.42;
+const HELP_SIDE_ANGLE = 0.6;
+const HELP_LOOK_SHARE = 0.55;
+const HELP_FORWARD_LEAN = 0.18;
+const HELP_FORWARD_ARMS = 0.5;
 // Floor tones by room (display only): tiles in the wet rooms, earth at the entrance.
 const ROOM_FLOORS = { washroom: 0xe3e7ea, toilet: 0xdfe8ee, entrance: 0xd6d0c6, kitchen: 0xece4d6 };
 const ROOM_FLOOR_OPACITY = 0.85;
@@ -224,6 +234,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let cameraTouched = false;
   controls.addEventListener('start', () => {
     cameraTouched = true;
+    if (help) help.cameraFree = true;
   });
   renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault());
 
@@ -279,6 +290,12 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   // The goals' tags show for the room chosen in the panel ('all' for every room).
   let goalRoom = 'all';
   const goalNodes = [];
+  // The help scene being shown, if any: the figure stands where the scene says instead of
+  // following the run, a stool may be drawn, and the thing may be moved. Display only.
+  let help = null;
+  const goalMeshes = new Map();
+  const helpGroup = new THREE.Group();
+  scene.add(helpGroup);
   let gait = null;
   let updatePose = createPoseTracker(settings.display_seconds, gait);
   let updateIdle = createIdle(settings.idle_figure);
@@ -505,6 +522,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     hazardNodes.length = 0;
     roomLabels.length = 0;
     goalNodes.length = 0;
+    goalMeshes.clear();
     model.objects.forEach(addObject);
     showLabels();
     // Dangerous things lie flat on their furniture; they are drawn but not picked or dragged.
@@ -545,6 +563,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       roomGroup.add(mesh);
       tags.set(goal.id, { sprite: label, text: goal.label, meshes: [mesh], nameOnly: true, room: goal.room });
       goalNodes.push({ room: goal.room, nodes: [label] });
+      goalMeshes.set(goal.id, { mesh, home: mesh.position.clone(), onWall: goal.onWall, thick });
     }
     for (const id of tags.keys()) paintTag(id);
     const previous = new Map(planes.map(({ id, mesh }) => [id, mesh.position.y]));
@@ -570,6 +589,72 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     aimSun();
     fitLabels();
     if (firstBuild) fitCamera();
+    if (help) placeHelp();
+  }
+
+  /** Draws the help scene's stool and moves the thing, for the scene and side being shown. */
+  function placeHelp() {
+    disposeGroup(helpGroup);
+    const { scene: shown, withHelp } = help;
+    const entry = goalMeshes.get(`goal-${shown.goalId}`);
+    if (entry) {
+      const thing = withHelp ? shown.thingAfter : shown.thing;
+      const y = entry.onWall ? thing.height : thing.height + entry.thick / 2;
+      entry.mesh.position.set(thing.x + thing.w / 2, y, thing.y + thing.d / 2);
+    }
+    const prop = shown.prop;
+    if (withHelp && prop?.kind === 'step') {
+      const stool = new THREE.Mesh(
+        new RoundedBoxGeometry(prop.w, prop.heightCm, prop.d, CORNER_SEGMENTS, STOOL_CORNER_CM),
+        new THREE.MeshStandardMaterial({ color: STOOL_COLOUR, roughness: 0.7 }),
+      );
+      stool.position.set(prop.x + prop.w / 2, prop.heightCm / 2, prop.y + prop.d / 2);
+      stool.castShadow = true;
+      stool.receiveShadow = true;
+      stool.raycast = noRaycast;
+      const edge = new THREE.LineSegments(
+        new THREE.EdgesGeometry(stool.geometry),
+        new THREE.LineBasicMaterial({ color: STOOL_EDGE, transparent: true, opacity: 0.6 }),
+      );
+      edge.raycast = noRaycast;
+      stool.add(edge);
+      helpGroup.add(stool);
+    }
+  }
+
+  /** Puts every moved thing back and takes the stool away. */
+  function unplaceHelp() {
+    disposeGroup(helpGroup);
+    for (const { mesh, home } of goalMeshes.values()) mesh.position.copy(home);
+  }
+
+  /** The figure as the help scene has it: standing (or on the stool), facing the thing, reaching. */
+  function helpPose() {
+    const figure = help.withHelp ? help.scene.withHelp : help.scene.without;
+    return {
+      x: figure.x, z: figure.y, feet: figure.feet, yaw: figure.yaw, kind: null, turned: false, pitch: 0, sit: 0,
+      lean: figure.forward ? HELP_FORWARD_LEAN : 0,
+      arms: figure.forward ? HELP_FORWARD_ARMS : figure.arms,
+      stretch: figure.stretch,
+      walk: { phase: 0, moving: 0 },
+      busy: false,
+    };
+  }
+
+  /** Glides the camera to a close three-quarter view of the child at the thing, until turned by hand. */
+  function lookAtHelp() {
+    if (!help || help.cameraFree || !model) return;
+    const { stand, thing, facing } = help.scene;
+    const centre = { x: thing.x + thing.w / 2, y: thing.y + thing.d / 2 };
+    const target = new THREE.Vector3(
+      stand.x + (centre.x - stand.x) * HELP_LOOK_SHARE, model.childHeight * 0.6, stand.y + (centre.y - stand.y) * HELP_LOOK_SHARE,
+    );
+    // Behind the child's shoulder: back along the facing, swung to one side.
+    const back = new THREE.Vector3(facing.x, 0, facing.y).applyAxisAngle(new THREE.Vector3(0, 1, 0), HELP_SIDE_ANGLE);
+    const distance = model.childHeight * HELP_DISTANCE_HEIGHTS;
+    const wanted = target.clone().add(back.multiplyScalar(distance * Math.cos(HELP_PITCH))).add(new THREE.Vector3(0, distance * Math.sin(HELP_PITCH), 0));
+    controls.target.lerp(target, FOLLOW_EASE);
+    camera.position.lerp(wanted, FOLLOW_EASE);
   }
 
   function planeStrength(now) {
@@ -642,7 +727,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       events: simulation.events,
       climbing: Boolean(simulation.climbing),
     }, seconds);
-    applyPose(child, pose, gait);
+    const shownPose = help ? helpPose() : pose;
+    applyPose(child, shownPose, gait);
     // Still means: nothing going on now, and nothing for a moment before. The moments of
     // touching something dangerous come from the record so far and the scene's known moment.
     // Blinks, breaths and yawns take real time, whatever the playback speed.
@@ -655,10 +741,10 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const hazardMoments = live ? simulation.events.filter(({ kind }) => HAZARD_EVENTS.has(kind)).map(({ time }) => time) : [];
     if (live && playingScene?.moment !== null && playingScene?.moment !== undefined) hazardMoments.push(playingScene.moment);
     const idle = updateIdle({ still: !pose.busy && idleClock >= busyUntil, time: simulation.time, hazardMoments }, realSeconds);
-    applyIdle(child, idle, pose, gait);
-    followChild(pose);
-    const onFloor = floorShadow(pose.feet);
-    blob.position.set(pose.x, 0.5, pose.z);
+    applyIdle(child, idle, shownPose, gait);
+    if (help) lookAtHelp(); else followChild(pose);
+    const onFloor = floorShadow(shownPose.feet);
+    blob.position.set(shownPose.x, 0.5, shownPose.z);
     blob.scale.setScalar(onFloor.scale);
     blob.material.opacity = SHADOW_OPACITY * onFloor.opacity;
     drawTrail(simulation, pose);
@@ -823,6 +909,24 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
         if (before.size > 0 && before.get(id)?.level !== tagLevels.get(id)?.level) tags.get(id).sprite.userData.popUntil = now + TAG_POP_MS;
       }
       fitLabels();
+    },
+    /**
+     * Shows one help scene (from sim/helpScene.js): the child at the thing, with the help placed
+     * (`withHelp`) or without it. The run goes on underneath; the figure comes back to it on clearHelp.
+     */
+    showHelp(shown, withHelp) {
+      const first = !help || help.scene.goalId !== shown.goalId;
+      help = { scene: shown, withHelp, cameraFree: first ? false : help.cameraFree };
+      if (first && following) setFollowing(false);
+      unplaceHelp();
+      placeHelp();
+    },
+    clearHelp() {
+      if (!help) return;
+      help = null;
+      unplaceHelp();
+      cameraTouched = false;
+      if (model) fitCamera();
     },
     /** Shows the goals' tags of one room only ('all' for every room); the things themselves stay. */
     setGoalRoom(roomId) {
