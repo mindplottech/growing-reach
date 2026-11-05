@@ -20,7 +20,7 @@ const HOLD_SIDE_SHARE = 0.8;
 // Putting on shoes, sitting on the step (display only): the child sits this far along the step
 // from the shoe shelf and this far in from its front edge; the adult kneels on the 土間 this far
 // in front of the child and this far to one side, so the child is not hidden.
-const SIT_FROM_THING_CM = 45;
+const SIT_FROM_THING_CM = 110;
 const SIT_END_MARGIN_CM = 25;
 const SIT_IN_FROM_EDGE_CM = 8;
 const KNEEL_FRONT_CM = 42;
@@ -203,8 +203,11 @@ function seatedScene({ ledger, goal, seat, thing, areaCentre, adultSizes, reach 
   };
   let adult = null;
   if (together && adultSizes) {
-    // Kneeling on the 土間 in front of the child, a little to one side, turned to the child's feet.
-    const side = { x: -out.y, y: out.x };
+    // Kneeling on the 土間 in front of the child, a little to the side away from the shoe shelf
+    // (so the shelf side stays open for the view), turned to the child's feet.
+    const across = { x: -out.y, y: out.x };
+    const towardThing = (centre.x - sit.x) * across.x + (centre.y - sit.y) * across.y;
+    const side = towardThing > 0 ? { x: -across.x, y: -across.y } : across;
     const at = { x: sit.x + out.x * KNEEL_FRONT_CM + side.x * KNEEL_SIDE_CM, y: sit.y + out.y * KNEEL_FRONT_CM + side.y * KNEEL_SIDE_CM };
     const feet = { x: sit.x + out.x * KNEEL_FRONT_CM * 0.4, y: sit.y + out.y * KNEEL_FRONT_CM * 0.4 };
     adult = { mode: 'kneel', x: at.x, y: at.y, yaw: Math.atan2(feet.x - at.x, feet.y - at.y), holdForward: Math.hypot(feet.x - at.x, feet.y - at.y), dressing };

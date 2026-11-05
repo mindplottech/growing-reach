@@ -197,9 +197,11 @@ function shapeFor(adult, target) {
     const drop = Math.max(1, shoulderAt.y - KNEEL_FOOT_HEIGHT_CM);
     const length = Math.min(reach, Math.hypot(forward, drop));
     const bend = Math.acos(Math.min(1, length / reach)) * 2;
-    const angle = Math.atan2(forward, drop) + bend / 2 - lean;
-    // At rest the hands lie on the thighs.
-    const restAngle = 0.5 - lean;
+    // In the trunk's frame: leaning forward tips an arm that hangs along the body backward by
+    // the lean, so the lean is added back.
+    const angle = Math.atan2(forward, drop) + bend / 2 + lean;
+    // At rest the hands lie on the thighs, a little in front of the body.
+    const restAngle = 0.1 + lean;
     const shoulder = restAngle + (angle - restAngle) * out;
     const elbow = 0.9 + (bend - 0.9) * out;
     return {
@@ -214,7 +216,7 @@ function shapeFor(adult, target) {
     const drop = Math.max(1, shoulderY - target.holdHeight);
     const length = Math.min(reach, Math.hypot(forward, drop));
     const bend = Math.acos(Math.min(1, length / reach)) * 2;
-    const angle = Math.atan2(forward, drop) + bend / 2 - lean;
+    const angle = Math.atan2(forward, drop) + bend / 2 + lean;
     return {
       x: target.x, z: target.z, yaw: target.yaw, rootY: 0, lean, headDown: HEAD_DOWN,
       hips: [0, 0], knees: [0, 0], shoulders: [-angle, -angle], elbowBend: [-bend, -bend], inward: 0.18,

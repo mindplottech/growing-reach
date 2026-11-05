@@ -63,10 +63,11 @@ test('routes between every pair of approach points stay out of the furniture', (
 });
 
 test('going round furniture is longer than the straight line, and the same every time', () => {
-  const from = { x: 120, y: 120 };
-  const to = { x: 120, y: 10 };
+  // Across the dining table (the sofa is against the wall since 2026-11-06).
+  const from = { x: 325, y: 200 };
+  const to = { x: 325, y: 330 };
   const route = findPath(grid, from, to);
-  assert.ok(route.length > 1, 'should go round the sofa');
+  assert.ok(route.length > 1, 'should go round the dining table');
   assert.ok(routeLength(from, route) > Math.hypot(to.x - from.x, to.y - from.y));
   assert.deepEqual(findPath(grid, from, to), route);
 });

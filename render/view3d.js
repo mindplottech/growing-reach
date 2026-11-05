@@ -82,7 +82,7 @@ const DRESS_ARMS_IN = 0.12;
 const DRESS_TRY_WIGGLES = 7;
 // The shoe scene's camera: in front of the seated child, to the side away from the adult, and
 // high, looking down at the hands and the feet (cm).
-const DRESS_CAMERA = { front: 175, side: 35, up: 150, lookUp: 30, lookToAdult: 18 };
+const DRESS_CAMERA = { front: 210, side: 45, up: 170, lookUp: 30, lookToAdult: 18 };
 const smoothstep = (t) => t * t * (3 - 2 * t);
 const clamp01 = (t) => Math.min(1, Math.max(0, t));
 // Floor tones by room (display only): tiles in the wet rooms, earth at the entrance.
