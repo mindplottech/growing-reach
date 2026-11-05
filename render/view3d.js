@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { applyProportions, BASE_UNIT_HEIGHT, makeChild } from './childFigure3d.js';
+import { applyProportions, makeChild } from './childFigure3d.js';
 import { easeLook, lookAngles } from './look.js';
 import { gaitFor } from './gait.js';
 import { createIdle } from './idle.js';
@@ -47,6 +47,9 @@ const STOOL_COLOUR = 0xe0b86a;
 const STOOL_EDGE = 0x9a7a3a;
 const STOOL_CORNER_CM = 2;
 const HELP_DISTANCE_HEIGHTS = 2.6;
+// The close views frame a child of this height (display only), whatever the age, so the child is
+// seen to grow as the slider moves: the camera does not move back as the child gets taller.
+const CLOSE_VIEW_HEIGHT_CM = 95;
 const HELP_PITCH = 0.42;
 const HELP_SIDE_ANGLE = 0.6;
 const HELP_LOOK_SHARE = 0.55;
@@ -339,11 +342,11 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let following = false;
   function followChild(pose) {
     if (!following || !model) return;
-    const target = new THREE.Vector3(pose.x, pose.feet + model.childHeight / 2, pose.z);
+    const target = new THREE.Vector3(pose.x, pose.feet + CLOSE_VIEW_HEIGHT_CM / 2, pose.z);
     const offset = camera.position.clone().sub(controls.target);
     offset.y = 0;
     if (offset.lengthSq() < 1) offset.set(0, 0, 1);
-    const distance = model.childHeight * FOLLOW_DISTANCE_HEIGHTS;
+    const distance = CLOSE_VIEW_HEIGHT_CM * FOLLOW_DISTANCE_HEIGHTS;
     offset.setLength(distance * Math.cos(FOLLOW_PITCH));
     const wanted = target.clone().add(offset).add(new THREE.Vector3(0, distance * Math.sin(FOLLOW_PITCH), 0));
     controls.target.lerp(target, FOLLOW_EASE);
@@ -605,7 +608,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     });
 
     const { unitHeight } = applyProportions(child, gait);
-    child.root.scale.setScalar(model.childHeight * (BASE_UNIT_HEIGHT / unitHeight));
+    // The top of the head stands at the ledger's height.
+    child.root.scale.setScalar(model.childHeight / unitHeight);
     if (selectedId && !objectMeshes.has(selectedId)) selectedId = null;
     aimSun();
     fitLabels();
@@ -668,11 +672,11 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const { stand, thing, facing } = help.scene;
     const centre = { x: thing.x + thing.w / 2, y: thing.y + thing.d / 2 };
     const target = new THREE.Vector3(
-      stand.x + (centre.x - stand.x) * HELP_LOOK_SHARE, model.childHeight * 0.6, stand.y + (centre.y - stand.y) * HELP_LOOK_SHARE,
+      stand.x + (centre.x - stand.x) * HELP_LOOK_SHARE, CLOSE_VIEW_HEIGHT_CM * 0.6, stand.y + (centre.y - stand.y) * HELP_LOOK_SHARE,
     );
     // Behind the child's shoulder: back along the facing, swung to one side. The side that would
     // put the camera outside the room (behind a wall) is not used; what is left is kept inside.
-    const distance = model.childHeight * HELP_DISTANCE_HEIGHTS;
+    const distance = CLOSE_VIEW_HEIGHT_CM * HELP_DISTANCE_HEIGHTS;
     const up = new THREE.Vector3(0, 1, 0);
     const inside = (p) => p.x >= HELP_CAMERA_MARGIN_CM && p.x <= model.width - HELP_CAMERA_MARGIN_CM
       && p.z >= HELP_CAMERA_MARGIN_CM && p.z <= model.depth - HELP_CAMERA_MARGIN_CM;
