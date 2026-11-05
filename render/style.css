@@ -758,3 +758,7 @@ pre { margin: 8px 0 0; padding: 12px; border-radius: 8px; background: #f4f6f8; f
   from { opacity: 0; transform: translateX(-50%) scale(0.85); }
   to { opacity: 1; transform: translateX(-50%) scale(1); }
 }
+
+/* 2026-11-05 画面を引き算した（KO）。要素とスクリプトは残し、表示だけ消している。
+   戻すときは index.html の is-removed を外す（元の状態はブランチ before-simplify）。 */
+.is-removed { display: none !important; }
