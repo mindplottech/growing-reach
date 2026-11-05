@@ -8,6 +8,7 @@ import { reachWords } from '../sim/wording.js';
 import { activitiesAt, adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
 import { helpScene } from '../sim/helpScene.js';
+import { activityIcon, GOAL_ICONS, ROOM_ICONS } from './icons.js';
 import { normalCdf } from '../sim/random.js';
 
 const MONTHS_PER_YEAR = 12;
@@ -163,7 +164,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const areas = room.rooms ?? [];
     if (adjustRooms.childElementCount !== areas.length + 1) {
       adjustRooms.replaceChildren(...[{ id: 'all', label: 'すべて' }, ...areas].map((area) => {
-        const button = element('button', '', area.label);
+        const button = element('button', '', `${ROOM_ICONS[area.id] ?? ''} ${area.label}`.trim());
         button.type = 'button';
         button.dataset.room = area.id;
         button.addEventListener('click', () => {
@@ -190,8 +191,17 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const activities = document.querySelector('#adjust-activities');
     activities.hidden = !band;
     if (band) {
-      document.querySelector('#adjust-play').textContent = band.play.join('、');
-      document.querySelector('#adjust-life').textContent = band.life.join('、');
+      // Each phrase as a small picture and a short name; KO's whole words in the tooltip.
+      const chips = (phrases) => phrases.map((phrase) => {
+        const { icon, short } = activityIcon(phrase);
+        const chip = element('span', 'activity-chip', '');
+        chip.title = phrase;
+        chip.append(element('span', 'activity-icon', icon), short);
+        return chip;
+      });
+      document.querySelector('#adjust-play').replaceChildren(...chips(band.play));
+      document.querySelector('#adjust-life').replaceChildren(...chips(band.life));
+      document.querySelector('#adjust-life').closest('p').hidden = band.life.length === 0;
     }
     document.querySelector('#adjust-empty').hidden = now.goals.length > 0;
     const firstCan = (goalId) => rows.find((row) => row.goalId === goalId && row.status === STATUS_CAN)?.months ?? null;
@@ -282,6 +292,46 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // What the step also brings into reach: the adults' side, kept below.
     adjustLists.adults.replaceChildren(...all.hazardsWithStep.map((hazard) => item(`踏み台${all.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く → ${hazard.putAbove}cmより上へ`)));
 
+    // The same, to be read at a glance: one tile per goal, a picture, a short name and a badge
+    // in the status's colour. The things to do come first. The full words are in the tooltip.
+    const order = { [STATUS_HELP]: 0, [STATUS_WITH_ADULT]: 1, [STATUS_NOT_YET]: 2, [STATUS_CAN]: 3 };
+    const badge = (goal) => {
+      if (goal.status === STATUS_CAN) return ['can', '✓ 自分で'];
+      if (goal.status === STATUS_WITH_ADULT) return ['adult', '🤗 抱っこで'];
+      if (goal.status === STATUS_NOT_YET) return ['notyet', '… まだ'];
+      if (goal.help === HELP_STEP) return ['help', `🪜 踏み台${goal.stepCm}cm`];
+      if (goal.maxHeightCm !== undefined) return ['help', `⬇ ${goal.maxHeightCm}cmまでに`];
+      return ['help', `↔ 縁から${goal.maxDistanceCm}cm`];
+    };
+    const tiles = [...now.goals].sort((a, b) => order[a.status] - order[b.status]).map((goal) => {
+      const [kind, words] = badge(goal);
+      const tile = element('li', `goal-tile ${kind}`, '');
+      tile.title = `${named(goal)}：${goal.how}${goal.accompany ? `（${goal.accompany}）` : ''}`;
+      tile.append(
+        element('span', 'goal-tile-icon', GOAL_ICONS[goal.id] ?? '•'),
+        element('span', 'goal-tile-name', adjustRoom === 'all' && roomName.has(goal.room) ? `${ROOM_ICONS[goal.room] ?? ''}${goal.short ?? goal.label}` : (goal.short ?? goal.label)),
+        element('span', 'goal-tile-badge', words),
+      );
+      return kind === 'can' || kind === 'notyet' ? tile : showable(tile, goal);
+    });
+    document.querySelector('#adjust-tiles').replaceChildren(...tiles);
+    // Next: the first two changes as small pictures; and the adults' side as one warning line.
+    document.querySelector('#adjust-next-icons').replaceChildren(...rows
+      .filter((row) => row.months > child.months && (row.status === STATUS_CAN || row.stepCm !== null))
+      .slice(0, 2)
+      .map((row) => {
+        const chip = element('span', 'next-chip', '');
+        const words = row.status === STATUS_CAN ? '✓ 自分で' : `🪜 ${row.stepCm}cm`;
+        chip.title = `${formatAge(row.months)}：${row.label}（${row.how}）`;
+        chip.append(element('span', 'next-age', formatAge(row.months)), element('span', 'activity-icon', GOAL_ICONS[row.goalId] ?? '•'), words);
+        return chip;
+      }));
+    document.querySelector('#adjust-warn').replaceChildren(...all.hazardsWithStep.map((hazard) => {
+      const chip = element('span', 'warn-chip', `⚠️ ${hazard.label}は${hazard.putAbove}cmより上へ`);
+      chip.title = `踏み台${all.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く`;
+      return chip;
+    }));
+
     // The scene being shown follows the age: the stool gets lower, and when it is no longer
     // needed the scene closes and the view goes back to the house (openHelp closes it).
     // The first screen opens no scene: the child moves about the whole house (KO, 2026-11-05).
@@ -343,7 +393,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     caption.without.hidden = !words.toggles;
     caption.with.setAttribute('aria-pressed', String(shownWithHelp));
     caption.without.setAttribute('aria-pressed', String(!shownWithHelp));
-    for (const li of document.querySelectorAll('.adjust-list li[data-goal]')) li.setAttribute('aria-pressed', String(li.dataset.goal === goalId));
+    for (const li of document.querySelectorAll('li[data-goal]')) li.setAttribute('aria-pressed', String(li.dataset.goal === goalId));
   }
 
   /** Back to the run: the figure follows the hundred children again. */
@@ -353,7 +403,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     caption.main.textContent = CAPTION_IDLE;
     caption.sub.hidden = true;
     caption.actions.hidden = true;
-    for (const li of document.querySelectorAll('.adjust-list li[data-goal]')) li.setAttribute('aria-pressed', 'false');
+    for (const li of document.querySelectorAll('li[data-goal]')) li.setAttribute('aria-pressed', 'false');
   }
   caption.with.addEventListener('click', () => { shownWithHelp = true; if (shownGoalId) openHelp(shownGoalId); });
   caption.without.addEventListener('click', () => { shownWithHelp = false; if (shownGoalId) openHelp(shownGoalId); });

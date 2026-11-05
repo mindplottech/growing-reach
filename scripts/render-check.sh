@@ -36,9 +36,9 @@ trap 'kill $SERVER 2>/dev/null' EXIT
 sleep 1
 
 shot() { # url file width height wait-ms
-  "$CHROME" --headless=new --no-sandbox --use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader \
+  timeout 90 "$CHROME" --headless=new --no-sandbox --use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader \
     --run-all-compositor-stages-before-draw --hide-scrollbars --window-size="$3,$4" \
-    --virtual-time-budget="$5" --screenshot="$OUT/$2" "http://127.0.0.1:$PORT/$1" >/dev/null 2>&1
+    --virtual-time-budget="$5" --screenshot="$OUT/$2" "http://127.0.0.1:$PORT/$1" >/dev/null 2>&1 || echo "  （打ち切り：$2）"
   echo "  $OUT/$2"
 }
 
