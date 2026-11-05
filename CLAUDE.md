@@ -1,6 +1,6 @@
-# Growing Reach
+# あーちゃんが やる！ — Growing Reach
 
-家庭のリビングで1歳3か月〜5歳の子が「何に登れて、どこに手が届いてしまうか」を計算するシミュレーション。
+1歳3か月〜5歳の子の体（身長・立って届く高さ・登れる高さ・肘の高さ）を台帳の値から計算し、家の中で「自分でできる／この助けがあればできる（踏み台○cm・段を下げる・縁に寄せる）／まだ」を出す。3D の家であーちゃん（中央値の子、またはうちの子）が助けを使うところを見せる。
 GitHub Pages（main ブランチのルート）で動く静的サイト。対象はPCブラウザ（最小幅1280px）。
 
 ## 設計方針
@@ -30,7 +30,16 @@ GitHub Pages（main ブランチのルート）で動く静的サイト。対象
 - コミットのたびに `git push` する。
 - ファイルのパスは相対パス（`./data/...`）で書く。GitHub Pages では `/growing-reach/` の下に置かれるため。
 
+## 決まりを守る仕組み（Claude Code）
+
+- `.claude/settings.json` の hooks：`git commit` の前に `npm test` と台帳の検証を走らせ、通らなければコミットを止める。台帳か sim/・render/ を書き換えた直後にも台帳を検証する。
+- `scripts/check-ledger.mjs`（`npm run check:ledger`）：4区分・出典の登録・格上げなし・式の係数をコードに書いていないか。
+- `scripts/render-check.sh`：3D を実際に描いて .cache/shots/ に画像を保存する。見た目を変えたら画像を開いて確かめる。
+- skills（`.claude/skills/`）：ledger-update（台帳に値を足す）、render-check（3D を描いて確かめる）、dev-log-entry（dev-log に1節書く）。
+
 ## コマンド
 
 - テスト: `npm test`
 - ローカル表示: `npm start`（`fetch` を使うので `file://` では動かない）
+- 台帳の検証: `npm run check:ledger`
+- 3D を描いて確かめる: `bash scripts/render-check.sh`
