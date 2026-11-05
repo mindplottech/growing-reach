@@ -146,7 +146,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
         const button = element('button', '', area.label);
         button.type = 'button';
         button.dataset.room = area.id;
-        button.addEventListener('click', () => { adjustRoom = area.id; showAdjustments(lastChild); });
+        button.addEventListener('click', () => { adjustRoom = area.id; showAdjustments(lastChild); view?.setGoalRoom(adjustRoom); });
         return button;
       }));
     }
@@ -451,6 +451,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     attachView(next) {
       view = next;
       if (lastTags) view.setTags(lastTags);
+      view.setGoalRoom(adjustRoom);
     },
   };
 }

@@ -36,7 +36,12 @@ const CHIP_LIFT_CM = 10;
 const HAZARD_COLOUR = 0xb5534a;
 const HAZARD_THICK_CM = 3;
 const GOAL_WALL_THICK_CM = 2;
+const GOAL_LABEL_SHARE = 0.62;
 const PARTITION_HEIGHT_CM = 100;
+// Floor tones by room (display only): tiles in the wet rooms, earth at the entrance.
+const ROOM_FLOORS = { washroom: 0xe3e7ea, toilet: 0xdfe8ee, entrance: 0xd6d0c6, kitchen: 0xece4d6 };
+const ROOM_FLOOR_OPACITY = 0.85;
+const ROOM_FLOOR_LIFT_CM = 0.4;
 const PARTITION_OPACITY = 0.9;
 const ROOM_LABEL_SHARE = 0.7;
 const ROOM_LABEL_LIFT_CM = 2;
@@ -271,6 +276,9 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   let hazardsShown = false;
   const hazardNodes = [];
   const roomLabels = [];
+  // The goals' tags show for the room chosen in the panel ('all' for every room).
+  let goalRoom = 'all';
+  const goalNodes = [];
   let gait = null;
   let updatePose = createPoseTracker(settings.display_seconds, gait);
   let updateIdle = createIdle(settings.idle_figure);
@@ -391,7 +399,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     if (!tag) return;
     const known = tagLevels.get(id);
     const style = TAG_STYLES[known?.level ?? 'plain'];
-    const text = known ? `${tag.text}　${known.text}` : tag.text;
+    const text = known && !tag.nameOnly ? `${tag.text}　${known.text}` : tag.text;
     const { texture, widthPerHeight } = labelTexture(text, style);
     tag.sprite.material.map?.dispose();
     tag.sprite.material.map = texture;
@@ -471,6 +479,20 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       mesh.raycast = noRaycast;
       roomGroup.add(mesh);
     }
+    // Each room's floor in its own tone, so the rooms read without their names.
+    for (const area of model.rooms) {
+      const tone = ROOM_FLOORS[area.id];
+      if (!tone) continue;
+      const sheet = new THREE.Mesh(
+        new THREE.PlaneGeometry(area.w, area.d),
+        new THREE.MeshStandardMaterial({ color: tone, roughness: 0.95, transparent: true, opacity: ROOM_FLOOR_OPACITY }),
+      );
+      sheet.rotation.x = -Math.PI / 2;
+      sheet.position.set(area.x + area.w / 2, ROOM_FLOOR_LIFT_CM, area.z + area.d / 2);
+      sheet.receiveShadow = true;
+      sheet.raycast = noRaycast;
+      roomGroup.add(sheet);
+    }
     // The name of each room, flat on its floor near the front edge.
     for (const area of model.rooms) {
       const label = labelSprite(area.label, { share: ROOM_LABEL_SHARE });
@@ -482,6 +504,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     }
     hazardNodes.length = 0;
     roomLabels.length = 0;
+    goalNodes.length = 0;
     model.objects.forEach(addObject);
     showLabels();
     // Dangerous things lie flat on their furniture; they are drawn but not picked or dragged.
@@ -515,11 +538,13 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       const y = goal.onWall ? goal.height : goal.height + thick / 2;
       mesh.position.set(goal.x + goal.w / 2, y, goal.z + goal.d / 2);
       mesh.castShadow = true;
-      const label = labelSprite(goal.label, { share: HAZARD_LABEL_SHARE });
+      const label = labelSprite(goal.label, { share: GOAL_LABEL_SHARE });
       label.center.set(0.5, -0.3);
+      label.visible = goalRoom === 'all' || goalRoom === goal.room;
       mesh.add(label);
       roomGroup.add(mesh);
-      tags.set(goal.id, { sprite: label, text: goal.label, meshes: [mesh] });
+      tags.set(goal.id, { sprite: label, text: goal.label, meshes: [mesh], nameOnly: true, room: goal.room });
+      goalNodes.push({ room: goal.room, nodes: [label] });
     }
     for (const id of tags.keys()) paintTag(id);
     const previous = new Map(planes.map(({ id, mesh }) => [id, mesh.position.y]));
@@ -798,6 +823,13 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
         if (before.size > 0 && before.get(id)?.level !== tagLevels.get(id)?.level) tags.get(id).sprite.userData.popUntil = now + TAG_POP_MS;
       }
       fitLabels();
+    },
+    /** Shows the goals' tags of one room only ('all' for every room); the things themselves stay. */
+    setGoalRoom(roomId) {
+      goalRoom = roomId;
+      for (const { room, nodes } of goalNodes) {
+        for (const node of nodes) node.visible = roomId === 'all' || roomId === room;
+      }
     },
     /** Shows or hides the dangerous things and the lock's tag (the goals stay). */
     showHazards(visible) {
