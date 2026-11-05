@@ -86,7 +86,6 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
   let shownGoalId = null;
   let shownWithHelp = true;
   let lastAll = null;
-  let autoOpened = false;
   const caption = {
     main: document.querySelector('#help-caption-main'),
     sub: document.querySelector('#help-caption-sub'),
@@ -164,8 +163,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
         button.dataset.room = area.id;
         button.addEventListener('click', () => {
           adjustRoom = area.id;
-          // A new room starts at its first goal needing help, as the first screen does.
-          if (shownGoalId !== null) { shownGoalId = null; autoOpened = false; }
+          // A new room starts at the whole house; a scene opens only when a row is pressed.
+          if (shownGoalId !== null) closeHelp();
           showAdjustments(lastChild);
           view?.setGoalRoom(adjustRoom);
         });
@@ -204,7 +203,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       const since = firstCan(goal.id);
       const li = item(named(goal));
       li.append(`（${goal.how}${since && since > ledger._meta.age_range_months[0] ? `・${formatAge(since)}から` : ''}）`);
-      return showable(li, goal);
+      // Nothing to place for what the child does already, so these rows open no scene.
+      return li;
     }));
     // With help: one step covers every goal needing one; things put lower or closer each on a line.
     const helped = now.goals.filter(({ status }) => status === STATUS_HELP);
@@ -258,13 +258,9 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     // What the step also brings into reach: the adults' side, kept below.
     adjustLists.adults.replaceChildren(...all.hazardsWithStep.map((hazard) => item(`踏み台${all.stepCm}cmがあると${hazard.label}（${Math.round(hazard.height)}cm）にも届く → ${hazard.putAbove}cmより上へ`)));
 
-    // The scene being shown follows the age: the stool gets lower, and one day is not needed.
-    // The first time, the first goal needing help is shown, so the screen starts at the point.
-    if (!autoOpened) {
-      autoOpened = true;
-      const first = now.goals.find(({ status }) => status === STATUS_HELP) ?? now.goals[0];
-      if (first) shownGoalId = first.id;
-    }
+    // The scene being shown follows the age: the stool gets lower, and when it is no longer
+    // needed the scene closes and the view goes back to the house (openHelp closes it).
+    // The first screen opens no scene: the child moves about the whole house (KO, 2026-11-05).
     if (shownGoalId) openHelp(shownGoalId);
 
     const level = { [STATUS_CAN]: 'ok', [STATUS_HELP]: 'caution', [STATUS_NOT_YET]: 'plain' };
@@ -306,6 +302,8 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     if (!goal) return;
     shownGoalId = goalId;
     const scene = helpScene({ ledger, room: session.getRoom(), goal, body: lastAll.body, sizes: settings.help_scene });
+    // No help is needed any more (the slider moved on): nothing to show, back to the house.
+    if (scene.status === STATUS_CAN) { closeHelp(); return; }
     if (scene.status !== STATUS_HELP) shownWithHelp = true;
     view?.showHelp(scene, shownWithHelp);
     const words = captionFor(scene, lastAll.months);
