@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { applyProportions, BASE_UNIT_HEIGHT, makeChild } from './childFigure3d.js';
+import { easeLook, lookAngles } from './look.js';
 import { gaitFor } from './gait.js';
 import { createIdle } from './idle.js';
 import { EVENT } from '../sim/events.js';
@@ -248,6 +249,10 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   const planeGroup = new THREE.Group();
   scene.add(roomGroup, planeGroup);
   const child = makeChild();
+  // Turn (y) first, then nod (x) about the turned head, then the idle tilt (z).
+  child.head.rotation.order = 'YXZ';
+  let look = { yaw: 0, pitch: 0 };
+  const toViewer = new THREE.Vector3();
   scene.add(child.root);
   const blob = new THREE.Mesh(
     new THREE.CircleGeometry(SHADOW_RADIUS_CM, 24),
@@ -768,6 +773,12 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const idle = updateIdle({ still: !pose.busy && idleClock >= busyUntil, time: simulation.time, hazardMoments }, realSeconds);
     applyIdle(child, idle, shownPose, gait);
     if (help) lookAtHelp(); else followChild(pose);
+    // The head turns toward whoever is watching (the camera), within a natural range.
+    child.root.updateMatrixWorld(true);
+    child.head.parent.worldToLocal(toViewer.copy(camera.position)).sub(child.head.position);
+    look = easeLook(look, lookAngles(toViewer, shownPose.arms ?? 0), realSeconds);
+    child.head.rotation.y = look.yaw;
+    child.head.rotation.x += look.pitch;
     const onFloor = floorShadow(shownPose.feet);
     blob.position.set(shownPose.x, 0.5, shownPose.z);
     blob.scale.setScalar(onFloor.scale);
