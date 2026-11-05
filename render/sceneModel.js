@@ -247,9 +247,15 @@ export function buildSceneModel({ ledger, room, landmarks, body, boxIds = new Se
     objects,
     hazards: hazards.map(({ id, label, kind, on, x, y, w, d, height }) => ({ id, label, kind, on, x, z: y, w, d, bottom: height })),
     // The goals (「やりたいこと」): things on furniture lie on its top; things on the wall hang at their height.
-    goals: placeGoals(ledger, room, landmarks).map((goal) => ({
-      id: `goal-${goal.id}`, label: goal.short ?? goal.label, room: goal.room ?? null, x: goal.x, z: goal.y, w: goal.w, d: goal.d, height: goal.height, onWall: Boolean(goal.wall),
-    })),
+    goals: placeGoals(ledger, room, landmarks).map((goal) => {
+      // The thing faces the side the child comes from: the furniture's approach, or the room's middle.
+      const area = (room.rooms ?? []).find(({ id }) => id === goal.room);
+      const middle = area ? { x: area.x + area.w / 2, y: area.y + area.d / 2 } : { x: room.width / 2, y: room.depth / 2 };
+      const facing = goal.under ? facingToward(goal.under, goal.under.approach ?? middle) : facingToward(goal, middle);
+      return {
+        id: `goal-${goal.id}`, key: goal.id, label: goal.short ?? goal.label, room: goal.room ?? null, x: goal.x, z: goal.y, w: goal.w, d: goal.d, height: goal.height, onWall: Boolean(goal.wall), facing,
+      };
+    }),
     pane,
     curtain,
     planes: [

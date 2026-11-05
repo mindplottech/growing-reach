@@ -7,6 +7,7 @@ import { createIdle } from './idle.js';
 import { EVENT } from '../sim/events.js';
 import { createPoseTracker, floorShadow, footHeight } from './childPose.js';
 import { buildFurniture, buildSkirting } from './furniture3d.js';
+import { buildGoalThing, hangsOnWall } from './goalShapes3d.js';
 import { buildSceneModel, cameraPlacement, highlightedIds } from './sceneModel.js';
 
 // Display only: colours, sizes on screen, the camera and the figure. No body value or
@@ -558,6 +559,16 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       const y = goal.onWall ? goal.height : goal.height + thick / 2;
       mesh.position.set(goal.x + goal.w / 2, y, goal.z + goal.d / 2);
       mesh.castShadow = true;
+      // The thing itself, drawn so it is known without words; the plate under or behind it keeps the colour.
+      const thing = buildGoalThing(goal.key, goal.facing);
+      if (thing) {
+        if (goal.onWall && hangsOnWall(goal.key)) {
+          thing.position.set(goal.facing.x * (goal.d / 2 + 1), 0, goal.facing.z * (goal.d / 2 + 1));
+        } else {
+          thing.position.y = goal.onWall ? GOAL_WALL_SIZE_CM / 2 : thick / 2;
+        }
+        mesh.add(thing);
+      }
       const label = labelSprite(goal.label, { share: GOAL_LABEL_SHARE });
       label.center.set(0.5, -0.3);
       label.visible = goalRoom === 'all' || goalRoom === goal.room;
