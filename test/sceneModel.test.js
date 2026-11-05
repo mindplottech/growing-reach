@@ -163,7 +163,9 @@ test('a chair turns its back on the table; a shelf opens toward where the child 
   const m = model(48);
   const chair = m.objects.find((o) => o.id === 'dining_chair');
   const table = m.objects.find((o) => o.id === 'dining_table');
-  assert.equal(Math.sign(table.x - chair.x), chair.facing.x);
+  // Along the axis where the chair sits off the table (beside it, or across from it since 2026-11-06).
+  const along = chair.facing.x !== 0 ? 'x' : 'z';
+  assert.equal(Math.sign(table[along] - chair[along]), chair.facing[along === 'x' ? 'x' : 'z']);
   const shelf = roomLayout.landmarks.find(({ id }) => id === 'low_shelf');
   assert.deepEqual(facingToward(shelf, shelf.approach), m.objects.find((o) => o.id === 'low_shelf').facing);
 });

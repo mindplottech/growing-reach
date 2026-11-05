@@ -5,7 +5,7 @@ import { buildPlaylists } from '../sim/scenes.js';
 import { findCountermeasure } from '../sim/trials.js';
 import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
-import { activitiesAt, adjustmentsAt, adjustmentTimeline, helpSpans, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
+import { activitiesAt, adjustmentsAt, adjustmentTimeline, helpSpans, HELP_LOWER, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
 import { DRESS_ALONE, DRESS_HELPS, DRESS_PUTS_ON, helpScene } from '../sim/helpScene.js';
 import { freeSpotIn } from '../sim/path.js';

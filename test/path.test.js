@@ -33,8 +33,8 @@ test('the grid uses the cell size and clearance from params', () => {
 });
 
 test('a clear straight line is walked straight', () => {
-  const from = { x: 210, y: 160 };
-  const to = { x: 380, y: 170 };
+  const from = { x: 220, y: 280 };
+  const to = { x: 290, y: 330 };
   assert.ok(lineIsClear(grid, from, to));
   assert.deepEqual(findPath(grid, from, to), [to]);
 });

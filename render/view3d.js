@@ -62,6 +62,11 @@ const AREA_MIN_SPAN_CM = 260;
 const HELP_PITCH = 0.42;
 const HELP_SIDE_ANGLE = 0.6;
 const HELP_ADULT_SIDE_ANGLE = 1.35;
+// Across the thing (KO 2026-11-06): the camera first tries the far side of the thing, swung
+// this far to one side so the thing does not hide the child's face; only where that stays in
+// the child's room (not behind a wall) is it used.
+const HELP_ACROSS_ANGLE = 0.45;
+const HELP_ACROSS_NEARER = [1, 0.85, 0.7];
 const HELP_LOOK_SHARE = 0.55;
 const HELP_FORWARD_LEAN = 0.18;
 const HELP_FORWARD_ARMS = 0.5;
@@ -865,19 +870,28 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     const target = new THREE.Vector3(
       stand.x + (centre.x - stand.x) * HELP_LOOK_SHARE, CLOSE_VIEW_HEIGHT_CM * 0.6, stand.y + (centre.y - stand.y) * HELP_LOOK_SHARE,
     );
-    // Behind the child's shoulder: back along the facing, swung to one side. The side that would
-    // put the camera outside the room (behind a wall) is not used; what is left is kept inside.
+    // First across the thing, looking at the child's face (KO: not their back). Where that would
+    // be behind a wall (a vanity, a shelf against the wall), behind the child's shoulder instead:
+    // back along the facing, swung to one side. The side that would put the camera outside the
+    // room (behind a wall) is not used; what is left is kept inside.
     const distance = CLOSE_VIEW_HEIGHT_CM * HELP_DISTANCE_HEIGHTS;
     const up = new THREE.Vector3(0, 1, 0);
     const inside = (p) => p.x >= HELP_CAMERA_MARGIN_CM && p.x <= model.width - HELP_CAMERA_MARGIN_CM
       && p.z >= HELP_CAMERA_MARGIN_CM && p.z <= model.depth - HELP_CAMERA_MARGIN_CM;
-    const candidate = (angle) => target.clone()
-      .add(new THREE.Vector3(facing.x, 0, facing.y).applyAxisAngle(up, angle).multiplyScalar(distance * Math.cos(HELP_PITCH)))
-      .add(new THREE.Vector3(0, distance * Math.sin(HELP_PITCH), 0));
+    const candidate = (angle, nearer = 1) => target.clone()
+      .add(new THREE.Vector3(facing.x, 0, facing.y).applyAxisAngle(up, angle).multiplyScalar(distance * nearer * Math.cos(HELP_PITCH)))
+      .add(new THREE.Vector3(0, distance * nearer * Math.sin(HELP_PITCH), 0));
     // With an adult behind the child, from further round to the side, so the adult does not hide the child.
     const side = help.scene.adult ? HELP_ADULT_SIDE_ANGLE : HELP_SIDE_ANGLE;
+    const area = (session.getRoom().rooms ?? []).find((r) => stand.x >= r.x && stand.x <= r.x + r.w && stand.y >= r.y && stand.y <= r.y + r.d);
+    const inArea = (p) => area && p.x >= area.x + HELP_CAMERA_MARGIN_CM && p.x <= area.x + area.w - HELP_CAMERA_MARGIN_CM
+      && p.z >= area.y + HELP_CAMERA_MARGIN_CM && p.z <= area.y + area.d - HELP_CAMERA_MARGIN_CM;
+    // Across the thing, coming nearer if the room is small on that side.
+    const across = HELP_ACROSS_NEARER.flatMap((nearer) => [
+      candidate(Math.PI + HELP_ACROSS_ANGLE, nearer), candidate(Math.PI - HELP_ACROSS_ANGLE, nearer), candidate(Math.PI, nearer),
+    ]);
     const options = [candidate(side), candidate(-side), candidate(HELP_SIDE_ANGLE), candidate(-HELP_SIDE_ANGLE), candidate(0)];
-    const wanted = options.find(inside) ?? options[0];
+    const wanted = across.find(inArea) ?? options.find(inside) ?? options[0];
     wanted.x = Math.min(Math.max(wanted.x, HELP_CAMERA_MARGIN_CM), model.width - HELP_CAMERA_MARGIN_CM);
     wanted.z = Math.min(Math.max(wanted.z, HELP_CAMERA_MARGIN_CM), model.depth - HELP_CAMERA_MARGIN_CM);
     controls.target.lerp(target, FOLLOW_EASE);

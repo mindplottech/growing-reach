@@ -46,7 +46,11 @@ test('in the sofa layout the back uses the ledger median and stands at the windo
 test('the sofa layout makes standing at the window possible', () => {
   const room = selectLayout(roomFile, 'sofa_by_window');
   const climber = { ...settings, climb_probability: 1, chain_probability: 1, climb_failure_k: 0 };
-  const simulation = createSimulation({ ledger, settings: climber, months: maxMonths, sex: 'female', seed: 1, room });
-  simulation.step(settings.trial_seconds);
-  assert.ok(simulation.events.some(({ kind }) => kind === EVENT.STOOD_AT_WINDOW));
+  // Some child among the first ten gets there (which ones depends on where the furniture is).
+  const standsThere = (seed) => {
+    const simulation = createSimulation({ ledger, settings: climber, months: maxMonths, sex: 'female', seed, room });
+    simulation.step(settings.trial_seconds);
+    return simulation.events.some(({ kind }) => kind === EVENT.STOOD_AT_WINDOW);
+  };
+  assert.ok(Array.from({ length: 10 }, (_, i) => i + 1).some(standsThere));
 });

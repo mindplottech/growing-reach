@@ -11,7 +11,7 @@ import { ledger, roomLayout, settings } from './helpers.js';
 const catalog = furnitureCatalog;
 const item = (kind) => catalog.find((entry) => entry.kind === kind);
 // An empty part of the default room, wide enough for any catalogue item tested here.
-const FREE = { x: 360, y: 130 };
+const FREE = { x: 300, y: 70 };
 const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.d && b.y < a.y + a.d;
 
 function assertValid(room) {
@@ -70,7 +70,7 @@ test('things are kept inside the room when dragged past a wall', () => {
 
 test('boxes get numbered labels and a unique id each', () => {
   const one = addFurniture(roomLayout, item('box'), FREE);
-  const two = addFurniture(one, item('box'), { x: 300, y: 60 });
+  const two = addFurniture(one, item('box'), { x: 360, y: 60 });
   const boxes = two.landmarks.filter(({ temporary }) => temporary);
   assert.deepEqual(boxes.map(({ label }) => label), ['段ボール箱1', '段ボール箱2']);
   assert.equal(new Set(boxes.map(({ id }) => id)).size, 2);
@@ -119,7 +119,7 @@ test('undo steps back through every change, including a reset', () => {
 });
 
 test('an edited room runs in the simulation, and new furniture can be a foothold', () => {
-  const room = addFurniture(roomLayout, item('table'), { x: 380, y: 120 });
+  const room = addFurniture(roomLayout, item('table'), FREE);
   // Some child among the first twenty climbs the new table within one trial.
   const climbsIt = (seed) => {
     const simulation = createSimulation({ ledger, settings: { ...settings, climb_probability: 1 }, months: 60, sex: 'male', seed, room });
