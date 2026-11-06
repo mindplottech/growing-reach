@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { checkLedger, readCode } from '../scripts/check-ledger.mjs';
 
 const ledger = JSON.parse(readFileSync(new URL('../data/values_ledger.json', import.meta.url), 'utf8'));
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 
 test('the ledger and the code pass the ledger check', () => {
   const { errors } = checkLedger(ledger, readCode(root));
