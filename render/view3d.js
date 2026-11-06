@@ -113,6 +113,11 @@ const ROOM_LABEL_SHARE = 0.7;
 const ROOM_LABEL_LIFT_CM = 2;
 const ROOM_LABEL_OPACITY = 0.75;
 const GOAL_WALL_SIZE_CM = 8;
+// A thing on a partition but higher than it (a light switch, KO 2026-11-06) gets a strip of wall
+// up behind it, this much wider and taller than the thing, so it is not floating in the air.
+const WALL_STRIP_MARGIN_CM = 10;
+const WALL_STRIP_ABOVE_CM = 25;
+const WALL_STRIP_TOUCH_CM = 6;
 const HAZARD_LABEL_SHARE = 0.8;
 const SIT_DROP = 0.14;
 // Walking, for the look only: a small bob per step, the arms swing a share of the legs, and the
@@ -654,6 +659,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     }
     // The goals: a small plate on the wall at the thing's height, or a small thing on furniture.
     for (const goal of model.goals) {
+      if (goal.onWall && goal.height > PARTITION_HEIGHT_CM) addWallStrip(goal);
       const thick = goal.onWall ? GOAL_WALL_THICK_CM : HAZARD_THICK_CM;
       const mesh = new THREE.Mesh(
         new RoundedBoxGeometry(goal.w, goal.onWall ? GOAL_WALL_SIZE_CM : thick, goal.d, CORNER_SEGMENTS, Math.min(goal.w, goal.d, thick) * CORNER_SHARE),
@@ -933,6 +939,30 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   }
 
   /** Glides the camera to a close three-quarter view of the child at the thing, until turned by hand. */
+  /** A strip of the partition `goal` sits on, from the partition's top up past the goal. */
+  function addWallStrip(goal) {
+    const near = (a, b) => a.x - WALL_STRIP_TOUCH_CM <= b.x + b.w && b.x - WALL_STRIP_TOUCH_CM <= a.x + a.w
+      && a.z - WALL_STRIP_TOUCH_CM <= b.z + b.d && b.z - WALL_STRIP_TOUCH_CM <= a.z + a.d;
+    const wall = model.walls.find((each) => near(each, goal));
+    if (!wall) return;
+    const alongZ = wall.d > wall.w;
+    const footprint = alongZ
+      ? { x: wall.x, w: wall.w, z: goal.z - WALL_STRIP_MARGIN_CM, d: goal.d + 2 * WALL_STRIP_MARGIN_CM }
+      : { x: goal.x - WALL_STRIP_MARGIN_CM, w: goal.w + 2 * WALL_STRIP_MARGIN_CM, z: wall.z, d: wall.d };
+    const height = goal.height + WALL_STRIP_ABOVE_CM - PARTITION_HEIGHT_CM;
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(footprint.w, height, footprint.d),
+      new THREE.MeshStandardMaterial({ color: WALL_COLOUR, roughness: 1, transparent: true, opacity: PARTITION_OPACITY }),
+    );
+    mesh.position.set(footprint.x + footprint.w / 2, PARTITION_HEIGHT_CM + height / 2, footprint.z + footprint.d / 2);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.raycast = noRaycast;
+    mesh.userData.wall = footprint;
+    partitions.push(mesh);
+    roomGroup.add(mesh);
+  }
+
   /** True if the straight line from a to b (x, z) crosses the box. */
   function crosses(a, b, box) {
     let low = 0;
