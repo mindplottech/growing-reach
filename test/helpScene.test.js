@@ -97,10 +97,10 @@ test('抱っこ (KO 2026-11-06): the adult stands behind the child and holds the
   const vanity = wash.thing;
   const toThing = (p) => Math.hypot(p.x - (vanity.x + vanity.w / 2), p.y - (vanity.y + vanity.d / 2));
   assert.ok(toThing(wash.adult) > toThing(wash.stand));
-  // Clothes with an adult: beside, the child on the floor.
-  const clothes = scenesWithAdult(30).get('clothes');
-  assert.equal(clothes.adult.mode, 'beside');
-  assert.equal(clothes.withHelp.feet, 0);
+  // The toothbrush with an adult: beside, the child on the floor (clothes have their own scene).
+  const brush = scenesWithAdult(18).get('toothbrush');
+  assert.equal(brush.adult.mode, 'beside');
+  assert.equal(brush.withHelp.feet, 0);
   // A goal the child does alone has no adult.
   assert.equal(scenesWithAdult(48).get('towel')?.adult ?? null, null);
 });
@@ -136,6 +136,25 @@ test('shoes (KO 2026-11-06): sitting on the entrance step; the adult puts them o
       assert.equal(shoes.adult.mode, 'kneel');
       // In front of the child, off the step.
       assert.ok((shoes.adult.y - shoes.stand.y) * shoes.facing.y > step.d / 2);
+    }
+  }
+});
+
+test('clothes (KO 2026-11-06): standing turned to the room, a shirt over the head; the adult puts it on (until 2), helps (until 3), or is not there', () => {
+  const clothes = room.goals.find(({ id }) => id === 'clothes');
+  const wall = clothes.wall;
+  for (const [months, dressing] of [[18, 'puts_on'], [30, 'helps'], [40, 'alone']]) {
+    const scene = scenesWithAdult(months).get('clothes');
+    assert.equal(scene.garment, 'shirt');
+    assert.equal(scene.dressing, dressing, `${months}`);
+    // Standing on the floor, out from the drawer, facing away from it.
+    assert.equal(scene.withHelp.feet, 0);
+    const out = { x: scene.stand.x - (wall.x + wall.w / 2), y: scene.stand.y - (wall.y + wall.d / 2) };
+    assert.ok(Math.sin(scene.withHelp.yaw) * out.x + Math.cos(scene.withHelp.yaw) * out.y > 0, 'faces the room');
+    if (dressing === 'alone') assert.equal(scene.adult, null);
+    else {
+      assert.equal(scene.adult.mode, 'kneel');
+      assert.ok(scene.adult.reachHeight > 0);
     }
   }
 });

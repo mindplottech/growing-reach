@@ -9,7 +9,8 @@
     "goals_note": "goals は「やりたいこと」。計算（sim/adjustments.js）と表示だけが読み、100人の試行（simulation.js）は読まない。on は家具の上、wall は壁の位置（仮値）。高さは台帳を指す。",
     "rooms_note": "部屋ごとに width・depth・start・landmarks・goals・hazards を持つ。寸法と配置は設計者の仮値、高さは台帳を指す。",
     "sit_on_note": "sit_on は、その物を使うとき子どもが座る家具（靴は玄関の段差に座って履く）。表示だけが読み、計算には使わない。",
-    "house_note": "一つの家。rooms は環境調整の表示で部屋ごとにまとめるための区画、walls は腰高の間仕切り（経路の障害物。ドアの隙間から出入りする）。寸法と配置は設計者の仮値。"
+    "house_note": "一つの家。rooms は環境調整の表示で部屋ごとにまとめるための区画、walls は腰高の間仕切り（経路の障害物。ドアの隙間から出入りする）。寸法と配置は設計者の仮値。",
+    "dress_note": "dress は、その物を使うとき見せる着替えの動き（shirt：服を頭からかぶって着る）。表示だけが読み、計算には使わない。"
   },
   "width": 450,
   "depth": 360,
@@ -695,7 +696,8 @@
             "d": 40
           },
           "room": "living",
-          "from_months": 16
+          "from_months": 16,
+          "dress": "shirt"
         },
         {
           "id": "tidy",

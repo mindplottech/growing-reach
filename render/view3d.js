@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { applyOutfit, applyProportions, HAND_IN_ARM, makeChild, makeLooseShoe, SEATED, SHOE_ON_KNEE } from './childFigure3d.js';
-import { DRESS_ALONE, DRESS_HELPS } from '../sim/helpScene.js';
+import { applyOutfit, applyProportions, HAND_IN_ARM, makeChild, makeLooseShirt, makeLooseShoe, SEATED, SHIRT_ON_TORSO, SHOE_ON_KNEE } from './childFigure3d.js';
+import { DRESS_ALONE, DRESS_HELPS, GARMENT_SHIRT } from '../sim/helpScene.js';
 import { makeAdult, poseAdult } from './adultFigure3d.js';
 import { easeLook, lookAngles } from './look.js';
 import { applyCrawl, easeCrawl, liftHead } from './crawl.js';
@@ -92,6 +92,13 @@ const DRESS_TRY_WIGGLES = 7;
 // The shoe scene's camera: in front of the seated child, to the side away from the adult, and
 // high, looking down at the hands and the feet (cm).
 const DRESS_CAMERA = { front: 210, side: 45, up: 170, lookUp: 30, lookToAdult: 18 };
+// Putting on a shirt (KO 2026-11-06, display only): the arms go up this far (ばんざい) and out;
+// until the shirt is on, the child wears a white undershirt (肌着); the camera looks at the chest.
+const SHIRT_ARMS_UP = 2.7;
+const SHIRT_ARMS_OUT = 0.2;
+const UNDERSHIRT = 0xf6f3ec;
+const SHIRT_CAMERA_LOOK_UP = 55;
+const ADULT_HAND_SHARE = 0.2;
 const smoothstep = (t) => t * t * (3 - 2 * t);
 const clamp01 = (t) => Math.min(1, Math.max(0, t));
 // Floor tones by room (display only): tiles in the wet rooms, earth at the entrance.
@@ -356,6 +363,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   const partitions = [];
   // The shoe scene: the loose shoe, and the clock of its round.
   let looseShoe = null;
+  let looseShirt = null;
+  const undershirt = new THREE.MeshStandardMaterial({ color: UNDERSHIRT, roughness: 0.85 });
   let dressClock = 0;
   const goalMeshes = new Map();
   const helpGroup = new THREE.Group();
@@ -732,7 +741,11 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       helpGroup.add(stool);
     }
     // The shoe the child is putting on, carried from the hands to the foot.
-    if (shown.dressing) {
+    if (shown.dressing && shown.garment === GARMENT_SHIRT) {
+      looseShirt = makeLooseShirt();
+      looseShirt.traverse((node) => { node.raycast = noRaycast; });
+      helpGroup.add(looseShirt);
+    } else if (shown.dressing) {
       looseShoe = makeLooseShoe();
       looseShoe.traverse((node) => { node.raycast = noRaycast; });
       helpGroup.add(looseShoe);
@@ -759,6 +772,64 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     // 1歳代: the shoe goes to the toes and back (it does not go on), then the adult puts it on.
     const tries = ease(0.2, 0.3) * (1 - ease(0.42, 0.5)) * (0.3 + 0.15 * Math.sin(t * Math.PI * 2 * DRESS_TRY_WIGGLES));
     return { on: Math.max(tries, ease(0.5, 0.7)), lift, lean: reachDown * (1 - 0.5 * adult), arms: reachDown * (1 - 0.6 * adult), adult };
+  }
+
+  /**
+   * One round of putting on a shirt, at `t` (0–1): how far the arms are up (ばんざい), how far the
+   * shirt has come down over the head onto the body, and how far the adult reaches in (KO):
+   * alone the child pulls it over; with help it sticks at the head and the adult pulls it down;
+   * until 2 the adult brings it and puts it on while the child holds the arms up.
+   */
+  function shirtMotion(dressing, t) {
+    const ease = (a, b) => smoothstep(clamp01((t - a) / (b - a)));
+    if (dressing === DRESS_ALONE) {
+      return { arms: ease(0.03, 0.2) * (1 - ease(0.68, 0.82)), on: ease(0.25, 0.62), adult: 0, fromAdult: false };
+    }
+    if (dressing === DRESS_HELPS) {
+      return {
+        arms: ease(0.03, 0.2) * (1 - ease(0.68, 0.82)), on: 0.45 * ease(0.22, 0.36) + 0.55 * ease(0.5, 0.66),
+        adult: ease(0.34, 0.46) * (1 - ease(0.7, 0.82)), fromAdult: false,
+      };
+    }
+    return { arms: ease(0.2, 0.32) * (1 - ease(0.68, 0.82)), on: ease(0.35, 0.62), adult: ease(0.03, 0.18) * (1 - ease(0.72, 0.85)), fromAdult: true };
+  }
+
+  /** The child's own shirt, or the undershirt until the shirt is on (bare skin for the baby's look). */
+  function wearShirt(on) {
+    const { covered, collar, sleeves, shirt, skin } = child.outfit;
+    const baby = child.feet[0].bare.visible;
+    for (const mesh of covered) mesh.material = on ? (baby ? skin : shirt) : undershirt;
+    collar.visible = on && !baby;
+    for (const sleeve of sleeves) sleeve.visible = on;
+  }
+
+  /** The child putting on the shirt, as `shirtMotion` says; the loose shirt placed. */
+  function dressShirt(motion) {
+    child.arms.forEach((arm, i) => {
+      arm.rotation.x = -motion.arms * SHIRT_ARMS_UP;
+      arm.rotation.z = (i === 0 ? -1 : 1) * SHIRT_ARMS_OUT * motion.arms;
+    });
+    const on = motion.on >= 1;
+    wearShirt(on);
+    if (!looseShirt) return;
+    looseShirt.visible = !on;
+    child.root.updateMatrixWorld(true);
+    adult.root.updateMatrixWorld(true);
+    // From the hands that bring it (the child's, or the adult's until 2) down onto the body.
+    const from = new THREE.Vector3();
+    if (motion.fromAdult) {
+      for (const elbow of adult.elbows) from.add(elbow.localToWorld(new THREE.Vector3(0, -adult.heightCm * ADULT_HAND_SHARE, 0)));
+    } else {
+      for (const arm of child.arms) from.add(arm.localToWorld(new THREE.Vector3(0, HAND_IN_ARM.y, 0)));
+    }
+    from.multiplyScalar(0.5);
+    // While the adult brings it, it rises from their hands to above the child's head first.
+    const overHead = child.head.localToWorld(new THREE.Vector3(0, 0.25, 0));
+    const start = motion.fromAdult ? from.lerp(overHead, Math.min(1, motion.arms)) : from;
+    const body = child.torso.localToWorld(new THREE.Vector3(0, SHIRT_ON_TORSO.y, 0));
+    looseShirt.position.lerpVectors(start, body, motion.on);
+    child.torso.getWorldQuaternion(looseShirt.quaternion);
+    looseShirt.scale.setScalar(child.root.scale.y);
   }
 
   /** The child on the step putting on the shoe, as `dressMotion` says; the loose shoe placed. */
@@ -799,6 +870,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
 
   /** Back from the shoe scene: the body straight and both shoes on (bare feet for the baby). */
   function undressChild() {
+    wearShirt(true);
     child.torso.rotation.x = 0;
     child.torso.position.y = -SEATED.hipY * (1 - child.lower.scale.y);
     child.torso.position.z = 0;
@@ -811,6 +883,7 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
   function unplaceHelp() {
     disposeGroup(helpGroup);
     looseShoe = null;
+    looseShirt = null;
     dressClock = 0;
     undressChild();
     for (const { mesh, home } of goalMeshes.values()) mesh.position.copy(home);
@@ -900,7 +973,8 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
       const away = help.scene.adult ? -Math.sign((help.scene.adult.x - stand.x) * side.x + (help.scene.adult.y - stand.y) * side.y) || -1 : -1;
       // Looking a little toward the adult's side, so both are in the picture.
       const shift = help.scene.adult ? -away * DRESS_CAMERA.lookToAdult : 0;
-      const look = new THREE.Vector3(stand.x + facing.x * 15 + side.x * shift, DRESS_CAMERA.lookUp, stand.y + facing.y * 15 + side.y * shift);
+      const lookUp = help.scene.garment === GARMENT_SHIRT ? SHIRT_CAMERA_LOOK_UP : DRESS_CAMERA.lookUp;
+      const look = new THREE.Vector3(stand.x + facing.x * 15 + side.x * shift, lookUp, stand.y + facing.y * 15 + side.y * shift);
       const from = new THREE.Vector3(
         stand.x + facing.x * DRESS_CAMERA.front + side.x * DRESS_CAMERA.side * away, DRESS_CAMERA.up,
         stand.y + facing.y * DRESS_CAMERA.front + side.y * DRESS_CAMERA.side * away,
@@ -1029,8 +1103,14 @@ export function mountView3d({ container, chip, ledger, settings, session, slider
     let dressNow = null;
     if (dressing) {
       dressClock += realSeconds;
-      dressNow = dressMotion(dressing, (dressClock % DRESS_PERIOD_S) / DRESS_PERIOD_S);
-      dressChild(dressNow);
+      const t = (dressClock % DRESS_PERIOD_S) / DRESS_PERIOD_S;
+      if (help.scene.garment === GARMENT_SHIRT) {
+        dressNow = shirtMotion(dressing, t);
+        dressShirt(dressNow);
+      } else {
+        dressNow = dressMotion(dressing, t);
+        dressChild(dressNow);
+      }
     }
     // The adult watches あーちゃん: the child's head, wherever the figure is drawn.
     const childHead = new THREE.Vector3();

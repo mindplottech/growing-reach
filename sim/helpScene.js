@@ -29,6 +29,15 @@ const KNEEL_SIDE_CM = 22;
 export const DRESS_PUTS_ON = 'puts_on';
 export const DRESS_HELPS = 'helps';
 export const DRESS_ALONE = 'alone';
+/** What is put on: shoes on the step, or a shirt over the head, standing. */
+export const GARMENT_SHOES = 'shoes';
+export const GARMENT_SHIRT = 'shirt';
+// Putting on a shirt (KO 2026-11-06, display only): the child stands this far out from the
+// drawer, facing the room; the adult kneels this far in front and to one side, reaching to the
+// shirt at the child's head height (the child's height, from the ledger).
+const SHIRT_STAND_CM = 35;
+const SHIRT_KNEEL_FRONT_CM = 50;
+const SHIRT_KNEEL_SIDE_CM = 38;
 
 /** The side of a footprint that faces a point, as a unit step along x or y (y is the floor's depth). */
 function sideToward(object, point) {
@@ -73,6 +82,7 @@ export function helpScene({ ledger, room, goal, body, sizes, adultSizes = null }
   // Putting on shoes (KO 2026-11-06): the child sits on the step (goal.sit_on), facing the 土間.
   const seat = goal.sit_on ? (room.landmarks ?? []).find(({ id }) => id === goal.sit_on) : null;
   if (seat) return seatedScene({ ledger, goal, seat, thing, areaCentre, adultSizes, reach });
+  if (goal.dress === GARMENT_SHIRT) return shirtScene({ goal, thing, facing, edge, adultSizes, body });
 
   /** The figure on a surface `feet` high, trying for a thing at `height`. */
   function figure(feet, height) {
@@ -224,8 +234,55 @@ function seatedScene({ ledger, goal, seat, thing, areaCentre, adultSizes, reach 
     feetStep: false,
     tiptoe: false,
     dressing,
+    garment: GARMENT_SHOES,
     stand: sit,
     facing: out,
+    thing: { ...thing, height: goal.height },
+    thingAfter: { ...thing, height: goal.height },
+    prop: null,
+    without: figure,
+    withHelp: figure,
+    adult,
+  };
+}
+
+/**
+ * The child stands in front of the drawer, turned to the room, and puts a shirt on over the
+ * head: with the adult putting it on (until 2), with the adult pulling it down when it sticks at
+ * the head (until 3), or alone. Display only; the status is the goal's.
+ */
+function shirtScene({ goal, thing, facing, edge, adultSizes, body }) {
+  const stand = { x: edge.x + facing.x * SHIRT_STAND_CM, y: edge.y + facing.y * SHIRT_STAND_CM };
+  const together = goal.status === STATUS_WITH_ADULT;
+  const dressing = !together ? DRESS_ALONE : goal.adultPart === DRESS_PUTS_ON ? DRESS_PUTS_ON : DRESS_HELPS;
+  const figure = {
+    x: stand.x, y: stand.y, feet: 0, yaw: Math.atan2(facing.x, facing.y), arms: 0, stretch: 0, forward: false,
+    handHeight: body.reach, reaches: true, dressing,
+  };
+  let adult = null;
+  if (together && adultSizes) {
+    const side = { x: -facing.y, y: facing.x };
+    const at = { x: stand.x + facing.x * SHIRT_KNEEL_FRONT_CM + side.x * SHIRT_KNEEL_SIDE_CM, y: stand.y + facing.y * SHIRT_KNEEL_FRONT_CM + side.y * SHIRT_KNEEL_SIDE_CM };
+    adult = {
+      mode: 'kneel', x: at.x, y: at.y, yaw: Math.atan2(stand.x - at.x, stand.y - at.y),
+      holdForward: Math.hypot(stand.x - at.x, stand.y - at.y), reachHeight: body.height, dressing,
+    };
+  }
+  return {
+    goalId: goal.id,
+    label: goal.label,
+    short: goal.short ?? goal.label,
+    status: goal.status,
+    kind: goal.kind,
+    how: goal.how,
+    gapCm: goal.gapCm ?? 0,
+    stepFromMonths: null,
+    feetStep: false,
+    tiptoe: false,
+    dressing,
+    garment: GARMENT_SHIRT,
+    stand,
+    facing,
     thing: { ...thing, height: goal.height },
     thingAfter: { ...thing, height: goal.height },
     prop: null,

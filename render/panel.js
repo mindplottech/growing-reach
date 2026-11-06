@@ -7,7 +7,7 @@ import { judgeRoom } from '../sim/verdict.js';
 import { reachWords } from '../sim/wording.js';
 import { activitiesAt, adjustmentsAt, adjustmentTimeline, helpSpans, HELP_LOWER, HELP_STEP, STATUS_CAN, STATUS_HELP, STATUS_NOT_YET, STATUS_WITH_ADULT } from '../sim/adjustments.js';
 import { getBodyValues } from '../sim/body.js';
-import { DRESS_ALONE, DRESS_HELPS, DRESS_PUTS_ON, helpScene } from '../sim/helpScene.js';
+import { DRESS_ALONE, DRESS_HELPS, DRESS_PUTS_ON, GARMENT_SHIRT, helpScene } from '../sim/helpScene.js';
 import { freeSpotIn } from '../sim/path.js';
 import { activityIcon, GOAL_ICONS, ROOM_ICONS } from './icons.js';
 import { normalCdf } from '../sim/random.js';
@@ -23,6 +23,12 @@ const DRESSING_WORDS = {
   [DRESS_PUTS_ON]: '段差に座って、自分で履こうとする。最後は大人が履かせる',
   [DRESS_HELPS]: '段差に座って自分で足を入れ、かかとは大人が手伝う',
   [DRESS_ALONE]: '段差に座って、一人で履く',
+};
+// The shirt (KO 2026-11-06): what the clothes scene shows.
+const SHIRT_WORDS = {
+  [DRESS_PUTS_ON]: '大人が頭からかぶせる。子どもは、ばんざいして腕を通す',
+  [DRESS_HELPS]: '自分でかぶろうとする。頭で止まったら、大人が下ろす',
+  [DRESS_ALONE]: '頭からかぶって、一人で着る',
 };
 
 function element(tag, className, text) {
@@ -327,7 +333,7 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
       li.title = tipOf(goal);
       li.append(element('span', 'activity-icon', GOAL_ICONS[goal.id] ?? '•'), nameOf(goal));
       // Shoes (KO): pressing shows the child putting them on alone.
-      return goal.sit_on ? showable(li, goal) : li;
+      return goal.sit_on || goal.dress ? showable(li, goal) : li;
     };
     const groups = [
       { kind: 'help', head: '🪜 大人がひと工夫すると、自分でできる', goals: now.goals.filter(({ status }) => status === STATUS_HELP), make: tile },
@@ -408,8 +414,9 @@ export function mountPanel({ ledger, settings, session, getChild, autoplay }) {
     const gap = scene.gapCm > 0 ? `あと${scene.gapCm}cm` : '';
     if (scene.dressing) {
       // Putting on shoes on the step (KO 2026-11-06), by who does what at this age.
-      const main = scene.status === STATUS_CAN ? `${age}：一人で履く → ${scene.label}` : `${age}：${scene.how} → ${scene.label}`;
-      return { main, sub: DRESSING_WORDS[scene.dressing], toggles: false };
+      const shirt = scene.garment === GARMENT_SHIRT;
+      const main = scene.status === STATUS_CAN ? `${age}：${shirt ? '一人で着る' : '一人で履く'} → ${scene.label}` : `${age}：${scene.how} → ${scene.label}`;
+      return { main, sub: (shirt ? SHIRT_WORDS : DRESSING_WORDS)[scene.dressing], toggles: false };
     }
     if (scene.status === STATUS_CAN) {
       return { main: `${age}：${scene.label}`, sub: `${scene.how}。助けはいらない`, toggles: false };

@@ -147,7 +147,7 @@ export function makeChild() {
   for (const mesh of outfit.baby) mesh.visible = false;
   return {
     root, body, arms, legs, knees, lower, torso, head, belly, eyes, mouth, openMouth, feet,
-    outfit: { ...outfit, covered: [chest, belly, ...sleeves], shirt, skin },
+    outfit: { ...outfit, covered: [chest, belly, ...sleeves], shirt, skin, collar, sleeves },
   };
 }
 
@@ -185,6 +185,28 @@ export function makeLooseShoe() {
   add(SHOES, 0.55, 0, [0.05, 0.05 * 0.75, 0.05 * 1.4]);
   return group;
 }
+
+/** A loose T-shirt like the figure's (body, two sleeves, collar), at figure scale 1, its middle at 0. */
+export function makeLooseShirt() {
+  const group = new THREE.Group();
+  const cloth = new THREE.MeshStandardMaterial({ color: SHIRT, roughness: 0.8 });
+  const add = (geometry, material, [x, y, z], scale) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, y, z);
+    if (scale) mesh.scale.set(...scale);
+    mesh.castShadow = true;
+    group.add(mesh);
+    return mesh;
+  };
+  add(new THREE.SphereGeometry(0.15, 22, 16), cloth, [0, 0, 0], [1.05, 1.1, 0.9]);
+  for (const side of [-1, 1]) add(new THREE.SphereGeometry(0.055, 14, 12), cloth, [side * 0.14, 0.09, 0], [1, 1.1, 1]);
+  const collar = add(new THREE.TorusGeometry(0.07, 0.015, 8, 24), new THREE.MeshStandardMaterial({ color: COLLAR, roughness: 0.6 }), [0, 0.14, 0]);
+  collar.rotation.x = Math.PI / 2;
+  return group;
+}
+
+/** The middle of the T-shirt on the figure, in the torso's own frame (figure units). */
+export const SHIRT_ON_TORSO = { y: 0.46 };
 
 /** The hand at the end of an arm, in the arm's own frame (figure units). */
 export const HAND_IN_ARM = { y: -0.19 };
